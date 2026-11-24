@@ -1,13 +1,13 @@
 import { useState } from "react";
-import type { ResultUnit, ResultsUnit, SpanAnswer, UnitData, VariableValue } from "@annotinder/contracts";
+import type { ResultUnit, ResultsUnit, UnitData } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useResultUnitQuery } from "../../../admin/queries";
-import { answerText } from "../../../admin/exportAnswers";
 import { useRenderedLayout } from "../renderedLayout";
 import { UnitFields } from "../../UnitFields";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 import type { DesignLabels } from "./designLabels";
+import { questionAnswerRows } from "./unitAnswers";
 
 const PAGE = 50;
 
@@ -105,7 +105,6 @@ function UnitDetail({
   onBack: () => void;
 }) {
   const query = useResultUnitQuery(client, unit.unitId);
-  const loop = labels.loop(unit.loop);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
@@ -115,19 +114,41 @@ function UnitDetail({
         <span className="font-mono text-sm font-medium">{unit.externalId}</span>
         <span className="text-sm text-muted-foreground">{labels.loopTitle(unit.loop)}</span>
       </div>
-      {query.error ? (
-        <p className="text-sm text-destructive">{query.error.message}</p>
-      ) : !query.data || !loop ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : (
-        <>
-          <UnitAsSeen layout={loop.layout} detail={query.data} labels={labels} />
-          {loop.questions.map((question) => (
-            <QuestionAnswers key={question} question={question} detail={query.data} labels={labels} />
-          ))}
-        </>
-      )}
+      <UnitDetailBody query={query} loop={labels.loop(unit.loop)} labels={labels} />
     </div>
+  );
+}
+
+type LoopLabels = NonNullable<ReturnType<DesignLabels["loop"]>>;
+
+/** The open unit: as its coders saw it, then every coder's answers per question. */
+function UnitDetailBody({
+  query,
+  loop,
+  labels,
+}: {
+  query: { data: ResultsUnit | undefined; error: Error | null };
+  /** The unit's loop in the deployed design; undefined: no longer in it (or the design is still loading). */
+  loop: LoopLabels | undefined;
+  labels: DesignLabels;
+}) {
+  if (query.error) return <p className="text-sm text-destructive">{query.error.message}</p>;
+  const detail = query.data;
+  if (!detail || !labels.ready) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (!loop)
+    return (
+      <p className="text-sm text-muted-foreground">
+        This unit was coded in a unit loop that is no longer in the deployed design, so it can&apos;t be shown here. Its
+        answers are in the download.
+      </p>
+    );
+  return (
+    <>
+      <UnitAsSeen layout={loop.layout} detail={detail} labels={labels} />
+      {loop.questions.map((question) => (
+        <QuestionAnswers key={question} question={question} detail={detail} labels={labels} />
+      ))}
+    </>
   );
 }
 
@@ -137,7 +158,7 @@ function UnitAsSeen({
   detail,
   labels,
 }: {
-  layout: NonNullable<ReturnType<DesignLabels["loop"]>>["layout"];
+  layout: LoopLabels["layout"];
   detail: ResultsUnit;
   labels: DesignLabels;
 }) {
@@ -172,13 +193,9 @@ function QuestionAnswers({
   labels: DesignLabels;
 }) {
   const type = labels.questions.get(question);
-  const answers = detail.answers.filter((a) => a.variable === question);
-  if (answers.length === 0) return null;
   const items = type?.type === "scale" ? type.items.map((i) => i.name) : [undefined];
-  const write = (v: string | number) => labels.valueLabel(question, v);
-  const text = (value: VariableValue, item: string | undefined) =>
-    value.spans ? spanList(value.spans, write) : answerText(value, item, write) || (value.skip ? "(skipped)" : "");
-  const differ = items.some((item) => new Set(answers.map((a) => text(a.value, item))).size > 1);
+  const { rows, differ } = questionAnswerRows(detail, question, items, (v) => labels.valueLabel(question, v));
+  if (rows.length === 0) return null;
   return (
     <section
       className={cn(
@@ -193,14 +210,14 @@ function QuestionAnswers({
       </div>
       <table className="w-full text-sm">
         <tbody>
-          {answers.map((a) => (
-            <tr key={a.sessionId} className="align-top">
-              <td className="w-40 py-0.5 pr-3 text-muted-foreground">{a.coder ?? `Session ${a.sessionId}`}</td>
+          {rows.map((row) => (
+            <tr key={row.sessionId} className="align-top">
+              <td className="w-40 py-0.5 pr-3 text-muted-foreground">{row.coder ?? `Session ${row.sessionId}`}</td>
               <td className="py-0.5">
-                {items.map((item) => (
+                {items.map((item, i) => (
                   <div key={item ?? ""}>
                     {item && <span className="text-muted-foreground">{labels.itemLabel(question, item)}: </span>}
-                    {text(a.value, item)}
+                    {row.texts[i]}
                   </div>
                 ))}
               </td>
@@ -210,13 +227,4 @@ function QuestionAnswers({
       </table>
     </section>
   );
-}
-
-/** Spans as "label: text", in text order. */
-function spanList(spans: SpanAnswer[], write: (v: string) => string): string {
-  if (spans.length === 0) return "(none)";
-  return [...spans]
-    .sort((a, b) => a.field.localeCompare(b.field) || a.slices[0].offset - b.slices[0].offset)
-    .map((s) => `${write(s.value)}: ${s.slices.map((x) => x.text).join(" … ")}`)
-    .join("; ");
 }

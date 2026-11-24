@@ -4,7 +4,7 @@ import {
   StudyExportManifestSchema,
   type RecipeInput,
 } from "@annotinder/contracts";
-import { gunzipSync } from "fflate";
+import { Gunzip } from "fflate";
 
 // New studies from files (Create new study › From a file): a design file
 // (`designs/v<n>.json` in the results download, or Export › Design file in
@@ -72,16 +72,15 @@ export interface ExportSummary {
 
 /** Reads a study export's manifest (`StudyExportManifestSchema`). Throws with a message for people. */
 export function readExportSummary(bytes: Uint8Array): ExportSummary {
-  let text: string;
+  let firstLine: string;
   try {
-    // Only the start: the manifest is the first line
-    text = new TextDecoder().decode(gunzipSync(bytes));
+    firstLine = firstLineOfGzip(bytes);
   } catch {
     throw new Error("This file can't be unpacked: a study export is a .annotinder.gz file from a study's Settings.");
   }
   let manifest: unknown;
   try {
-    manifest = JSON.parse(text.slice(0, text.indexOf("\n") === -1 ? undefined : text.indexOf("\n")));
+    manifest = JSON.parse(firstLine);
   } catch {
     throw new Error("This isn't a study export.");
   }
@@ -100,4 +99,25 @@ export function readExportSummary(bytes: Uint8Array): ExportSummary {
     answers: rows("annotation_values"),
     designVersions: rows("design_versions"),
   };
+}
+
+/** How much of the file is unpacked at a time. */
+const CHUNK = 64 * 1024;
+
+/**
+ * The first line of a gzipped text, unpacking only as far as its end: an
+ * export of a large study is hundreds of megabytes unpacked. Throws if the
+ * file isn't gzip. The end of the file is never checked: what is read is its start.
+ */
+function firstLineOfGzip(bytes: Uint8Array): string {
+  const decoder = new TextDecoder();
+  let text = "";
+  const gunzip = new Gunzip((chunk) => {
+    text += decoder.decode(chunk, { stream: true });
+  });
+  for (let at = 0; at < bytes.length && !text.includes("\n"); at += CHUNK) {
+    gunzip.push(bytes.subarray(at, at + CHUNK));
+  }
+  const end = text.indexOf("\n");
+  return end === -1 ? text : text.slice(0, end);
 }

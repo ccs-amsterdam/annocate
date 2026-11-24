@@ -1,29 +1,21 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { StudyResponse, MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ResearcherAccess } from "./account/ResearcherAccess";
-import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
-import { useCreateStudyMutation, useDeleteStudyMutation, useStudiesQuery } from "../../admin/queries";
+import { type ResearcherApi } from "../../api/httpResearcherApi";
+import { useStudiesQuery } from "../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
-import {
-  Plus,
-  FileUp,
-  Search,
-  FolderOpen,
-  Trash2,
-  Calendar,
-  Archive,
-  Shield,
-  Sparkles,
-  ChevronDown,
-} from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Search, FolderOpen, Shield, Sparkles } from "lucide-react";
 import { ExamplesDialog } from "./ExamplesDialog";
 import { ImportStudyDialog } from "./ImportStudyDialog";
 import { HelpButton } from "../../help/HelpButton";
 import { requestGuidePrompt } from "./guide/guideStore";
+import { CreateStudyDialog } from "./studyList/CreateStudyDialog";
+import { CreateStudyMenu } from "./studyList/CreateStudyMenu";
+import { DeleteStudyDialog } from "./studyList/DeleteStudyDialog";
+import { StudyCard } from "./studyList/StudyCard";
 
 interface StudyListProps {
   client: ResearcherApi;
@@ -36,25 +28,14 @@ interface StudyListProps {
   onOpenServerAdmin?: () => void;
 }
 
+/** The researcher's studies: search, open, delete, and (for researchers) create one: empty, from an example or from a file. */
 export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOpenServerAdmin }: StudyListProps) {
   const canCreate = me?.role !== "user";
   const studiesQuery = useStudiesQuery(client);
-  const createStudy = useCreateStudyMutation(client);
-  const deleteStudy = useDeleteStudyMutation(client);
-
   const [search, setSearch] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showExamples, setShowExamples] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [newStudyName, setNewStudyName] = useState("");
+  // The open dialog: a way to create a study
+  const [creating, setCreating] = useState<"empty" | "example" | "file" | null>(null);
   const [studyToDelete, setStudyToDelete] = useState<StudyResponse | null>(null);
-
-  // A new study opens; the researcher's first one asks whether to take the guide
-  const firstStudy = (studiesQuery.data ?? []).length === 0;
-  const openNew = (id: number, open?: "design") => {
-    if (firstStudy) requestGuidePrompt();
-    onSelectStudy(id, open);
-  };
 
   if (studiesQuery.isLoading) {
     return (
@@ -78,20 +59,11 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
 
   const studies = studiesQuery.data ?? [];
   const filteredStudies = studies.filter((j) => j.name.toLowerCase().includes(search.toLowerCase()));
-
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudyName.trim()) return;
-    createStudy.mutate(
-      { name: newStudyName.trim(), archived: false },
-      {
-        onSuccess: (created) => {
-          setNewStudyName("");
-          setShowCreateModal(false);
-          openNew(created.id, "design");
-        },
-      },
-    );
+  // A new study opens; the researcher's first one asks whether to take the guide
+  const openNew = (study: StudyResponse, open?: "design") => {
+    setCreating(null);
+    if (studies.length === 0) requestGuidePrompt();
+    onSelectStudy(study.id, open);
   };
 
   return (
@@ -125,9 +97,9 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           )}
           {canCreate && (
             <CreateStudyMenu
-              onExample={() => setShowExamples(true)}
-              onImport={() => setShowImport(true)}
-              onEmpty={() => setShowCreateModal(true)}
+              onExample={() => setCreating("example")}
+              onImport={() => setCreating("file")}
+              onEmpty={() => setCreating("empty")}
             />
           )}
         </div>
@@ -136,240 +108,89 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
       {me && server && onMe && <ResearcherAccess server={server} me={me} onMe={onMe} />}
 
       {filteredStudies.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
-          <div className="rounded-full bg-primary/10 p-4 text-primary">
-            <FolderOpen className="h-8 w-8" />
-          </div>
-          <h3 className="mt-4 text-base font-semibold text-foreground">
-            {studies.length === 0 ? "No studies yet" : "No matching studies"}
-          </h3>
-          <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            {studies.length === 0
-              ? canCreate
-                ? "Get started by creating your first annotation study."
-                : "Studies that researchers share with you appear here."
-              : `No studies matched the query "${search}".`}
-          </p>
-          {studies.length === 0 && canCreate && (
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create study
-              </Button>
-              <Button onClick={() => setShowExamples(true)} variant="outline" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Start from an example
-              </Button>
-            </div>
-          )}
-        </div>
+        <NoStudies
+          search={studies.length === 0 ? null : search}
+          canCreate={canCreate}
+          onEmpty={() => setCreating("empty")}
+          onExample={() => setCreating("example")}
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudies.map((study) => (
-            <div
+            <StudyCard
               key={study.id}
-              role="link"
-              tabIndex={0}
-              aria-label={`Open ${study.name}`}
-              onClick={() => onSelectStudy(study.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onSelectStudy(study.id);
-              }}
-              className="group relative flex cursor-pointer flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-wood/50 hover:bg-wood/5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="line-clamp-2 text-base font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
-                  {study.name}
-                </h3>
-                <IconButton
-                  icon={Trash2}
-                  label={`Delete study ${study.name}`}
-                  className="-mt-1 -mr-2 h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100"
-                  iconClassName="h-3.5 w-3.5"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setStudyToDelete(study);
-                  }}
-                />
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>
-                  {study.created
-                    ? new Date(study.created).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : "Recently"}
-                </span>
-                {study.archived && (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium">
-                    <Archive className="h-3 w-3" /> Archived
-                  </span>
-                )}
-              </div>
-            </div>
+              study={study}
+              onOpen={() => onSelectStudy(study.id)}
+              onDelete={() => setStudyToDelete(study)}
+            />
           ))}
         </div>
       )}
 
-      {showExamples && (
-        <ExamplesDialog
-          client={client}
-          onClose={() => setShowExamples(false)}
-          onCreated={(study) => {
-            setShowExamples(false);
-            openNew(study.id);
-          }}
-        />
+      {creating === "example" && (
+        <ExamplesDialog client={client} onClose={() => setCreating(null)} onCreated={(study) => openNew(study)} />
       )}
-
-      {showImport && (
+      {creating === "file" && (
         <ImportStudyDialog
           client={client}
-          onClose={() => setShowImport(false)}
-          onCreated={(study) => {
-            setShowImport(false);
-            openNew(study.id, "design");
-          }}
+          onClose={() => setCreating(null)}
+          onCreated={(study) => openNew(study, "design")}
         />
       )}
-
-      {/* An empty study: just a name */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-foreground">Create New Study</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Enter a descriptive name for your annotation study.</p>
-            <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Study Name</label>
-                <Input
-                  autoFocus
-                  placeholder="e.g. Sentiment Analysis Phase 1"
-                  value={newStudyName}
-                  onChange={(e) => setNewStudyName(e.target.value)}
-                  required
-                />
-              </div>
-
-              {createStudy.isError && (
-                <p className="text-xs text-destructive">
-                  {createStudy.error instanceof ResearcherApiError
-                    ? createStudy.error.reason
-                    : createStudy.error.message}
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setNewStudyName("");
-                  }}
-                  disabled={createStudy.isPending}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createStudy.isPending || !newStudyName.trim()}>
-                  {createStudy.isPending ? "Creating..." : "Create Study"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {creating === "empty" && (
+        <CreateStudyDialog
+          client={client}
+          onClose={() => setCreating(null)}
+          onCreated={(study) => openNew(study, "design")}
+        />
       )}
-
-      {/* Deleting a study: asks first */}
       {studyToDelete && (
-        <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-foreground">Delete Study</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete <strong className="text-foreground">{studyToDelete.name}</strong>? This
-              will permanently delete all its designVersions, units, and coder annotations.
-            </p>
-
-            {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStudyToDelete(null)}
-                disabled={deleteStudy.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deleteStudy.isPending}
-                onClick={() => {
-                  deleteStudy.mutate(studyToDelete.id, {
-                    onSuccess: () => setStudyToDelete(null),
-                  });
-                }}
-              >
-                {deleteStudy.isPending ? "Deleting..." : "Delete"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DeleteStudyDialog client={client} study={studyToDelete} onClose={() => setStudyToDelete(null)} />
       )}
     </div>
   );
 }
 
-/** "Create new study": an empty study, an example, or a file (a study export or a design file). */
-function CreateStudyMenu({
-  onExample,
-  onImport,
+/** Nothing to list: no studies yet (with the ways to start, for who may create one), or none that match the search. */
+function NoStudies({
+  search,
+  canCreate,
   onEmpty,
+  onExample,
 }: {
-  onExample: () => void;
-  onImport: () => void;
+  /** What was searched for; null: there are no studies at all. */
+  search: string | null;
+  canCreate: boolean;
   onEmpty: () => void;
+  onExample: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const item = (icon: ReactNode, title: string, text: string, onClick: () => void) => (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={() => {
-        setOpen(false);
-        onClick();
-      }}
-      className="flex w-full items-start gap-2.5 rounded-md p-2 text-left hover:bg-muted"
-    >
-      <span className="mt-0.5 text-primary">{icon}</span>
-      <span>
-        <span className="block text-sm font-medium text-foreground">{title}</span>
-        <span className="block text-xs text-muted-foreground">{text}</span>
-      </span>
-    </button>
-  );
+  const none = search === null;
+  const noneText = canCreate
+    ? "Get started by creating your first annotation study."
+    : "Studies that researchers share with you appear here.";
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button className="w-fit gap-2 shadow-sm">
-          <Plus className="h-4 w-4" />
-          Create new study
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-1.5" role="menu">
-        {item(<Plus className="h-4 w-4" />, "Empty study", "Start from scratch in the editor.", onEmpty)}
-        {item(<Sparkles className="h-4 w-4" />, "From an example", "A ready study to try and change.", onExample)}
-        {item(
-          <FileUp className="h-4 w-4" />,
-          "From a file",
-          "A copy of a study from its export, or a study from a design file.",
-          onImport,
-        )}
-      </PopoverContent>
-    </Popover>
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-12 text-center">
+      <div className="rounded-full bg-primary/10 p-4 text-primary">
+        <FolderOpen className="h-8 w-8" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold text-foreground">
+        {none ? "No studies yet" : "No matching studies"}
+      </h3>
+      <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+        {none ? noneText : `No studies matched the query "${search}".`}
+      </p>
+      {none && canCreate && (
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button onClick={onEmpty} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Create study
+          </Button>
+          <Button onClick={onExample} variant="outline" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Start from an example
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,27 +1,12 @@
 import { useState } from "react";
-import { strToU8, zipSync } from "fflate";
-import { designFile, type TopLevelItem } from "@annotinder/contracts";
+import { zipSync } from "fflate";
 import { readRawExport } from "../../../admin/rawExport";
-import { Download, FileArchive } from "lucide-react";
+import { AlertTriangle, Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../../admin/queries";
-import {
-  annotationsTable,
-  codersTable,
-  deletedCodersTable,
-  devicesTable,
-  displayChangesTable,
-  timingsTable,
-  resetAnswersTable,
-  toCsv,
-  type Table,
-  unitsTable,
-  variablesTable,
-} from "../../../admin/exportData";
-import { Labels, nestedQuestions, numericCodeQuestions, questionOrder } from "../../../admin/exportAnswers";
-import { readme } from "../../../admin/exportReadme";
+import { CSV_FORMULA_ADVICE, CSV_FORMULA_WARNING } from "../../../admin/exportReadme";
 import { downloadFile } from "../../../admin/download";
-import { toXlsx } from "../../../admin/xlsx";
+import { buildDownload, downloadName } from "../../../admin/buildDownload";
 import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../../help/HelpButton";
@@ -38,7 +23,7 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
   const [withReset, setWithReset] = useState(false);
-  const [format, setFormat] = useState<"csv" | "xlsx">("csv");
+  const [format, setFormat] = useState<Format>("csv");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,65 +43,16 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
     try {
       const raw = await rawExport();
       setBusy("Making the tables…");
-      const rows = withReset ? raw.answers : raw.answers.filter((a) => !a.retiredAt);
-      const annotations = rows.filter((a) => !a.retiredAt);
-      const coderList = raw.coders;
-      const numberOf = (id: number) => raw.designVersions.find((v) => v.id === id)?.number ?? null;
-      // The design versions answers were given under, and the live one
-      const liveId = deployment?.designVersionId ?? null;
-      const ids = new Set(rows.flatMap((a) => (a.designVersionId === null ? [] : [a.designVersionId])));
-      if (liveId !== null) ids.add(liveId);
-      const designVersions = new Map<number, TopLevelItem[]>();
-      const designs: Record<string, Uint8Array> = {};
-      for (const version of raw.designVersions) {
-        if (!ids.has(version.id)) continue;
-        designVersions.set(version.id, version.items as TopLevelItem[]);
-        // With the client it ran on (its latest deployment)
-        const ran = raw.deployments.find((d) => d.designVersionId === version.id && d.client)?.client;
-        designs[`designs/v${version.number}.json`] = strToU8(
-          JSON.stringify(
-            designFile(version, {
-              name,
-              version: version.number,
-              client: ran ?? { release: "unknown", commit: "unknown" },
-              exportedAt: new Date(),
-            }),
-            null,
-            2,
-          ),
-        );
-      }
-
-      const live = liveId === null ? undefined : designVersions.get(liveId);
-      const order = questionOrder(live);
-      const nested = nestedQuestions(live);
-      const numeric = numericCodeQuestions(live);
-      const labels = withLabels ? new Labels(designVersions, liveId) : undefined;
       const now = new Date();
-      // The tables, as CSV files or as the sheets of one workbook
-      const tables: [string, Table][] = [
-        ["annotations", annotationsTable(annotations, coderList, order, labels, nested, numberOf, numeric)],
-        ["coders", codersTable(coderList, order, labels, nested, numeric)],
-        ["units", unitsTable(raw.units, annotations, raw.sets)],
-        ["variables", variablesTable(designVersions, numberOf)],
-        ["timings", timingsTable(annotations, coderList)],
-        ["devices", devicesTable(raw.devices)],
-        ["display_changes", displayChangesTable(coderList)],
-        ["deleted_coders", deletedCodersTable(raw.deletions)],
-        ...(withReset
-          ? [["reset_answers", resetAnswersTable(rows, labels, numberOf, numeric)] as [string, Table]]
-          : []),
-      ];
-      const data: Record<string, Uint8Array> =
-        format === "xlsx"
-          ? { "results.xlsx": toXlsx(tables.map(([sheet, table]) => ({ name: sheet, table }))) }
-          : Object.fromEntries(tables.map(([file, table]) => [`${file}.csv`, strToU8(toCsv(table))]));
-      const zip = zipSync({ "README.txt": strToU8(readme(name, now, withLabels, format)), ...data, ...designs });
-      downloadFile(
-        zip as BlobPart,
-        `${name.replace(/[^\w-]+/g, "_")}_${now.toISOString().slice(0, 10)}.zip`,
-        "application/zip",
-      );
+      const files = buildDownload(raw, {
+        study: name,
+        liveDesignVersionId: deployment?.designVersionId ?? null,
+        withLabels,
+        withReset,
+        format,
+        now,
+      });
+      downloadFile(zipSync(files) as BlobPart, downloadName(name, now), "application/zip");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -156,67 +92,22 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
         <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
           <div className="flex items-center gap-2 font-medium">
             <FileArchive className="h-4 w-4 text-primary" /> All data
-            <InfoTip label="What's in the zip">
-              <ul className="list-disc pl-4">
-                <li>
-                  <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per
-                  item)
-                </li>
-                <li>
-                  <strong>coders.csv</strong>: a row per coder: link, coder id, how their session ended, and their
-                  answers outside unit loops
-                </li>
-                <li>
-                  <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating
-                  system)
-                </li>
-                <li>
-                  <strong>timings.csv</strong>: how long coders took per question, as their browser measured it, with
-                  the server&apos;s own measure
-                </li>
-                <li>
-                  <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads
-                  too
-                </li>
-                <li>
-                  <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it
-                  was coded has several)
-                </li>
-                <li>
-                  <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
-                </li>
-                <li>
-                  <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version
-                  it ran on
-                </li>
-                <li>
-                  <strong>README.txt</strong>: what the columns mean
-                </li>
-              </ul>
-              <p className="mt-2">
-                As CSV files (UTF-8), or as one Excel workbook with a sheet per table. Scripts (R, Python) can get the
-                same data from the API with an API key (account menu).
-              </p>
-            </InfoTip>
+            <ZipContents />
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <Button disabled={busy !== null} onClick={() => void download()}>
               <Download className="mr-1 h-4 w-4" /> Download
             </Button>
-            <fieldset className="flex items-center gap-3 text-sm" aria-label="File format">
-              {(
-                [
-                  ["csv", "CSV", "Plain CSV files: for R, Python, SPSS"],
-                  ["xlsx", "Excel (.xlsx)", "One workbook, a sheet per table: for spreadsheets"],
-                ] as const
-              ).map(([value, label, title]) => (
-                <label key={value} className="flex items-center gap-1.5" title={title}>
-                  <input type="radio" name="format" checked={format === value} onChange={() => setFormat(value)} />
-                  {label}
-                </label>
-              ))}
-            </fieldset>
+            <FormatChoice format={format} onChange={setFormat} />
           </div>
+          {format === "csv" && (
+            <p role="note" className="flex gap-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-2.5 text-sm">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                {CSV_FORMULA_WARNING} {CSV_FORMULA_ADVICE}
+              </span>
+            </p>
+          )}
           <details className="text-sm">
             <summary className="cursor-pointer text-muted-foreground select-none hover:text-foreground">
               Download settings
@@ -247,5 +138,78 @@ export function DownloadView({ client }: { client: ResearcherApi }) {
         </div>
       </section>
     </div>
+  );
+}
+
+/** What the zip holds, behind an info button. */
+function ZipContents() {
+  return (
+    <InfoTip label="What's in the zip">
+      <ul className="list-disc pl-4">
+        <li>
+          <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
+        </li>
+        <li>
+          <strong>coders.csv</strong>: a row per coder: link, coder id, how their session ended, and their answers
+          outside unit loops
+        </li>
+        <li>
+          <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating system)
+        </li>
+        <li>
+          <strong>timings.csv</strong>: how long coders took per question, as their browser measured it, with the
+          server&apos;s own measure
+        </li>
+        <li>
+          <strong>display_changes.csv</strong>: how each coder&apos;s screen looked (keys for answers, width, theme), a
+          row per change
+        </li>
+        <li>
+          <strong>reset_answers.csv</strong>: answers that were reset, if you include them (Download settings)
+        </li>
+        <li>
+          <strong>deleted_coders.csv</strong>: coders whose data was deleted; delete them from earlier downloads too
+        </li>
+        <li>
+          <strong>units.csv</strong>: the units as coders saw them, a row per version (a unit replaced after it was
+          coded has several)
+        </li>
+        <li>
+          <strong>variables.csv</strong>: per design version, each question&apos;s options and labels
+        </li>
+        <li>
+          <strong>designs/v&lt;n&gt;.json</strong>: each design version as a whole, with the AnnoTinder version it ran
+          on
+        </li>
+        <li>
+          <strong>README.txt</strong>: what the columns mean
+        </li>
+      </ul>
+      <p className="mt-2">
+        As CSV files (UTF-8), or as one Excel workbook with a sheet per table. Scripts (R, Python) can get the same data
+        from the API with an API key (account menu).
+      </p>
+    </InfoTip>
+  );
+}
+
+type Format = "csv" | "xlsx";
+
+/** CSV files or one Excel workbook. */
+function FormatChoice({ format, onChange }: { format: Format; onChange: (format: Format) => void }) {
+  return (
+    <fieldset className="flex items-center gap-3 text-sm" aria-label="File format">
+      {(
+        [
+          ["csv", "CSV", "Plain CSV files: for R, Python, SPSS. Not for opening in a spreadsheet"],
+          ["xlsx", "Excel (.xlsx)", "One workbook, a sheet per table: safe to open in a spreadsheet"],
+        ] as const
+      ).map(([value, label, title]) => (
+        <label key={value} className="flex items-center gap-1.5" title={title}>
+          <input type="radio" name="format" checked={format === value} onChange={() => onChange(value)} />
+          {label}
+        </label>
+      ))}
+    </fieldset>
   );
 }

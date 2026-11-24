@@ -19,7 +19,7 @@ export type GuideSample =
     }
   | { page: "units" };
 
-export interface GuideStep {
+interface GuideStep {
   id: string;
   title: string;
   /** A few short sentences. */
@@ -29,7 +29,7 @@ export interface GuideStep {
   showMe?: { page: TabId; target: string; label: string };
 }
 
-export interface GuideSection {
+interface GuideSection {
   /** The page the section is about: the guide opens on it there. */
   page: TabId;
   title: string;

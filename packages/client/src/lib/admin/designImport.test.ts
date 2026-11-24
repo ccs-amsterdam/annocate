@@ -72,6 +72,14 @@ describe("a study export's manifest, read before importing", () => {
     });
   });
 
+  it("unpacks only as far as the manifest", () => {
+    // Rows that don't compress, and the file cut off half way: only its start is read
+    const noise = Array.from({ length: 4000 }, (_, i) => JSON.stringify({ row: Math.sin(i).toString(36).repeat(8) }));
+    const file = exportFile(manifest, noise);
+    expect(file.length).toBeGreaterThan(20_000);
+    expect(readExportSummary(file.subarray(0, file.length / 2))).toMatchObject({ name: "Framing", units: 20 });
+  });
+
   it("says what is wrong with other files", () => {
     expect(() => readExportSummary(strToU8("plain text"))).toThrow(/can't be unpacked/);
     expect(() => readExportSummary(exportFile({ hello: 1 }))).toThrow(/isn't a study export/);

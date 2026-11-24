@@ -4,7 +4,6 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import {
   useDesignVersionQuery,
   useDesignVersionsQuery,
-  useCreateStudyMutation,
   useDeleteStudyMutation,
   useStudyQuery,
   useUpdateStudyMutation,
@@ -23,38 +22,13 @@ import { ReopenSetting } from "./session/ReopenSetting";
  */
 export function StudySettings({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   const studyQuery = useStudyQuery(client);
-  const createStudy = useCreateStudyMutation(client);
 
   if (studyQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading study...</p>;
 
-  if (!studyQuery.data) {
-    return <CreateStudyForm createStudy={createStudy} />;
-  }
+  if (!studyQuery.data)
+    return <p className="text-sm text-destructive">{studyQuery.error?.message ?? "This study can't be loaded."}</p>;
 
   return <StudyEditForm key={studyQuery.data.id} study={studyQuery.data} client={client} onDeleted={onDeleted} />;
-}
-
-/** For a study that doesn't exist (yet): make one. */
-function CreateStudyForm({ createStudy }: { createStudy: ReturnType<typeof useCreateStudyMutation> }) {
-  const [name, setName] = useState("");
-
-  return (
-    <form
-      className="flex max-w-sm flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        createStudy.mutate({ name, archived: false });
-      }}
-    >
-      <h2 className="text-lg font-medium">Create study</h2>
-      <p className="text-sm text-muted-foreground">Enter a study name to get started.</p>
-      <Input placeholder="Study name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <Button type="submit" disabled={createStudy.isPending}>
-        {createStudy.isPending ? "Creating..." : "Create study"}
-      </Button>
-      {createStudy.isError && <p className="text-sm text-destructive">{createStudy.error.message}</p>}
-    </form>
-  );
 }
 
 /** The redirect URLs that are set, sorted by name. */

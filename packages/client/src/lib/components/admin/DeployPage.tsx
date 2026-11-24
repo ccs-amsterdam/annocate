@@ -14,6 +14,7 @@ import {
 } from "../../admin/queries";
 import { describeVersions } from "../../design/versions";
 import { hasUnitChanges } from "../../admin/unitChanges";
+import { deployPanelKey } from "../../admin/deploy";
 import { Button } from "@/components/ui/button";
 import { DeployPanel } from "./DeployPanel";
 import { DeployHistory } from "./DeployHistory";
@@ -42,7 +43,8 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
   // The last deploy's warnings: shown after the page has moved on to what is (not) deployed now
   const [deployed, setDeployed] = useState<string[] | null>(null);
 
-  if (deploymentQuery.isLoading || designVersionsQuery.isLoading || (candidateId !== null && !candidate))
+  // The study too: the panel starts from its settings
+  if (deploymentQuery.isLoading || designVersionsQuery.isLoading || (candidateId !== null && !candidate) || !study)
     return (
       <div className="flex h-40 items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -78,8 +80,8 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
           <h2 className="flex items-center gap-1.5 font-medium">
             <CircleCheck className="h-4 w-4 text-emerald-600" /> Deployed
           </h2>
-          {deployed.map((w) => (
-            <p key={w} className="flex gap-2 rounded-md bg-amber-500/10 p-2">
+          {deployed.map((w, i) => (
+            <p key={i}className="flex gap-2 rounded-md bg-amber-500/10 p-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               {w}
             </p>
@@ -111,14 +113,15 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
             </div>
           )}
           <DeployPanel
-            key={`${candidate?.id ?? "none"}:${candidate?.revision ?? 0}`}
+            key={deployPanelKey(candidate)}
             client={client}
+            studyReopenMinutes={study.reopenMinutes}
             version={problems ? null : candidate}
             versionNumber={candidateNumber}
             live={live}
             liveNumber={liveNumber}
             onDeploy={async (version, note, units, settings) => {
-              if (study && settings.reopenMinutes !== undefined && settings.reopenMinutes !== study.reopenMinutes) {
+              if (settings.reopenMinutes !== undefined && settings.reopenMinutes !== study.reopenMinutes) {
                 await updateStudy.mutateAsync({
                   id: study.id,
                   body: { name: study.name, archived: study.archived, reopenMinutes: settings.reopenMinutes },

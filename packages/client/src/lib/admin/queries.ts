@@ -2,6 +2,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
@@ -62,7 +63,6 @@ const keys = {
   coders: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders"] as const,
   coderDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
   deployment: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment"] as const,
-  deploymentStatus: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "status"] as const,
   pending: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "pending"] as const,
   deploymentVersions: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "versions"] as const,
   links: (studyId?: number) => ["admin", "study", studyId ?? "current", "links"] as const,
@@ -429,33 +429,40 @@ interface DeployVars {
 }
 
 /**
+ * `PUT /deployment`, keeping whether the study is live or paused as the
+ * server has it now (asked, not taken from what this browser has loaded: a
+ * deploy must not resume a study that was paused). A first deploy is live.
+ */
+export async function deployStudy(
+  client: Pick<ResearcherApi, "studyId" | "getDeployment" | "putDeployment">,
+  queryClient: QueryClient,
+  { designVersionId, confirmLinks, units = false, newUnitsMessage }: DeployVars,
+): Promise<DeploymentResponse> {
+  const current = await queryClient.fetchQuery({
+    queryKey: keys.deployment(client.studyId),
+    queryFn: () => client.getDeployment(),
+  });
+  return client.putDeployment({
+    designVersionId,
+    units,
+    active: current ? current.active : true,
+    ...(confirmLinks ? { confirmLinks } : {}),
+    ...(newUnitsMessage !== undefined ? { newUnitsMessage } : {}),
+  });
+}
+
+/**
  * Deploys (`PUT /deployment`, docs/architecture.md §8.4) a design version,
  * and optionally the draft units, keeping the study's active/paused state.
  * With many links (contracts CONFIRM_LINKS) the server asks to confirm (409
  * `confirm_links`): deploy again with `confirmLinks`. The deployed version
  * becomes read only, so the design versions are refetched too.
  */
-export function useDeployMutation(
-  client: ResearcherApi,
-): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
+function useDeployMutation(client: ResearcherApi): UseMutationResult<DeploymentResponse, Error, number | DeployVars> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: number | DeployVars) => {
-      const {
-        designVersionId,
-        confirmLinks,
-        units = false,
-        newUnitsMessage,
-      }: DeployVars = typeof vars === "number" ? { designVersionId: vars } : vars;
-      const current = queryClient.getQueryData<DeploymentResponse | null>(keys.deployment(client.studyId));
-      return client.putDeployment({
-        designVersionId,
-        units,
-        active: current?.active ?? true,
-        ...(confirmLinks ? { confirmLinks } : {}),
-        ...(newUnitsMessage !== undefined ? { newUnitsMessage } : {}),
-      });
-    },
+    mutationFn: (vars: number | DeployVars) =>
+      deployStudy(client, queryClient, typeof vars === "number" ? { designVersionId: vars } : vars),
     onSuccess: (deployment) => {
       queryClient.setQueryData(keys.deployment(client.studyId), deployment);
       void queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) });

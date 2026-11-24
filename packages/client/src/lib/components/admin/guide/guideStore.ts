@@ -7,7 +7,7 @@ import { GUIDE_SECTIONS, sectionIndexOf } from "./guideSteps";
 // the section of a page, at the step last open there in this session (kept
 // in memory only). "Show me" closes it and points at a real element (`ShowMe`).
 
-export interface GuidePosition {
+interface GuidePosition {
   /** The section (`GUIDE_SECTIONS` index) and its step. */
   section: number;
   step: number;

@@ -14,6 +14,8 @@ import { useDeploymentQuery, useDesignVersionQuery } from "../../../admin/querie
 
 /** What the results views show for names and values: the deployed design's texts. */
 export interface DesignLabels {
+  /** The deployed design is loaded: until then there are no labels and no loops. */
+  ready: boolean;
   loopTitle: (key: string | null) => string;
   questionText: (name: string) => string;
   /** The option's label (or a scale item's), else the value as is. */
@@ -44,6 +46,7 @@ export function useDesignLabels(client: ResearcherApi): DesignLabels {
       return type && "options" in type && Array.isArray(type.options) ? type.options : [];
     };
     return {
+      ready: design !== undefined,
       loopTitle: (key) => (key === null ? "Questions" : (loops.get(key) ?? `Loop ${key}`)),
       questionText: (name) => {
         const type = questions.get(name);

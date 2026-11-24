@@ -1,21 +1,16 @@
 import { useState } from "react";
-import { RotateCcw, Trash2, UserX } from "lucide-react";
+import { RotateCcw, UserX } from "lucide-react";
 import type { CoderProgress, DeleteCoders } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useCoderDeletionMutations, useCoderDeletionsQuery, useCodersQuery } from "../../admin/queries";
-import { formatWhen } from "../../admin/format";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
 import { ConfirmDeleteDialog, DeleteByIdDialog, DeletionLog } from "./coders/CoderDeletion";
 import { coderName } from "./coders/coderName";
-
-/** How a session ended, in words. */
-function endedText(ended: CoderProgress["ended"]): string {
-  if (!ended) return "–";
-  return ended.outcome === "complete" ? "Complete" : ended.outcome === "screenout" ? "Screened out" : "Quit";
-}
+import { CodersTable } from "./coders/CodersTable";
+import { DeletionRequests } from "./coders/DeletionRequests";
 
 /**
  * The Coders view on the Results page (docs/client.md §7): per coder session the link, when it
@@ -27,12 +22,6 @@ function endedText(ended: CoderProgress["ended"]): string {
 export function CodersPanel({ client }: { client: ResearcherApi }) {
   const codersQuery = useCodersQuery(client);
   const coders = sortByActivity(codersQuery.data ?? []);
-  // Loops of the live design version (every coder has the same keys)
-  const loops = Object.keys(coders[0]?.finished ?? {});
-  // The special sets the study has (overlap, gold, practice): units of them each coder finished
-  const specials = (["overlap", "gold", "practice"] as const).filter((kind) => coders.some((c) => c.special?.[kind]));
-  const requests = coders.filter((c) => c.deletionRequest && !c.deletionRequest.postponedAt);
-  const postponed = coders.filter((c) => c.deletionRequest?.postponedAt).length;
   const deletions = useCoderDeletionsQuery(client).data ?? [];
   const { remove, postpone } = useCoderDeletionMutations(client);
   const [deleting, setDeleting] = useState<{ select: DeleteCoders; names: string[] } | null>(null);
@@ -61,146 +50,19 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
         </div>
       </div>
 
-      {requests.length > 0 && (
-        <section className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-            {requests.length === 1 ? "A coder asks" : `${requests.length} coders ask`} to delete their answers
-            <HelpButton topic="coders-and-progress#deleting-a-coders-data" label="Help: deleting a coder's data" />
-          </h3>
-          <ul className="flex flex-col gap-1.5 text-sm">
-            {requests.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{coderName(c)}</span>
-                <span className="text-xs text-muted-foreground">
-                  asked {formatWhen(c.deletionRequest!.at)} · {c.answers} answers
-                  {c.linkLabel ? ` · ${c.linkLabel}` : ""}
-                </span>
-                <span className="ml-auto flex gap-1">
-                  <Button size="xs" variant="destructive" onClick={() => deleteCoder(c)}>
-                    Delete now
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={postpone.isPending}
-                    title="Stop showing this request here. It stays marked on the coder's row until you delete their data."
-                    onClick={() => postpone.mutate(c.id)}
-                  >
-                    Delete later
-                  </Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {postponed > 0 && (
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          {postponed === 1 ? "1 coder's" : `${postponed} coders'`} data still to be deleted (marked &ldquo;deletion
-          requested&rdquo; below).
-        </p>
-      )}
+      <DeletionRequests
+        coders={coders}
+        postponing={postpone.isPending}
+        onDelete={deleteCoder}
+        onPostpone={(c) => postpone.mutate(c.id)}
+      />
 
-      {codersQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading coders...</p>
-      ) : coders.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          No coders yet. Coders appear here once they open a link.
-        </p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                <th className="p-2 font-medium">Coder</th>
-                <th className="p-2 font-medium">Link</th>
-                <th className="p-2 font-medium">Started</th>
-                <th className="p-2 font-medium">Last active</th>
-                <th className="p-2 text-right font-medium">Answers</th>
-                <th className="p-2 font-medium">Ended</th>
-                {loops.map((loop) => (
-                  <th key={loop} className="p-2 text-right font-medium">
-                    Finished in <span className="font-mono">{loop}</span>
-                  </th>
-                ))}
-                {specials.map((kind) => (
-                  <th
-                    key={kind}
-                    className="p-2 text-right font-medium capitalize"
-                    title={`Units of the deployed _${kind} set this coder finished`}
-                  >
-                    {kind}
-                  </th>
-                ))}
-                <th className="p-2">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {coders.map((coder) => (
-                <tr key={coder.id} className="border-b last:border-0">
-                  <td className="p-2">
-                    {coder.coder || coder.email ? (
-                      coderName(coder)
-                    ) : (
-                      <span className="text-muted-foreground">#{coder.id}</span>
-                    )}
-                  </td>
-                  <td className="p-2 text-muted-foreground">{coder.linkLabel ?? "–"}</td>
-                  <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
-                  <td className="p-2 whitespace-nowrap">{formatWhen(coder.lastActive)}</td>
-                  <td className="p-2 text-right tabular-nums">{coder.answers}</td>
-                  <td
-                    className="p-2 whitespace-nowrap text-muted-foreground"
-                    title={coder.ended?.item ? `At ${coder.ended.item}` : undefined}
-                  >
-                    {endedText(coder.ended)}
-                    {coder.deletionRequest && (
-                      <span
-                        className="ml-1 text-xs text-amber-700 dark:text-amber-400"
-                        title={`Asked ${formatWhen(coder.deletionRequest.at)}`}
-                      >
-                        (deletion requested)
-                      </span>
-                    )}
-                  </td>
-                  {loops.map((loop) => (
-                    <td key={loop} className="p-2 text-right tabular-nums">
-                      {coder.finished[loop] ?? 0}
-                    </td>
-                  ))}
-                  {specials.map((kind) => (
-                    <td key={kind} className="p-2 text-right tabular-nums">
-                      {coder.special?.[kind] ? `${coder.special[kind].done} of ${coder.special[kind].total}` : "–"}
-                    </td>
-                  ))}
-                  <td className="p-2 text-right whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Reset ${coderName(coder)}'s answers`}
-                      title="Reset this coder's answers"
-                      onClick={() => setResetting({ sessionIds: [coder.id], label: coderName(coder) })}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Delete ${coderName(coder)}'s data`}
-                      title="Delete this coder's data"
-                      onClick={() => deleteCoder(coder)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <CoderSessions
+        loading={codersQuery.isLoading}
+        coders={coders}
+        onReset={(c) => setResetting({ sessionIds: [c.id], label: coderName(c) })}
+        onDelete={deleteCoder}
+      />
 
       {deletions.length > 0 && <DeletionLog deletions={deletions} />}
 
@@ -226,6 +88,26 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
       />
     </div>
   );
+}
+
+/** The sessions as a table; while loading and without any, a line that says so. */
+function CoderSessions({
+  loading,
+  ...table
+}: {
+  loading: boolean;
+  coders: CoderProgress[];
+  onReset: (coder: CoderProgress) => void;
+  onDelete: (coder: CoderProgress) => void;
+}) {
+  if (loading) return <p className="text-sm text-muted-foreground">Loading coders...</p>;
+  if (table.coders.length === 0)
+    return (
+      <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+        No coders yet. Coders appear here once they open a link.
+      </p>
+    );
+  return <CodersTable {...table} />;
 }
 
 /** Most recently active first; coders who never answered last, newest first. */

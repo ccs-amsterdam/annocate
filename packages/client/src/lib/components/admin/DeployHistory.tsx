@@ -8,17 +8,16 @@ import { describeUnitChanges } from "../../admin/unitChanges";
  * The deploys, newest first (docs/architecture.md §8.4): which design version
  * each made live (with its note), what changed in the units, when, and on
  * which release. Deploys are numbered on their own (#3), design versions as
- * v2. `limit`: only the latest ones.
+ * v2.
  */
-export function DeployHistory({ client, limit }: { client: ResearcherApi; limit?: number }) {
+export function DeployHistory({ client }: { client: ResearcherApi }) {
   const deploys = useDeploymentVersionsQuery(client).data ?? [];
   const designVersions = useDesignVersionsQuery(client).data ?? [];
   const versions = describeVersions(designVersions, deploys[0]?.designVersionId ?? null);
   if (deploys.length === 0) return null;
-  const shown = limit === undefined ? deploys : deploys.slice(0, limit);
   return (
     <ol className="flex flex-col gap-1 text-sm" aria-label="Deploys">
-      {shown.map((v, i) => {
+      {deploys.map((v, i) => {
         const note = designVersions.find((d) => d.id === v.designVersionId)?.note;
         const parts = [
           v.changes.design && `design v${versions.numberOf(v.designVersionId) ?? "?"}`,
@@ -44,11 +43,6 @@ export function DeployHistory({ client, limit }: { client: ResearcherApi; limit?
           </li>
         );
       })}
-      {limit !== undefined && deploys.length > limit && (
-        <li className="px-2 text-xs text-muted-foreground">
-          …and {deploys.length - limit} earlier, on the Deploy page.
-        </li>
-      )}
     </ol>
   );
 }

@@ -21,8 +21,8 @@ const xml = (text: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** A number written as a number: plain decimals, no leading zeros (an id like "007" stays text). */
-const isNumber = (v: string) => /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(v) && v.length <= 15;
+/** A number written as a number: plain decimals, no leading zeros or exponent (ids like "007" and "1e5" stay text). */
+const isNumber = (v: string) => /^-?(0|[1-9]\d*)(\.\d+)?$/.test(v) && v.length <= 15;
 
 /** The column letters of a 0-based column index: A, B, ..., Z, AA, ... */
 function column(i: number): string {

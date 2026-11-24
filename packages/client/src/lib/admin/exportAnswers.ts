@@ -23,7 +23,7 @@ import {
 
 /** How a value is written: as is, or as its label. */
 export type Write = (value: OptionValue) => string;
-export const asIs: Write = (v) => String(v);
+const asIs: Write = (v) => String(v);
 
 /** A span's text (its fragments joined with " … "). */
 const spanText = (span: SpanAnswer) => span.slices.map((x) => x.text).join(" … ");
@@ -59,7 +59,7 @@ export function answerText(
 }
 
 /** The special answer (not_applicable, dont_know) of an answer cell, or "". */
-export function specialText(value: VariableValue | undefined, item?: string): string {
+function specialText(value: VariableValue | undefined, item?: string): string {
   if (!value || value.skip) return "";
   return value.values?.find((v) => v.item === item && v.special)?.special ?? "";
 }

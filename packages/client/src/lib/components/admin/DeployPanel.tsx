@@ -1,25 +1,27 @@
 import { useState } from "react";
 import {
   DEFAULT_NEW_UNITS_MESSAGE,
-  DEFAULT_REOPEN_MINUTES,
   designItems,
   inviteOf,
   sessionItem,
   type DesignVersion,
   type TopLevelItem,
 } from "@annotinder/contracts";
-import { describeUnitChanges, hasUnitChanges } from "../../admin/unitChanges";
-import { AlertTriangle, Loader2, Rocket } from "lucide-react";
+import { hasUnitChanges } from "../../admin/unitChanges";
+import { firstDeployReopenMinutes } from "../../admin/deploy";
+import { Loader2, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "../../design/diff";
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { useDeploymentQuery, usePendingChangesQuery } from "../../admin/queries";
-import { ReopenSetting } from "./session/ReopenSetting";
+import { DesignToDeploy } from "./deploy/DesignToDeploy";
+import { FirstDeploySettings } from "./deploy/FirstDeploySettings";
+import { NewUnitsMessage, UnitsToDeploy } from "./deploy/UnitsToDeploy";
 
 /** Settings deployed with this deploy: left out, unchanged. */
-export interface DeploySettings {
+interface DeploySettings {
   /** The study's `reopenMinutes` (the first deploy asks). */
   reopenMinutes?: number | null;
   /** What returning coders who got new units are told; null: nothing. */
@@ -28,6 +30,8 @@ export interface DeploySettings {
 
 interface DeployPanelProps {
   client: ResearcherApi;
+  /** "When coders finish" in the study's Settings: where the first deploy's choice starts. */
+  studyReopenMinutes: number | null;
   /** A design version to deploy (a draft that isn't live); null: none, the live one stays. */
   version: DesignVersion | null;
   versionNumber: number;
@@ -51,9 +55,18 @@ interface DeployPanelProps {
  * coders who get new ones are told. The Deploy page's content; the page
  * says when it was deployed.
  *
- * Mount it with a `key` per design version, so the note starts fresh.
+ * Mount it with a `key` per design version (`deployPanelKey`), so the note
+ * starts fresh.
  */
-export function DeployPanel({ client, version, versionNumber, live, liveNumber, onDeploy }: DeployPanelProps) {
+export function DeployPanel({
+  client,
+  studyReopenMinutes,
+  version,
+  versionNumber,
+  live,
+  liveNumber,
+  onDeploy,
+}: DeployPanelProps) {
   const [state, setState] = useState<{ step: "confirm" } | { step: "deploying" } | { step: "error"; message: string }>({
     step: "confirm",
   });
@@ -65,9 +78,8 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
   const deployUnits = firstDeploy || (unitsChanged && withUnits);
-  // Coders with their own link usually come back: their sessions stay open. One link (a crowd): closed after a day.
   const crowd = version !== null && inviteOf(sessionItem(designItems(version)))?.mode === "crowd";
-  const [reopenMinutes, setReopenMinutes] = useState<number | null>(crowd ? DEFAULT_REOPEN_MINUTES : null);
+  const [reopenMinutes, setReopenMinutes] = useState(() => firstDeployReopenMinutes(studyReopenMinutes, crowd));
   const currentMessage = useDeploymentQuery(client).data?.newUnitsMessage;
   const [message, setMessage] = useState<string | null>(null);
   const newUnitsMessage = message ?? (firstDeploy ? DEFAULT_NEW_UNITS_MESSAGE : (currentMessage ?? ""));
@@ -76,9 +88,7 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   const draftItems = version ? (designItems(version) as TopLevelItem[]) : [];
   const changes = version && live ? diffDesigns(liveItems, draftItems) : null;
   const valueWarnings = version && live ? valueChanges(liveItems, draftItems) : [];
-  const [note, setNote] = useState(
-    () => version?.note ?? (changes ? summarizeChanges(changes) : live === null ? "First version" : ""),
-  );
+  const [note, setNote] = useState(() => version?.note ?? suggestedNote(changes, live === null));
   async function deploy() {
     setState({ step: "deploying" });
     try {
@@ -104,90 +114,32 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
         </p>
       </div>
       <div className="space-y-4 text-sm">
-        <section className="space-y-2 rounded-md border border-border p-3">
-          {version ? (
-            <label className="flex items-center gap-2 font-semibold text-foreground">
-              <input
-                type="checkbox"
-                checked={deployDesign}
-                disabled={firstDeploy}
-                onChange={(e) => setWithDesign(e.target.checked)}
-              />
-              Design v{versionNumber}
-            </label>
-          ) : (
-            <p className="font-semibold text-foreground">Design: v{liveNumber} stays</p>
-          )}
-          {version && deployDesign && (
-            <>
-              {valueWarnings.length > 0 && (
-                <ul className="space-y-2">
-                  {valueWarnings.map((w) => (
-                    <li key={w} className="flex gap-2 rounded-md bg-amber-500/10 p-2 text-foreground">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                      {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {changes &&
-                (changes.length === 0 ? (
-                  <p className="text-muted-foreground">No changes to the items since v{liveNumber}.</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {changes.map((c) => (
-                      <ChangeLine key={`${c.kind}:${c.name}`} change={c} />
-                    ))}
-                  </ul>
-                ))}
-              <label htmlFor="version-note" className="block font-medium text-foreground">
-                What changed? <span className="font-normal text-muted-foreground">(optional)</span>
-              </label>
-              <textarea
-                id="version-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={1000}
-                rows={2}
-                placeholder="e.g. Added a question about sources"
-                className="w-full resize-y rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
-              />
-            </>
-          )}
-          {version && !deployDesign && (
-            <p className="text-xs text-muted-foreground">The draft stays a draft, for a later deploy.</p>
-          )}
-        </section>
-
-        <section className="space-y-1 rounded-md border border-border p-3">
-          {firstDeploy || unitsChanged ? (
-            <label className="flex items-center gap-2 font-semibold text-foreground">
-              <input
-                type="checkbox"
-                checked={deployUnits}
-                disabled={firstDeploy}
-                onChange={(e) => setWithUnits(e.target.checked)}
-              />
-              Units and sets
-              {unitChanges ? `: ${firstDeploy ? `${unitChanges.added} units` : describeUnitChanges(unitChanges)}` : ""}
-            </label>
-          ) : (
-            <p className="font-semibold text-foreground">Units and sets: no changes</p>
-          )}
-          {unitsChanged && !deployUnits && (
-            <p className="text-xs text-muted-foreground">The units stay drafts, for a later deploy.</p>
-          )}
-          {deployUnits && !firstDeploy && <NewUnitsMessage value={newUnitsMessage} onChange={setMessage} />}
-        </section>
+        <DesignToDeploy
+          versionNumber={version ? versionNumber : null}
+          liveNumber={liveNumber}
+          included={deployDesign}
+          onIncludedChange={setWithDesign}
+          changes={changes}
+          valueWarnings={valueWarnings}
+          note={note}
+          onNoteChange={setNote}
+        />
+        <UnitsToDeploy
+          changes={unitChanges}
+          changed={unitsChanged}
+          firstDeploy={firstDeploy}
+          included={deployUnits}
+          onIncludedChange={setWithUnits}
+        >
+          {!firstDeploy && <NewUnitsMessage value={newUnitsMessage} onChange={setMessage} />}
+        </UnitsToDeploy>
         {firstDeploy && (
-          <section className="space-y-3 rounded-md border border-border p-3">
-            <p className="font-semibold text-foreground">Before coders start</p>
-            <ReopenSetting value={reopenMinutes} onChange={setReopenMinutes} name="first-deploy-reopen" />
-            <NewUnitsMessage value={newUnitsMessage} onChange={setMessage} />
-            <p className="text-xs text-muted-foreground">
-              You can change these later in the study&apos;s Settings and when you deploy.
-            </p>
-          </section>
+          <FirstDeploySettings
+            reopenMinutes={reopenMinutes}
+            onReopenMinutesChange={setReopenMinutes}
+            newUnitsMessage={newUnitsMessage}
+            onNewUnitsMessageChange={setMessage}
+          />
         )}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           What happens when you deploy
@@ -231,60 +183,8 @@ export function DeployPanel({ client, version, versionNumber, live, liveNumber, 
   );
 }
 
-/** What returning coders who got new units are told (`{n}`: how many); empty: nothing. */
-function NewUnitsMessage({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block space-y-1">
-      <span className="flex items-center gap-1 font-medium text-foreground">
-        Coders who get new units are told
-        <InfoTip label="About the new units message">
-          Shown once, when a coder comes back and has units they didn&apos;t have before (you added units or moved units
-          to them). {"{n}"} is how many. Leave it empty to tell them nothing. A finished session opens again for them,
-          unless it has closed.
-        </InfoTip>
-      </span>
-      <input
-        aria-label="Message for coders who get new units"
-        value={value}
-        maxLength={500}
-        placeholder="Nothing"
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-full rounded-md border border-input bg-background px-2.5 text-sm"
-      />
-    </label>
-  );
-}
-
-const KIND_LABEL: Record<DesignChange["kind"], { label: string; className: string }> = {
-  added: { label: "Added", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
-  removed: { label: "Removed", className: "bg-destructive/15 text-destructive" },
-  changed: { label: "Changed", className: "bg-sky-500/15 text-sky-700 dark:text-sky-400" },
-  moved: { label: "Moved", className: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
-};
-
-/** One changed item: added, removed, changed or moved, and where. */
-function ChangeLine({ change }: { change: DesignChange }) {
-  const { label, className } = KIND_LABEL[change.kind];
-  const where =
-    change.kind === "moved"
-      ? change.parent
-        ? ` to ${change.parent}`
-        : " to the top level"
-      : change.parent
-        ? ` in ${change.parent}`
-        : "";
-  return (
-    <li className="flex items-center gap-2">
-      <span className={`w-16 shrink-0 rounded px-1.5 py-0.5 text-center text-[11px] font-semibold ${className}`}>
-        {label}
-      </span>
-      <span className="min-w-0 truncate text-foreground">
-        <span className="font-mono">{change.name}</span>
-        <span className="text-muted-foreground">
-          {" "}
-          ({change.type.replace("_", " ")}){where}
-        </span>
-      </span>
-    </li>
-  );
+/** The note a version without one starts with: what changed since the live version, or that it is the first. */
+function suggestedNote(changes: DesignChange[] | null, first: boolean): string {
+  if (changes) return summarizeChanges(changes);
+  return first ? "First version" : "";
 }

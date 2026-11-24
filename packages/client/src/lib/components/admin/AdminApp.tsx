@@ -1,49 +1,16 @@
-import { useState, useMemo, useRef, type ReactNode } from "react";
+import { useState, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { MeResponse } from "@annotinder/contracts";
 import type { ServerApi } from "../../api/serverApi";
 import { ServerAdmin } from "./server/ServerAdmin";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useStudyQuery, useStudiesQuery } from "../../admin/queries";
 import { StudyList } from "./StudyList";
-import { DesignManager } from "./DesignManager";
-import type { SaveFn } from "./DesignEditor";
-import { UnitsPage } from "./units/UnitsPage";
-import { ResultsPanel } from "./results/ResultsPanel";
-import { setResultsView } from "./results/resultsView";
-import { LinksPanel } from "./LinksPanel";
-import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
-import { StudyPreview } from "./StudyPreview";
-import { GuideButton } from "./guide/GuideButton";
-import { GuideDialog } from "./guide/GuideDialog";
-import { GuidePrompt } from "./guide/GuidePrompt";
-import { ShowMe } from "./guide/ShowMe";
-import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
-import { Button } from "@/components/ui/button";
-import { LogoSmoke } from "@/components/Logo";
-import { ResearcherApiError } from "../../api/httpResearcherApi";
-import { IconButton } from "@/components/ui/icon-button";
-import { CollapsibleHeader } from "../../hooks/useCollapsingChrome";
-import {
-  ChevronLeft,
-  LayoutDashboard,
-  Layers,
-  Link2,
-  Play,
-  Archive,
-  FilePen,
-  Download,
-  CircleHelp,
-  PencilRuler,
-  Send,
-  Settings,
-} from "lucide-react";
 import { clearBackup, readBackup, type DesignBackup } from "../../design/localBackup";
 import { HelpDialog } from "../../help/HelpDialog";
-import { PendingDeployBar } from "./PendingDeployBar";
-import { DeployPage } from "./DeployPage";
-import { openHelp } from "../../help/helpStore";
 import type { TabId } from "../../admin/tabs";
+import { BackupBanner } from "./BackupBanner";
+import { StudyAdminView } from "./study/StudyAdminView";
+import type { AskFirst } from "./study/useSaveBeforeLeaving";
 
 /**
  * Where the researcher is (the app's URL, router.tsx): the studies, the server
@@ -59,37 +26,6 @@ export type AdminLocation =
  */
 export type LeaveGuard = (when: boolean) => { blocked: boolean; proceed: () => void; stay: () => void };
 const noGuard: LeaveGuard = () => ({ blocked: false, proceed: () => {}, stay: () => {} });
-
-/**
- * The pages, grouped: the overview, the design, the units, deploying (with
- * its history), the links, the results, and settings. A group with more
- * than one page shows them in a second row.
- */
-const GROUPS: {
-  label: string;
-  icon: typeof LayoutDashboard;
-  pages: { id: TabId; label: string; icon: typeof LayoutDashboard }[];
-}[] = [
-  { label: "Overview", icon: LayoutDashboard, pages: [{ id: "Overview", label: "Overview", icon: LayoutDashboard }] },
-  { label: "Design", icon: PencilRuler, pages: [{ id: "Design", label: "Design", icon: PencilRuler }] },
-  { label: "Units", icon: Layers, pages: [{ id: "Units", label: "Units", icon: Layers }] },
-  { label: "Deploy", icon: Send, pages: [{ id: "Deploy", label: "Deploy", icon: Send }] },
-  { label: "Links", icon: Link2, pages: [{ id: "Links", label: "Links", icon: Link2 }] },
-  { label: "Results", icon: Download, pages: [{ id: "Results", label: "Download", icon: Download }] },
-  { label: "Settings", icon: Settings, pages: [{ id: "Settings", label: "Settings", icon: Settings }] },
-];
-
-/** The help topic the Help button opens on each page. */
-const TAB_HELP: Record<TabId, string> = {
-  Overview: "overview",
-  Design: "design-editor",
-  Units: "uploading-units",
-  Deploy: "previewing-and-publishing",
-  Links: "links",
-  Results: "results",
-  Settings: "overview",
-  Preview: "previewing-and-publishing",
-};
 
 const defaultQueryClient = new QueryClient();
 
@@ -156,22 +92,26 @@ function AdminAppInner({
   // Unsaved design edits from an earlier session (localBackup.ts), read once
   const [backup, setBackup] = useState(() => readBackup());
   const [restore, setRestore] = useState<DesignBackup | null>(null);
-  const banner = backup && (
-    <BackupBanner
-      client={client}
-      backup={backup}
-      onContinue={() => {
-        onNavigate({ page: "study", studyId: backup.studyId, tab: "Design" });
-        setRestore(backup);
-        setBackup(null);
-      }}
-      onDiscard={() => {
-        if (!confirm("Throw away these unsaved design changes?")) return;
-        clearBackup();
-        setBackup(null);
-      }}
-    />
-  );
+  // `askFirst`: continuing opens the editor anew, so unsaved edits in the open editor are asked about first
+  const banner = (askFirst: AskFirst) =>
+    backup && (
+      <BackupBanner
+        client={client}
+        backup={backup}
+        onContinue={() =>
+          askFirst(() => {
+            onNavigate({ page: "study", studyId: backup.studyId, tab: "Design" });
+            setRestore(backup);
+            setBackup(null);
+          })
+        }
+        onDiscard={() => {
+          if (!confirm("Throw away these unsaved design changes?")) return;
+          clearBackup(backup.studyId);
+          setBackup(null);
+        }}
+      />
+    );
 
   // If a study is selected, create a client scoped to that study
   const studyClient = useMemo(() => {
@@ -182,7 +122,7 @@ function AdminAppInner({
   if (location.page !== "study" || !studyClient) {
     return (
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {banner}
+        {banner((action) => action())}
         {serverPage && server ? (
           <ServerAdmin server={server} onBack={() => onNavigate({ page: "studies" })} />
         ) : (
@@ -220,309 +160,5 @@ function AdminAppInner({
       }
       useLeaveGuard={useLeaveGuard}
     />
-  );
-}
-
-/** A study's pages: the header with its sections, and the current page. Navigation goes through the URL. */
-function StudyAdminView({
-  banner,
-  restore,
-  client,
-  rootClient,
-  coderApiUrl,
-  tab,
-  version,
-  onTabChange,
-  onVersionChange,
-  onBackToStudies,
-  onSwitchStudy,
-  useLeaveGuard,
-}: {
-  /** Offers unsaved design edits from an earlier session, if any. */
-  banner: ReactNode;
-  /** Those edits, once the researcher chose to continue with them. */
-  restore: DesignBackup | null;
-  client: ResearcherApi;
-  rootClient: ResearcherApi;
-  coderApiUrl?: string;
-  tab: TabId;
-  /** The editor's version (its number), from the URL. */
-  version?: number;
-  onTabChange: (tab: TabId) => void;
-  onVersionChange: (version: number | undefined) => void;
-  onBackToStudies: () => void;
-  onSwitchStudy: (studyId: number) => void;
-  useLeaveGuard: LeaveGuard;
-}) {
-  const studyQuery = useStudyQuery(client);
-  const allStudiesQuery = useStudiesQuery(rootClient);
-  const study = studyQuery.data;
-
-  const [isDesignDirty, setIsDesignDirty] = useState(false);
-  // Leaving the editor with unsaved edits (another page, another study, the browser's back button): asked first
-  const leave = useLeaveGuard(isDesignDirty && tab === "Design");
-  const saveDesign = useRef<SaveFn | null>(null);
-  // A design version to open, from the overview; `n` remounts the manager on each request
-  const [designTarget, setDesignTarget] = useState<{ id: number; n: number } | null>(null);
-  const [savingDesign, setSavingDesign] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Nothing of a study shows before it is known: loading, then the study, or why there is none
-  if (studyQuery.isPending)
-    return (
-      <div className="flex h-full items-center justify-center bg-page p-8">
-        <LogoSmoke label="Loading study…" />
-      </div>
-    );
-  if (!study) return <NoStudy error={studyQuery.error} onBack={onBackToStudies} />;
-
-  async function saveAndNavigate() {
-    setSavingDesign(true);
-    setSaveError(null);
-    try {
-      await saveDesign.current?.();
-      setIsDesignDirty(false);
-      leave.proceed();
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSavingDesign(false);
-    }
-  }
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden bg-page">
-      {/* The study's header: back, which study, its sections; hides while scrolling down (useCollapsingChrome) */}
-      <CollapsibleHeader>
-        <header className="border-b border-border bg-card/60 px-3 backdrop-blur-sm sm:px-4">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
-            <div className="flex min-w-0 items-center gap-1">
-              <IconButton icon={ChevronLeft} label="All studies" onClick={onBackToStudies} />
-              <select
-                aria-label="Study"
-                value={client.studyId}
-                onChange={(e) => onSwitchStudy(Number(e.target.value))}
-                className="max-w-[16rem] truncate rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm font-semibold text-foreground hover:border-input focus:border-input focus:ring-1 focus:ring-primary focus:outline-none"
-              >
-                {allStudiesQuery.data?.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-              {study?.archived && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  <Archive className="h-3 w-3" /> Archived
-                </span>
-              )}
-            </div>
-
-            {/* The sections */}
-            <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
-              {GROUPS.map((g) => {
-                const Icon = g.icon;
-                const active = g.pages.some((p) => p.id === tab);
-                return (
-                  <button
-                    key={g.label}
-                    type="button"
-                    data-guide={`tab-${g.pages[0].id}`}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => onTabChange(g.pages[0].id)}
-                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                      active
-                        ? "bg-wood/15 text-foreground ring-1 ring-wood/30 ring-inset"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {g.label}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="ml-auto flex items-center gap-1">
-              <GuideButton page={tab} />
-              <IconButton icon={CircleHelp} label="Help" onClick={() => openHelp(TAB_HELP[tab])} />
-              <Button
-                data-guide="preview"
-                variant={tab === "Preview" ? "default" : "outline"}
-                size="sm"
-                onClick={() => onTabChange("Preview")}
-                className="h-8 gap-1.5 text-xs"
-              >
-                <Play className="h-3.5 w-3.5 fill-current" />
-                Preview
-              </Button>
-            </div>
-          </div>
-          {/* The active section's pages */}
-          {(() => {
-            const group = GROUPS.find((g) => g.pages.some((p) => p.id === tab));
-            if (!group || group.pages.length < 2) return null;
-            return (
-              <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label={group.label}>
-                {group.pages.map((p) => {
-                  const Icon = p.icon;
-                  const active = p.id === tab;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => onTabChange(p.id)}
-                      className={`flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                        active
-                          ? "border-primary text-foreground"
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </nav>
-            );
-          })()}
-        </header>
-      </CollapsibleHeader>
-
-      {/* The editor fills the height, its panes scroll on their own (on a low window, with a minimum height: then
-          the page scrolls); other pages scroll as a whole */}
-      <main
-        className={
-          tab === "Design"
-            ? "flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-2 pb-3 sm:px-4"
-            : "min-h-0 flex-1 overflow-auto p-4 sm:p-6"
-        }
-      >
-        {banner}
-        {/* Elsewhere, what isn't deployed yet, with the way to the Deploy page (the editor's banner says it there) */}
-        {tab !== "Design" && tab !== "Deploy" && (
-          <PendingDeployBar client={client} onOpenDeploy={() => onTabChange("Deploy")} />
-        )}
-        {tab === "Overview" && (
-          <StudyOverview
-            client={client}
-            onNavigate={(target) => {
-              // The coders are in Results
-              if (target === "Coders") {
-                setResultsView("Coders");
-                onTabChange("Results");
-              } else onTabChange(target);
-            }}
-            onOpenDesign={(id) => {
-              setDesignTarget((t) => ({ id, n: (t?.n ?? 0) + 1 }));
-              onTabChange("Design");
-            }}
-          />
-        )}
-        {tab === "Settings" && <StudySettingsPage client={client} onDeleted={onBackToStudies} />}
-        {tab === "Design" && (
-          <DesignManager
-            key={`${designTarget?.n ?? 0}:${restore?.at ?? ""}`}
-            initialVersionId={designTarget?.id ?? null}
-            initialVersion={version}
-            onVersionChange={onVersionChange}
-            restore={restore}
-            client={client}
-            onDirtyChange={setIsDesignDirty}
-            registerSave={(save) => {
-              saveDesign.current = save;
-            }}
-            onOpenDeploy={() => onTabChange("Deploy")}
-          />
-        )}
-        {tab === "Deploy" && <DeployPage client={client} onOpenDesign={() => onTabChange("Design")} />}
-        {tab === "Units" && <UnitsPage client={client} />}
-        {tab === "Links" && <LinksPanel client={client} />}
-        {tab === "Results" && <ResultsPanel client={client} />}
-        {tab === "Preview" && <StudyPreview client={client} coderApiUrl={coderApiUrl} />}
-      </main>
-
-      <GuideDialog onGoTo={onTabChange} />
-      <ShowMe />
-      <GuidePrompt />
-
-      {/* Leaving the editor with unsaved edits: save, discard or stay */}
-      <UnsavedChangesDialog
-        open={leave.blocked}
-        isSaving={savingDesign}
-        error={saveError}
-        onCancel={() => {
-          leave.stay();
-          setSaveError(null);
-        }}
-        onDiscard={() => {
-          clearBackup();
-          setIsDesignDirty(false);
-          setSaveError(null);
-          leave.proceed();
-        }}
-        onSave={saveAndNavigate}
-      />
-    </div>
-  );
-}
-
-/** Offers unsaved design edits from an earlier session (the browser was closed): continue with them, or throw them away. */
-function BackupBanner({
-  client,
-  backup,
-  onContinue,
-  onDiscard,
-}: {
-  client: ResearcherApi;
-  backup: DesignBackup;
-  onContinue: () => void;
-  onDiscard: () => void;
-}) {
-  const studies = useStudiesQuery(client);
-  const study = studies.data?.find((s) => s.id === backup.studyId);
-  const when = new Date(backup.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500 bg-amber-500/10 px-4 py-3 text-sm">
-      <div className="flex items-start gap-2.5">
-        <FilePen className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <div>
-          <p className="font-semibold text-foreground">You have unsaved changes in the design editor</p>
-          <p className="text-muted-foreground">
-            In {study ? `"${study.name}"` : `study #${backup.studyId}`}, from {when}. They were kept in this browser.
-          </p>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={onDiscard}>
-          Discard
-        </Button>
-        <Button size="sm" onClick={onContinue}>
-          Continue editing
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-/** A study that doesn't exist (or the researcher can't open): why, and the way back to the studies. */
-function NoStudy({ error, onBack }: { error: Error | null; onBack: () => void }) {
-  const status = error instanceof ResearcherApiError ? error.status : null;
-  const message =
-    error === null
-      ? "This study doesn't exist (any more)."
-      : status === 403
-        ? "You don't have access to this study."
-        : `The study couldn't be loaded: ${error instanceof ResearcherApiError ? error.reason : error.message}`;
-  return (
-    <div className="flex h-full items-center justify-center bg-page p-8">
-      <div role="alert" className="flex max-w-sm flex-col items-center gap-3 text-center">
-        <p className="text-base font-semibold text-foreground">Study not found</p>
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <Button type="button" variant="outline" onClick={onBack}>
-          Back to your studies
-        </Button>
-      </div>
-    </div>
   );
 }

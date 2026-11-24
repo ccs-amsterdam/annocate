@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CODER_SET, TEST_SET, isEmail, type SetGroupResponse, type UnitSet } from "@annotinder/contracts";
-import { Loader2, UserMinus, UserPlus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useCoderUnitsQuery, usePutSetGroupMutation, useUnitsQuery } from "../../../admin/queries";
 import {
@@ -13,11 +13,10 @@ import {
 } from "../../../admin/moveUnits";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { InfoTip } from "@/components/ui/info-tip";
 import { cn } from "cn";
-
-const step = "h-7 rounded-md border border-border px-1.5 text-xs tabular-nums hover:bg-muted disabled:opacity-40";
+import { AddCoderForm } from "./AddCoderForm";
+import { CoderRow } from "./CoderRow";
 
 /**
  * The coders of the coder set (`coder_set`): per coder their units, coded
@@ -43,9 +42,6 @@ export function CodersDialog({
   const saved = groups.find((g) => g.name === CODER_SET)?.sets ?? [];
   const tests = groups.find((g) => g.name === TEST_SET)?.sets.flatMap((s) => s.unitIds) ?? [];
   const [sets, setSets] = useState<UnitSet[]>(saved);
-  const [newName, setNewName] = useState("");
-  // Names being typed (applied when the field is left)
-  const [editing, setEditing] = useState<Record<string, string>>({});
 
   const work: CoderWork = useMemo(
     () =>
@@ -68,13 +64,8 @@ export function CodersDialog({
     names.some((n) => n !== except && n.toLowerCase() === name.trim().toLowerCase());
 
   const setTarget = (coder: string, target: number) => setSets((s) => setToCode(s, coder, target, work, unassigned));
-  const rename = (from: string) => {
-    const to = (editing[from] ?? from).trim();
-    setEditing((ed) => {
-      const rest = { ...ed };
-      delete rest[from];
-      return rest;
-    });
+  const rename = (from: string, typed: string) => {
+    const to = typed.trim();
     if (to && to !== from && !taken(to, from)) setSets((s) => renameCoder(s, from, to));
   };
 
@@ -124,111 +115,26 @@ export function CodersDialog({
                 </tr>
               </thead>
               <tbody>
-                {counts.map((c) => {
-                  const most = c.toCode + unassigned.length;
-                  return (
-                    <tr key={c.coder} className="border-t border-border">
-                      <td className="py-1.5 pr-2">
-                        <Input
-                          aria-label={`Name of ${c.coder}`}
-                          value={editing[c.coder] ?? c.coder}
-                          disabled={started(c.coder)}
-                          title={started(c.coder) ? "Started coding: their name is how their work is kept" : undefined}
-                          onChange={(e) => setEditing((ed) => ({ ...ed, [c.coder]: e.target.value }))}
-                          onBlur={() => rename(c.coder)}
-                          onKeyDown={(e) => e.key === "Enter" && rename(c.coder)}
-                          className="h-8 font-mono text-xs"
-                        />
-                      </td>
-                      <td className="py-1.5 text-right tabular-nums">{c.coded}</td>
-                      <td className="py-1.5 pl-4">
-                        <div className="flex flex-wrap items-center gap-1">
-                          <Input
-                            type="number"
-                            aria-label={`Units ${c.coder} has to code`}
-                            min={0}
-                            max={most}
-                            value={c.toCode}
-                            onChange={(e) => setTarget(c.coder, Number(e.target.value) || 0)}
-                            className="h-8 w-20 tabular-nums"
-                          />
-                          <button type="button" className={step} onClick={() => setTarget(c.coder, 0)}>
-                            0
-                          </button>
-                          <button
-                            type="button"
-                            className={step}
-                            disabled={c.toCode === 0}
-                            onClick={() => setTarget(c.coder, c.toCode - 10)}
-                          >
-                            −10
-                          </button>
-                          <button
-                            type="button"
-                            className={step}
-                            disabled={unassigned.length === 0}
-                            onClick={() => setTarget(c.coder, c.toCode + 10)}
-                          >
-                            +10
-                          </button>
-                          {unassigned.length > 0 && (
-                            <button
-                              type="button"
-                              className={step}
-                              title="Give them all unassigned units"
-                              onClick={() => setTarget(c.coder, most)}
-                            >
-                              +{unassigned.length}
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            aria-label={`Hand ${c.coder}'s units to the other coders`}
-                            title="Hand their units they haven't coded to the other coders"
-                            disabled={names.length < 2 || c.toCode === 0}
-                            onClick={() => setSets((s) => spreadUnits(s, c.coder, work).sets)}
-                            className="ml-1 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {counts.map((c) => (
+                  <CoderRow
+                    key={c.coder}
+                    coder={c.coder}
+                    coded={c.coded}
+                    toCode={c.toCode}
+                    unassigned={unassigned.length}
+                    started={started(c.coder)}
+                    canHandOver={names.length > 1}
+                    onRename={(to) => rename(c.coder, to)}
+                    onTarget={(target) => setTarget(c.coder, target)}
+                    onHandOver={() => setSets((s) => spreadUnits(s, c.coder, work).sets)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        <form
-          className="flex flex-wrap items-center gap-1.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSets((s) => [...s, { name: newName.trim(), unitIds: [], ordered: false }]);
-            setNewName("");
-          }}
-        >
-          <Input
-            aria-label="New coder"
-            placeholder="New coder (a name or an email address)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="h-8 w-72"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            type="submit"
-            className="gap-1"
-            disabled={!newName.trim() || taken(newName)}
-          >
-            <UserPlus className="h-3.5 w-3.5" /> Add coder
-          </Button>
-          {newName.trim() && taken(newName) && (
-            <span className="text-xs text-destructive">There is a coder with this name.</span>
-          )}
-        </form>
+        <AddCoderForm taken={taken} onAdd={(name) => setSets((s) => [...s, { name, unitIds: [], ordered: false }])} />
 
         {putGroup.isError && <p className="text-sm text-destructive">{putGroup.error.message}</p>}
         <DialogFooter>

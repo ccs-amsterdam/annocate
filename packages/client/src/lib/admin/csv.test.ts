@@ -20,6 +20,67 @@ describe("parseCsv", () => {
     ]);
   });
 
+  it("reads Windows line ends, and a newline in a quoted cell", () => {
+    const { headers, rows, hints } = parseCsv('id,text\r\n1,"two\nlines"\r\n2,b\r\n');
+    expect(headers).toEqual(["id", "text"]);
+    expect(rows).toEqual([
+      ["1", "two\nlines"],
+      ["2", "b"],
+    ]);
+    expect(hints).toEqual([]);
+  });
+
+  it("leaves out a byte order mark", () => {
+    expect(parseCsv("\uFEFFid,text\n1,a\n").headers).toEqual(["id", "text"]);
+  });
+
+  it("reads a file separated by semicolons, and says so", () => {
+    const { headers, rows, separator, hints } = parseCsv('id;text;coder_set\n1;"a; b";anna\n2;c,d;bob\n');
+    expect(separator).toBe(";");
+    expect(headers).toEqual(["id", "text", "coder_set"]);
+    expect(rows).toEqual([
+      ["1", "a; b", "anna"],
+      ["2", "c,d", "bob"],
+    ]);
+    expect(hints).toEqual(["Read as separated by semicolons (;): the first line has no commas."]);
+  });
+
+  it("keeps semicolons in the cells of a comma file (anna;bob)", () => {
+    const { separator, rows } = parseCsv("id,coder_set\n1,anna;bob\n");
+    expect(separator).toBe(",");
+    expect(rows).toEqual([["1", "anna;bob"]]);
+  });
+
+  it("says where a quote is never closed", () => {
+    const { rows, hints } = parseCsv('id,text\n1,a\n2,"b\n3,c\n');
+    expect(rows).toEqual([
+      ["1", "a"],
+      ["2", "b\n3,c\n"],
+    ]);
+    expect(hints).toHaveLength(1);
+    expect(hints[0]).toContain("line 3 is never closed");
+  });
+
+  it("reads a quote inside a cell as a character", () => {
+    const { rows, hints } = parseCsv('id,text\n1,5" screen\n2,"quoted" then more\n');
+    expect(rows).toEqual([
+      ["1", '5" screen'],
+      ["2", "quoted then more"],
+    ]);
+    expect(hints).toEqual([]);
+  });
+
+  it("says how many rows have more or fewer cells than the header", () => {
+    const { rows, hints } = parseCsv("id,text\n1\n2,b,extra\n3,c\n");
+    expect(rows).toEqual([["1"], ["2", "b", "extra"], ["3", "c"]]);
+    expect(hints).toEqual([
+      "2 rows have more or fewer cells than the first line (2): missing cells are empty, extra cells are left out.",
+    ]);
+    // A short row's missing cell is empty, an extra cell is not uploaded
+    const units = csvToUnits(["id", "text"], rows, 0, [{ column: 1, field: "text", type: "text" }]).units;
+    expect(units.map((u) => u.data.text)).toEqual(["", "b", "c"]);
+  });
+
   it("handles a file with no trailing newline", () => {
     const { rows } = parseCsv("id,text\n1,a\n2,b");
     expect(rows).toEqual([
@@ -92,6 +153,20 @@ describe("csvToUnits", () => {
       "notes: Two columns are uploaded as x",
       "ok: Two columns are uploaded as x",
     ]);
+  });
+
+  it("two columns with the same header: one field needs two names", () => {
+    const twice = ["id", "text", "text"];
+    const cells = [["1", "a", "b"]];
+    const studyFields = [{ name: "text", type: "text" as const }];
+    const linked = initialMapping(twice, cells, studyFields);
+    expect(csvToUnits(twice, cells, 0, linked, studyFields).errors).toEqual([
+      "text: Two columns are uploaded as text",
+      "text: Two columns are uploaded as text",
+    ]);
+    // "Use column names" gives the second its own name
+    const named = assignAllColumns(twice, cells, initialMapping(twice, cells, []), [], 0);
+    expect(named.map((m) => m.field)).toEqual(["", "text", "text_2"]);
   });
 
   it("checks the ids", () => {

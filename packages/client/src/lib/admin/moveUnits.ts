@@ -10,7 +10,7 @@ import type { UnitSet } from "@annotinder/contracts";
 export type CoderWork = Map<string, { coded: Set<number>; served: Set<number> }>;
 
 /** A coder's units in the coder set, coded or still to code. */
-export interface CoderCount {
+interface CoderCount {
   coder: string;
   units: number;
   coded: number;

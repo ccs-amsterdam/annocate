@@ -1,10 +1,19 @@
 // The README.txt of the data download (results/DownloadView.tsx): what each file and
 // column holds. Keep it in step with the tables in exportData.ts.
 
+/**
+ * Why a CSV file isn't for a spreadsheet program: said in the README and
+ * next to the format choice (results/DownloadView.tsx).
+ */
+export const CSV_FORMULA_WARNING =
+  "CSV cells are written as coders typed them. A spreadsheet program (Excel, LibreOffice, Google Sheets) runs a cell that starts with =, +, - or @ as a formula: don't open these files in one.";
+export const CSV_FORMULA_ADVICE =
+  "To look at the data in a spreadsheet, download it as Excel (.xlsx): its text is never run as a formula.";
+
 /** What the files in the download are, for the README. */
 export function readme(study: string, exported: Date, labels: boolean, format: "csv" | "xlsx" = "csv"): string {
   return `Data of ${study}, downloaded ${exported.toISOString()} from AnnoTinder.
-${format === "xlsx" ? "\nresults.xlsx has a sheet per table below, named as its file (without .csv).\n" : ""}
+${format === "xlsx" ? XLSX_NOTE : CSV_NOTE}
 annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  version the coder saw (unit_version_id), the coder, when they
                  first and last answered, the design version (design_version:
@@ -90,3 +99,13 @@ with the ids of their spans.
 Join annotations and coders on session_id. Times are UTC (ISO 8601).
 `;
 }
+
+const XLSX_NOTE = `
+results.xlsx has a sheet per table below, named as its file (without .csv).
+Its text cells are plain text: never run as formulas.
+`;
+
+const CSV_NOTE = `
+WARNING: ${CSV_FORMULA_WARNING}
+Read them with R, Python or SPSS. ${CSV_FORMULA_ADVICE}
+`;

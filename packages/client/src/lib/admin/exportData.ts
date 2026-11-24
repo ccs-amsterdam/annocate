@@ -43,7 +43,7 @@ const time = (d: Date | string | null | undefined) => (d ? new Date(d).toISOStri
  * A design version's number as people see it (v1, v2, ...: `design_version`
  * in the files, as in `designs/v<n>.json`), from its id.
  */
-export type VersionOf = (designVersionId: number) => number | null;
+type VersionOf = (designVersionId: number) => number | null;
 const versionCell = (versionOf: VersionOf, id: number | null) => (id === null ? "" : String(versionOf(id) ?? ""));
 
 /**
@@ -204,7 +204,6 @@ export function codersTable(
   nested: ReadonlySet<string> = new Set(),
   numeric: ReadonlySet<string> = new Set(),
 ): Table {
-  // Natural order, so "Unit loop 2" comes before "Unit loop 10"
   // The live design's loops in their order (the server lists them so): columns by position, `finished_loop1`,
   // since labels can repeat and hold spaces; the variables table has each loop's number and title
   const loops = [...new Set(coders.flatMap((c) => Object.keys(c.finished)))];
@@ -435,7 +434,7 @@ export function timingsTable(annotations: AnnotationRow[], coders: CoderProgress
 }
 
 /** A session's displays in a cell: each distinct one once, in order ("numbers, wide; numpad, wide"). */
-export function displaySummary(changes: readonly DisplayChange[]): string {
+function displaySummary(changes: readonly DisplayChange[]): string {
   const shown = changes.map((d) => [d.keys, d.width, d.theme].filter(Boolean).join(", "));
   return [...new Set(shown)].join("; ");
 }

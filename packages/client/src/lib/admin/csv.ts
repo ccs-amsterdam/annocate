@@ -11,72 +11,91 @@ import {
 } from "@annotinder/contracts";
 
 /**
- * Minimal dependency-free CSV parser (docs/client.md §7), used for the units
- * upload UI. Deliberately simple -- handles double-quote-escaped fields
- * (including embedded commas/newlines/`""`), but no exotic dialects. Ported
- * conceptually from the old app's `react-papaparse` usage, without adding
- * that dependency (docs/client.md §8: keep dependencies minimal).
+ * The CSV parser of the units upload (docs/client.md §7): quoted cells (with
+ * separators, newlines and `""` in them), commas or semicolons, a byte order
+ * mark. The first line is the header; empty lines are left out.
  */
-export function parseCsv(text: string): { headers: string[]; rows: string[][] } {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  let i = 0;
+export function parseCsv(text: string): ParsedCsv {
+  const content = text.startsWith("﻿") ? text.slice(1) : text;
+  const separator = separatorOf(content);
+  const { lines, unclosedQuoteLine } = splitCells(content, separator);
+  const [headers = [], ...rows] = lines.filter((r) => !(r.length === 1 && r[0] === ""));
 
-  function endField() {
-    row.push(field);
-    field = "";
-  }
-  function endRow() {
-    endField();
-    rows.push(row);
-    row = [];
-  }
+  const hints: string[] = [];
+  if (separator === ";") hints.push("Read as separated by semicolons (;): the first line has no commas.");
+  if (unclosedQuoteLine !== null)
+    hints.push(
+      `The quote (") that opens a cell on line ${unclosedQuoteLine} is never closed: everything after it was read as one cell. A quote inside a quoted cell is written twice ("").`,
+    );
+  const ragged = rows.filter((r) => r.length !== headers.length).length;
+  if (ragged > 0)
+    hints.push(
+      `${ragged} row${ragged === 1 ? " has" : "s have"} more or fewer cells than the first line (${headers.length}): missing cells are empty, extra cells are left out.`,
+    );
+  return { headers, rows, separator, hints };
+}
 
-  while (i < text.length) {
-    const char = text[i];
-    if (inQuotes) {
-      if (char === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i += 2;
-          continue;
-        }
-        inQuotes = false;
+interface ParsedCsv {
+  headers: string[];
+  rows: string[][];
+  separator: Separator;
+  /** What the researcher should know about how the file was read: a semicolon file, a stray quote, ragged rows. */
+  hints: string[];
+}
+
+type Separator = "," | ";";
+
+/** Semicolons (what a spreadsheet writes in many countries) when the first line has them and no comma. */
+function separatorOf(content: string): Separator {
+  const end = content.indexOf("\n");
+  const firstLine = end < 0 ? content : content.slice(0, end);
+  return firstLine.includes(";") && !firstLine.includes(",") ? ";" : ",";
+}
+
+/**
+ * The cells per line. A quote opens a quoted cell only at the cell's start
+ * (elsewhere it is a character, as in `5" screen`); in a quoted cell `""` is a quote.
+ */
+function splitCells(content: string, separator: Separator): { lines: string[][]; unclosedQuoteLine: number | null } {
+  const lines: string[][] = [];
+  let line: string[] = [];
+  let cell = "";
+  let lineNumber = 1;
+  // The line a quoted cell opened on, while inside it
+  let quoteOpenedOn: number | null = null;
+  // A cell that was quoted and closed: what follows (until the separator) is kept as it is
+  let closed = false;
+
+  const endCell = () => {
+    line.push(cell);
+    cell = "";
+    closed = false;
+  };
+  const endLine = () => {
+    endCell();
+    lines.push(line);
+    line = [];
+  };
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    if (char === "\n") lineNumber++;
+    if (quoteOpenedOn !== null) {
+      if (char !== '"') cell += char;
+      else if (content[i + 1] === '"') {
+        cell += '"';
         i++;
-        continue;
+      } else {
+        quoteOpenedOn = null;
+        closed = true;
       }
-      field += char;
-      i++;
-      continue;
-    }
-    if (char === '"') {
-      inQuotes = true;
-      i++;
-      continue;
-    }
-    if (char === ",") {
-      endField();
-      i++;
-      continue;
-    }
-    if (char === "\r") {
-      i++;
-      continue;
-    }
-    if (char === "\n") {
-      endRow();
-      i++;
-      continue;
-    }
-    field += char;
-    i++;
+    } else if (char === '"' && cell === "" && !closed) quoteOpenedOn = lineNumber;
+    else if (char === separator) endCell();
+    else if (char === "\n") endLine();
+    else if (char !== "\r") cell += char;
   }
-  if (field.length > 0 || row.length > 0) endRow();
-
-  const [headers, ...dataRows] = rows.filter((r) => !(r.length === 1 && r[0] === ""));
-  return { headers: headers ?? [], rows: dataRows };
+  if (cell.length > 0 || line.length > 0) endLine();
+  return { lines, unclosedQuoteLine: quoteOpenedOn };
 }
 
 /**

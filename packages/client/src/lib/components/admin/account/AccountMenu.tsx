@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExternalLink, KeyRound, LogIn, LogOut, Moon, ShieldAlert, Sun, UserCircle } from "lucide-react";
 import { useTheme } from "../../../context/theme";
+import { httpsUrl } from "../../../admin/format";
 
 /**
  * The user menu of the top bar: who is logged in, their API keys, light or
@@ -113,6 +114,7 @@ export function AccountMenu({
 
 /** A login without a second factor: what it is needed for, and where to set one up. */
 function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void }) {
+  const setupUrl = httpsUrl(me.twoFactor.setupUrl);
   return (
     <div role="note" className="mx-1 mb-1 rounded-md border border-ember/40 bg-ember/10 p-2 text-xs">
       <p className="flex items-center gap-1.5 font-semibold">
@@ -125,9 +127,9 @@ function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void })
         You logged in without one (an authenticator app or a passkey). It is needed for API keys, deleting answers or a
         study, and admin roles.
       </p>
-      {me.twoFactor.setupUrl ? (
+      {setupUrl ? (
         <a
-          href={me.twoFactor.setupUrl}
+          href={setupUrl}
           target="_blank"
           rel="noreferrer"
           className="mt-1.5 inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"

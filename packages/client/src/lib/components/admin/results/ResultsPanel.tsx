@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import {
@@ -14,7 +15,7 @@ import { QuestionsView } from "./QuestionsView";
 import { UnitsView } from "./UnitsView";
 import { CodersView } from "./CodersView";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDesignLabels } from "./designLabels";
+import { useDesignLabels, type DesignLabels } from "./designLabels";
 import { RESULTS_VIEWS, useResultsView, type ResultsView } from "./resultsView";
 import { CodersPanel } from "../CodersPanel";
 
@@ -54,22 +55,64 @@ export function ResultsPanel({ client }: { client: ResearcherApi }) {
 
 type SummaryView = Exclude<ResultsView, "Download">;
 
+/** The summaries the server keeps, each loaded once. */
+function useSummaries(client: ResearcherApi) {
+  return {
+    answers: useResultsAnswersQuery(client),
+    agreement: useResultsAgreementQuery(client),
+    units: useResultUnitsQuery(client),
+    coders: useResultCodersQuery(client),
+  };
+}
+type Summaries = ReturnType<typeof useSummaries>;
+type SummaryName = keyof Summaries;
+
+/** Per view: the summaries it needs, and what it shows once they are loaded. */
+const VIEWS: Record<
+  SummaryView,
+  { needs: SummaryName[]; show: (data: Summaries, client: ResearcherApi, labels: DesignLabels) => ReactNode }
+> = {
+  Questions: {
+    needs: ["answers"],
+    show: ({ answers }, _client, labels) => <QuestionsView questions={answers.data!.questions} labels={labels} />,
+  },
+  Agreement: {
+    needs: ["agreement"],
+    show: ({ agreement }, _client, labels) => <AgreementView questions={agreement.data!.questions} labels={labels} />,
+  },
+  Units: {
+    needs: ["units"],
+    show: ({ units }, client, labels) => <UnitsView client={client} units={units.data!.units} labels={labels} />,
+  },
+  // The sessions, with deleting and resetting; then their time and agreement
+  Coders: {
+    needs: ["coders", "agreement"],
+    show: ({ coders, agreement }, client) => (
+      <>
+        <CodersPanel client={client} />
+        <h3 className="mt-2 text-sm font-semibold">Time and agreement</h3>
+        <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />
+      </>
+    ),
+  },
+};
+
 function Summary({ client, view }: { client: ResearcherApi; view: SummaryView }) {
   const labels = useDesignLabels(client);
   const queryClient = useQueryClient();
-  const answers = useResultsAnswersQuery(client);
-  const agreement = useResultsAgreementQuery(client);
-  const units = useResultUnitsQuery(client);
-  const coders = useResultCodersQuery(client);
-  // The Coders view also shows agreement; the others need one query each
-  const queries = { Questions: [answers], Agreement: [agreement], Units: [units], Coders: [coders, agreement] }[view];
-  const loading = queries.some((q) => !q.data);
+  const summaries = useSummaries(client);
+  const queries = VIEWS[view].needs.map((name) => summaries[name]);
   const error = queries.find((q) => q.error)?.error;
   const fetching = queries.some((q) => q.isFetching);
   const updated = Math.min(...queries.map((q) => q.dataUpdatedAt));
   // Refresh: everything under the results key (the open unit too)
   const refresh = () =>
     void queryClient.invalidateQueries({ queryKey: ["admin", "study", client.studyId ?? "current", "results"] });
+  const content = () => {
+    if (error) return <p className="text-sm text-destructive">{error.message}</p>;
+    if (queries.some((q) => !q.data)) return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return VIEWS[view].show(summaries, client, labels);
+  };
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
@@ -80,24 +123,7 @@ function Summary({ client, view }: { client: ResearcherApi; view: SummaryView })
           <RefreshCw className={cn("mr-1 h-3.5 w-3.5", fetching && "animate-spin")} /> Refresh
         </Button>
       </div>
-      {error ? (
-        <p className="text-sm text-destructive">{error.message}</p>
-      ) : loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : view === "Questions" ? (
-        <QuestionsView questions={answers.data!.questions} labels={labels} />
-      ) : view === "Agreement" ? (
-        <AgreementView questions={agreement.data!.questions} labels={labels} />
-      ) : view === "Units" ? (
-        <UnitsView client={client} units={units.data!.units} labels={labels} />
-      ) : (
-        <>
-          {/* The sessions, with deleting and resetting; then their time and agreement */}
-          <CodersPanel client={client} />
-          <h3 className="mt-2 text-sm font-semibold">Time and agreement</h3>
-          <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />
-        </>
-      )}
+      {content()}
     </div>
   );
 }

@@ -59,10 +59,7 @@ export function SplitIntoSets({
   const [confirming, setConfirming] = useState(false);
   // Names for the values (one per line or comma); empty: part1..partN
   const [namesText, setNamesText] = useState("");
-  const names = namesText
-    .split(/[\n,;#]+/)
-    .map((n) => n.trim())
-    .filter(Boolean);
+  const names = splitNames(namesText);
   const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
 
   const split = splitIntoSets(unitIds, {
@@ -98,12 +95,18 @@ export function SplitIntoSets({
       { onSuccess: () => onDone(column) },
     );
 
+  const buttonText = () => {
+    if (putGroup.isPending) return "Creating...";
+    if (assigning) return `Assign ${empty.length} unit${empty.length === 1 ? "" : "s"}`;
+    if (confirming && existing) return "Overwrite";
+    return `Make the ${label.toLowerCase()} with ${sets.length} values`;
+  };
+
   return (
     <section className="flex flex-col gap-3 rounded-lg border p-4 text-sm">
       <h3 className="flex items-center gap-1.5 font-semibold">
-        {assigning ? (
-          <>Assign units without a value in the {label.toLowerCase()}</>
-        ) : (
+        {assigning && <>Assign units without a value in the {label.toLowerCase()}</>}
+        {!assigning && (
           <>
             Make a {label.toLowerCase()} of {source ? <span className="font-mono">{source}</span> : "all units"} (
             {unitIds.length})
@@ -112,42 +115,22 @@ export function SplitIntoSets({
         <HelpButton topic="sets" label="Help: sets" />
       </h3>
       {existing && <AssignModeChoice label={label.toLowerCase()} mode={mode} empty={empty.length} onChange={setMode} />}
-      {assigning ? (
+      {assigning && (
         <p className="text-muted-foreground">
           Spreads the {empty.length} unit{empty.length === 1 ? "" : "s"} without a value evenly over {values.join(", ")}
           , at random. Current values stay.
         </p>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1">
-              values
-              <Input
-                type="number"
-                min={1}
-                className="w-20"
-                value={names.length || count}
-                disabled={names.length > 0}
-                onChange={(e) => setCount(Math.max(1, Number(e.target.value)))}
-              />
-            </label>
-          </div>
-          <label className="flex flex-col gap-1">
-            names (optional): one per line
-            <textarea
-              aria-label="Names"
-              className="min-h-16 rounded-md border border-input bg-background px-2 py-1 font-mono text-sm"
-              value={namesText}
-              placeholder={EXAMPLES[column].names}
-              onChange={(e) => setNamesText(e.target.value)}
-            />
-          </label>
-          <p className="text-muted-foreground">
-            Makes the {label.toLowerCase()} (<span className="font-mono">{column}</span>) with{" "}
-            {sets.map((s) => `${s.name} (${s.units.length})`).join(", ")}. Units are shuffled first.{" "}
-            {EXAMPLES[column].use}
-          </p>
-        </>
+      )}
+      {!assigning && (
+        <SplitFields
+          column={column}
+          count={names.length || count}
+          countFixed={names.length > 0}
+          onCountChange={setCount}
+          namesText={namesText}
+          onNamesTextChange={setNamesText}
+          sets={sets.map((set) => ({ name: set.name, size: set.units.length }))}
+        />
       )}
       {twice && !assigning && <p className="text-destructive">{twice} is listed twice.</p>}
       {putGroup.isError && <p className="text-destructive">{putGroup.error.message}</p>}
@@ -156,13 +139,7 @@ export function SplitIntoSets({
           onClick={() => (existing && !assigning && !confirming ? setConfirming(true) : save())}
           disabled={(assigning ? empty.length === 0 : unitIds.length === 0 || !!twice) || putGroup.isPending}
         >
-          {putGroup.isPending
-            ? "Creating..."
-            : assigning
-              ? `Assign ${empty.length} unit${empty.length === 1 ? "" : "s"}`
-              : confirming && existing
-                ? "Overwrite"
-                : `Make the ${label.toLowerCase()} with ${sets.length} values`}
+          {buttonText()}
         </Button>
         <Button variant="outline" onClick={() => onDone(null)}>
           Cancel
@@ -174,6 +151,67 @@ export function SplitIntoSets({
         )}
       </div>
     </section>
+  );
+}
+
+/** The names typed for the values: one per line (or separated by a comma, `;` or `#`, which a name can't hold). */
+function splitNames(text: string): string[] {
+  return text
+    .split(/[\n,;#]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+}
+
+/** A new split: how many values (or their names), and what that makes. */
+function SplitFields({
+  column,
+  count,
+  countFixed,
+  onCountChange,
+  namesText,
+  onNamesTextChange,
+  sets,
+}: {
+  column: SplitColumn;
+  count: number;
+  /** Names are given: there are as many values as names. */
+  countFixed: boolean;
+  onCountChange: (count: number) => void;
+  namesText: string;
+  onNamesTextChange: (text: string) => void;
+  /** The values the split makes, with how many units each gets. */
+  sets: { name: string; size: number }[];
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          values
+          <Input
+            type="number"
+            min={1}
+            className="w-20"
+            value={count}
+            disabled={countFixed}
+            onChange={(e) => onCountChange(Math.max(1, Number(e.target.value)))}
+          />
+        </label>
+      </div>
+      <label className="flex flex-col gap-1">
+        names (optional): one per line
+        <textarea
+          aria-label="Names"
+          className="min-h-16 rounded-md border border-input bg-background px-2 py-1 font-mono text-sm"
+          value={namesText}
+          placeholder={EXAMPLES[column].names}
+          onChange={(e) => onNamesTextChange(e.target.value)}
+        />
+      </label>
+      <p className="text-muted-foreground">
+        Makes the {ROLE_LABELS[column].toLowerCase()} (<span className="font-mono">{column}</span>) with{" "}
+        {sets.map((set) => `${set.name} (${set.size})`).join(", ")}. Units are shuffled first. {EXAMPLES[column].use}
+      </p>
+    </>
   );
 }
 

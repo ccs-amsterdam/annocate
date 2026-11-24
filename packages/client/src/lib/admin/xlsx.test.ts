@@ -33,4 +33,14 @@ describe("toXlsx", () => {
     expect(sheet).toContain('<c r="A2" t="inlineStr"><is><t xml:space="preserve">007</t></is></c>');
     expect(sheet).not.toContain("<f>");
   });
+
+  it("writes a cell with an exponent as text: 1e5 is what a coder typed, not 100000", () => {
+    const sheet = strFromU8(
+      unzipSync(toXlsx([{ name: "t", table: { headers: ["a", "b"], rows: [["1e5", "-2E+3"]] } }]))[
+        "xl/worksheets/sheet1.xml"
+      ],
+    );
+    expect(sheet).toContain('<c r="A2" t="inlineStr"><is><t xml:space="preserve">1e5</t></is></c>');
+    expect(sheet).toContain('<c r="B2" t="inlineStr"><is><t xml:space="preserve">-2E+3</t></is></c>');
+  });
 });

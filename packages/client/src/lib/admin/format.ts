@@ -16,3 +16,9 @@ export function formatWhen(date: Date | string | null, now = new Date()): string
   }
   return "just now";
 }
+
+/** A link from the server's settings that is safe to open: only `https:` (not `javascript:` or `data:`); else null. */
+export function httpsUrl(url: string | null): string | null {
+  if (url === null || !URL.canParse(url)) return null;
+  return new URL(url).protocol === "https:" ? url : null;
+}
