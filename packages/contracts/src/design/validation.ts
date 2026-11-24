@@ -317,6 +317,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (ctx.snippets) {
       const expanded = expandSnippets(source, ctx.snippets);
       expanded.errors.forEach((e) => issue(ctx.path, e));
+      // Cut off: what is left of the template can't be checked
+      if (expanded.tooLarge) return empty;
       source = expanded.source;
     } else if (usesSnippets(source)) {
       issue(ctx.path, "Snippets ([[name]]) can only be used in a unit loop's layout and its questions' texts");

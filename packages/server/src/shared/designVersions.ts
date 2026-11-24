@@ -52,6 +52,27 @@ export function itemsValid(items: unknown[]): boolean {
   return items.some((i) => (i as { type?: unknown } | null)?.type !== "session") && designErrors(items).length === 0;
 }
 
+/**
+ * Whether stored versions are valid, as found before: validating a design
+ * takes milliseconds, and a study's list of versions asks for each of them
+ * on every request. A version's items change only with its revision; the
+ * time of the change is in the key too, since ids start again in an emptied
+ * database (tests).
+ */
+const knownValid = new Map<string, boolean>();
+const MAX_KNOWN_VALID = 5000;
+
+/** Whether a stored design version passes validation (see `itemsValid`). */
+function versionValid(row: DesignVersionRow): boolean {
+  const key = `${row.id}/${row.revision}/${row.updated.getTime()}`;
+  const known = knownValid.get(key);
+  if (known !== undefined) return known;
+  const valid = itemsValid(designVersionItems(row));
+  if (knownValid.size >= MAX_KNOWN_VALID) knownValid.delete(knownValid.keys().next().value!);
+  knownValid.set(key, valid);
+  return valid;
+}
+
 export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
   return {
     id: row.id,
@@ -61,7 +82,7 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
     updatedBy: row.updatedBy,
     revision: row.revision,
     immutable: row.immutable,
-    valid: itemsValid(designVersionItems(row)),
+    valid: versionValid(row),
   };
 }
 

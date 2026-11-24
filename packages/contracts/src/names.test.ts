@@ -93,6 +93,7 @@ describe("lookups by a name from a design never read Object.prototype", () => {
     expect(expandSnippets("x [[a]]", snippets)).toEqual({
       source: "x ",
       errors: ["[[a]]: there is no snippet 'a' in this loop's layout"],
+      tooLarge: false,
     });
   });
 

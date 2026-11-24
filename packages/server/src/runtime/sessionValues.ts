@@ -2,6 +2,7 @@ import {
   MAX_SESSION_VALUE,
   inviteOf,
   loginRequired,
+  matchesUrlPattern,
   urlParamKey,
   type Invite,
   type SessionItem,
@@ -34,7 +35,7 @@ export const emailCoders = (rules: SessionRules) => {
 };
 
 /** Whether a value fits a pattern (in full). */
-const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${pattern})$`).test(value);
+const fits = (value: string, pattern?: string) => !pattern || matchesUrlPattern(value, pattern);
 
 /**
  * The coder and `$session` values of a new session. A missing

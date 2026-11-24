@@ -31,25 +31,6 @@ describe("the design's Study entry (session and public info)", () => {
   });
 });
 
-describe("URL parameter patterns", () => {
-  it("refuse patterns that could backtrack catastrophically", async () => {
-    const { slowPattern } = await import("./session.js");
-    for (const ok of [
-      "[0-9a-f]{24}",
-      "a|b|c",
-      "[A-Za-z0-9_-]+",
-      "P[0-9]{3,8}",
-      "(abc)?x",
-      "(ab){2}",
-      "[a-z]+(-[a-z]+)?",
-      "\\d+",
-    ])
-      expect(slowPattern(ok), ok).toBeNull();
-    for (const bad of ["(a+)+", "(a|ab)*", "(a*)*", "([a-z]+)*x", "(a|b){2,}", "(x(a+))+", "(a)\\1"])
-      expect(slowPattern(bad), bad).not.toBeNull();
-  });
-});
-
 describe("who codes and links", () => {
   const coders = ["anna", "bob"];
   const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });

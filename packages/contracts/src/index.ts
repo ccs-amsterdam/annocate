@@ -22,6 +22,7 @@ export * from "./design/layoutItems.js";
 export * from "./design/answerLayout.js";
 export * from "./design/unitLoop.js";
 export * from "./design/session.js";
+export * from "./design/urlPattern.js";
 export * from "./design/item.js";
 export * from "./design/walk.js";
 export * from "./design/shownFields.js";

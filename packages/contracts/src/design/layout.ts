@@ -3,6 +3,10 @@ import { HighlightSchema } from "./highlight.js";
 import { styleProblems } from "./safeCss.js";
 import { SafeNameSchema } from "../common.js";
 
+/** The most snippets a layout has, and the longest a snippet is (snippets.ts: what they add up to in a template is bounded too). */
+export const MAX_SNIPPETS = 50;
+export const MAX_SNIPPET_LENGTH = 20_000;
+
 // A unit's layout (docs/client.md §3): a single markdown template, rendered
 // with a real, XSS-safe-by-construction markdown library (no raw HTML, see
 // UnitFields.tsx). Values are inserted with references and `{{ }}` (see
@@ -24,7 +28,8 @@ export const UnitLayoutSchema = z.object({
    * with `[[name]]` as if typed there (snippets.ts).
    */
   snippets: z
-    .record(SafeNameSchema, z.string())
+    .record(SafeNameSchema, z.string().max(MAX_SNIPPET_LENGTH, "A snippet has at most 20,000 characters"))
+    .refine((snippets) => Object.keys(snippets).length <= MAX_SNIPPETS, `A layout has at most ${MAX_SNIPPETS} snippets`)
     .optional()
     .describe(
       "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",

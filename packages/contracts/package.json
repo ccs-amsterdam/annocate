@@ -24,6 +24,7 @@
     "generate:json-schema": "tsx scripts/generateJsonSchema.ts"
   },
   "dependencies": {
+    "re2js": "2.9.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

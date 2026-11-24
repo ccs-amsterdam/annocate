@@ -28,17 +28,52 @@ function snippetText(snippets: Readonly<Record<string, string>> | undefined, nam
 }
 
 /**
+ * The most text snippets may put into one template. Snippets that use
+ * snippets multiply: each level that uses the next one twice doubles the
+ * text, so a few short snippets can ask for gigabytes.
+ */
+export const MAX_SNIPPET_TEXT = 200_000;
+
+const TOO_LARGE = `The snippets put more than ${MAX_SNIPPET_TEXT / 1000} kB of text into this template: use fewer snippets in snippets`;
+
+/**
  * A template with its `[[name]]`s replaced by the snippets' text (snippets
  * may use snippets); snippets in code stay as they are. Unknown snippets,
  * snippets that include themselves and a suffix after a snippet are errors;
- * unknown and self-including ones are left out.
+ * unknown and self-including ones are left out. `tooLarge`: the snippets
+ * put in more than MAX_SNIPPET_TEXT; the source is then cut off where that
+ * happened, and that is the only error.
  */
 export function expandSnippets(
   source: string,
   snippets: Readonly<Record<string, string>> | undefined,
-  using: readonly string[] = [],
+): { source: string; errors: string[]; tooLarge: boolean } {
+  const room: Room = { left: MAX_SNIPPET_TEXT, matches: new Map() };
+  const expanded = expand(source, snippets, [], room);
+  if (room.left < 0) return { source: expanded.source, errors: [TOO_LARGE], tooLarge: true };
+  return { ...expanded, tooLarge: false };
+}
+
+/** One expansion's state: how much text snippets may still add, and where each text has its snippets (read once per text). */
+interface Room {
+  left: number;
+  matches: Map<string, RegExpExecArray[]>;
+}
+
+function matchesIn(source: string, room: Room): RegExpExecArray[] {
+  let matches = room.matches.get(source);
+  if (!matches) room.matches.set(source, (matches = snippetMatches(source)));
+  return matches;
+}
+
+/** `expandSnippets` for a template or a snippet's text (`using`: the snippets it is in); stops when `room` runs out. */
+function expand(
+  source: string,
+  snippets: Readonly<Record<string, string>> | undefined,
+  using: readonly string[],
+  room: Room,
 ): { source: string; errors: string[] } {
-  const matches = snippetMatches(source);
+  const matches = matchesIn(source, room);
   if (matches.length === 0) return { source, errors: [] };
   const errors: string[] = [];
   let out = "";
@@ -55,9 +90,12 @@ export function expandSnippets(
     else if (using.includes(name))
       errors.push(`[[${name}]]: the snippet includes itself (${[...using, name].join(" → ")})`);
     else {
-      const inner = expandSnippets(text, snippets, [...using, name]);
+      room.left -= text.length;
+      if (room.left < 0) return { source: out, errors };
+      const inner = expand(text, snippets, [...using, name], room);
       errors.push(...inner.errors);
       out += inner.source;
+      if (room.left < 0) return { source: out, errors };
     }
   }
   return { source: out + source.slice(last), errors: [...new Set(errors)] };
