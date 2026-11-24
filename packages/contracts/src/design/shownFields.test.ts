@@ -83,7 +83,7 @@ describe("set columns", () => {
     },
   ];
 
-  it("are coder_set (specific coders), condition_set (an experiment that selects units) and part_set (loop parts)", () => {
+  it("are coder_set (expert coders), condition_set (an experiment that selects units) and part_set (loop parts)", () => {
     expect(designSetColumns(items).sort()).toEqual(["coder_set", "condition_set", "part_set"]);
     expect(Object.fromEntries(fieldUsage(items))).toEqual({
       coder_set: "server",

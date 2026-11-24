@@ -395,8 +395,8 @@ parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders
 (`SessionPreview.tsx`: the links, what a link must carry, the screen). Two modes:
-**Specific coders** and **Crowd (one link)** (`session/InvitationSettings.tsx`). The
-specific coders form shows the units' coder set (`coder_set`: how many
+**Expert coders** and **Crowd (one link)** (`session/InvitationSettings.tsx`). The
+expert coders form shows the units' coder set (`coder_set`: how many
 coders, or that one is required) and how coders get in (disabled until
 there is a coder set). "Create coder set…" / "Update coder set…"
 (`session/CoderSetDialog.tsx`) makes or replaces `coder_set`, after asking
@@ -406,10 +406,13 @@ its coders and keeps the rest. Its test units: the current ones (counts per type
 `test_set`) are kept and shown disabled; with "Redistribute test units"
 that many overlap, practice and gold units are drawn anew. It keeps the
 units coders already coded with them by default (`GET /coders/units`,
-contracts `distributeUnits`). On **Units**, **Coders…** next to the coder
-set (`units/CodersPanel.tsx`) shows per coder their units, coded and to
-code, and moves uncoded units between coders, hands a coder's uncoded
-units to the others, or adds a coder (`admin/moveUnits.ts`). The One link form has
+contracts `distributeUnits`). On **Units**, **Coders…** at the start of the
+coder set's row (`units/CodersDialog.tsx`) shows per coder what they coded
+and have to code, and the unassigned units: a coder's "to code" is set
+(fewer: uncoded units become unassigned, never-sent ones first; more:
+taken from the unassigned ones), a coder's uncoded units handed to the
+others, coders renamed (until they start) or added, with whether all are
+email addresses; "Confirm unit assignments" saves it (`admin/moveUnits.ts`). The One link form has
 the coder id URL parameter, "Coders sign in" and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 
@@ -529,7 +532,7 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   height. Next and Back go through all steps in order (`guideSteps.ts`).
   Each step shows the sample study (`sampleStudy.ts`: a design with two
   coder questions and a unit loop with three questions, the third in a
-  branch, and three units; with a crowd or specific coders) drawn with the
+  branch, and three units; with a crowd or expert coders) drawn with the
   real page, read only: the design editor (wide, the step's item selected;
   all of it, or only its tree or its form) or the Units page, from an
   in-memory API, inert and scaled to fit (`GuideSample.tsx`). "Show me"

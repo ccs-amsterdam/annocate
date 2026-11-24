@@ -53,7 +53,7 @@ export function TestUnitsEditor({
   };
   const shows = (kind: "practice" | "gold", check: unknown) =>
     settings[kind] !== "ignore" && (count(kind) > 0 || check !== undefined);
-  // Specific coders: the units in the coder set; otherwise all units (test units aside)
+  // Expert coders: the units in the coder set; otherwise all units (test units aside)
   const coders = invite?.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
   const codingCount = coders ? new Set(coders.sets.flatMap((s) => s.unitIds)).size : null;
   return (

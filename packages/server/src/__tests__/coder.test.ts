@@ -405,7 +405,7 @@ function withDivide(items: object[]): object[] {
     return it;
   });
 }
-/** Specific coders: the values of `coder_set`, each with their own link (or signing in, `login`). */
+/** Expert coders: the values of `coder_set`, each with their own link (or signing in, `login`). */
 const codersInvite = (link: "per_coder" | "login" = "per_coder") => sessionItem({ invite: { mode: "coders", link } });
 
 describe("shared queues", () => {
@@ -719,7 +719,7 @@ describe("coders", () => {
     expect(await revoked.json()).toMatchObject({ code: "link_revoked" });
   });
 
-  it("signing in needs email addresses; specific coders need coder_set", async () => {
+  it("signing in needs email addresses; expert coders need coder_set", async () => {
     await createSet("anna", ["unit-1"], "coder_set");
     await createSet("b@example.org", ["unit-2"], "coder_set");
     const design = await server.request("/api/study/1/design", {

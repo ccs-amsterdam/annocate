@@ -64,7 +64,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
           Links
           <InfoTip label="About links">
-            Deploying the design makes its links: one, or with specific coders who get a link each, one per coder in the
+            Deploying the design makes its links: one, or with expert coders who get a link each, one per coder in the
             units&apos; coder set (<span className="font-mono">coder_set</span>). Links of coders who are gone are
             retired. Here you set who may use a link. Revoking stops new coders from joining with it; coders who already
             started keep working.
@@ -94,7 +94,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
         ) : active.length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             {deployment
-              ? "The deployed design makes no links right now (specific coders without a coder set?)."
+              ? "The deployed design makes no links right now (expert coders without a coder set?)."
               : "Deploy the design to get its links."}
           </p>
         ) : (

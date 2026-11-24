@@ -178,7 +178,7 @@ export async function runtimeSets(
 
 /**
  * Checks of a design about to be deployed against the units' columns with a
- * role (docs/plans/unit-sets.md). Errors: specific coders without
+ * role (docs/plans/unit-sets.md). Errors: expert coders without
  * `coder_set`, or (signing in) with values that aren't all email addresses;
  * an experiment that selects units without `condition_set`, or with
  * conditions it has no units for. Warnings: conditions no experiment lists,
@@ -206,7 +206,7 @@ export async function assignmentChecks(
   if (invite?.mode === "coders") {
     if (coders.length === 0)
       errors.push(
-        `Specific coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`,
+        `Expert coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`,
       );
     else if (invite.link === "login" && coderAccess(coders) !== "email")
       errors.push(

@@ -432,7 +432,7 @@ unit resets the fields.
 
 **Role columns.** Four unit columns have a fixed name and meaning
 (`docs/architecture.md` §6, `docs/plans/unit-sets.md`): `coder_set` (who
-codes a unit, specific coders), `condition_set` (the conditions of the
+codes a unit, expert coders), `condition_set` (the conditions of the
 experiment that selects units), `part_set` (a loop shows one part) and
 `test_set` (`overlap`, `practice` or `gold`). Their values are named sets
 of units (tables `unit_sets`, `unit_set_members`). The endpoints call a
@@ -462,7 +462,7 @@ otherwise).
 ### deleteSetGroup
 
 `DELETE /study/:studyId/sets/:group` → 204. 409 while the deployed or latest
-design uses the column (`coder_set` with specific coders, `condition_set`
+design uses the column (`coder_set` with expert coders, `condition_set`
 with an experiment that selects units, `part_set` with a loop's part).
 
 Filling a column is done by the client (`distributeUnits` for `coder_set`
@@ -476,7 +476,7 @@ Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
 Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
-Links are not created by hand: deploying makes one, or for specific coders
+Links are not created by hand: deploying makes one, or for expert coders
 with a link each (`invite: { mode: "coders", link: "per_coder" }`) one per
 coder of `coder_set` (`params: { coder }`), and deploying `coder_set`
 changes syncs them ([putDeployment](#putdeployment)): links follow the
@@ -588,7 +588,7 @@ out: unchanged, the first deploy: "{n} new units were added for you.";
 1. check that the design version passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid designs), and
    check it against the role columns (400 `assignment_invalid` with the
-   errors: specific coders without `coder_set` values, coders who sign in
+   errors: expert coders without `coder_set` values, coders who sign in
    whose values aren't all email addresses, an experiment that selects
    units without `condition_set` or with listed conditions it has no units
    for; `shared/sets.ts` `assignmentChecks`);

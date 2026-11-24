@@ -451,7 +451,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (units.divide && invite?.mode !== "crowd")
       issue(
         [...path, "divide"],
-        "Dividing units among coders is for a crowd: specific coders get the units of their set (Who codes)",
+        "Dividing units among coders is for a crowd: expert coders get the units of their set (Who codes)",
       );
     if (units.sameAsPrevious) {
       if (Number(loopName) <= 1) issue([...path, "sameAsPrevious"], "There is no previous loop to take the units of");
@@ -587,7 +587,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (!hasLoop && invite?.mode === "coders")
       issue(
         [...itemPath, "invite"],
-        "Specific coders each get their own units, but the design has no unit loop yet: until it has, coders get no units (their links work)",
+        "Expert coders each get their own units, but the design has no unit loop yet: until it has, coders get no units (their links work)",
         true,
       );
   }
@@ -610,7 +610,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (inviteOf(sessionItem(items))?.mode === "coders")
         issue(
           [...itemPath, "variable", "units"],
-          `Experiment '${item.name}' selects units by condition, but specific coders get the units of their coder set: invite a crowd`,
+          `Experiment '${item.name}' selects units by condition, but expert coders get the units of their coder set: invite a crowd`,
         );
       if (unitsExperiment !== null)
         issue(
@@ -907,7 +907,7 @@ export function designErrors(items: unknown[]): DesignIssue[] {
 }
 
 /** What deploying asks of a design (contracts `NO_INVITE`): no errors, and who codes chosen. */
-export const NO_INVITE = "Choose who codes first: specific coders or a crowd (one link)";
+export const NO_INVITE = "Choose who codes first: expert coders or a crowd (one link)";
 
 /** The errors that keep a design from being deployed: `designErrors`, and who codes not chosen. */
 export function deployErrors(items: unknown[]): DesignIssue[] {

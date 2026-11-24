@@ -9,7 +9,7 @@ import { IdSchema } from "./common.js";
 // as sets (per value its units), not in the units' data. Any other column
 // is data.
 
-/** Who codes which units (specific coders): coder names or email addresses. */
+/** Who codes which units (expert coders): coder names or email addresses. */
 export const CODER_SET = "coder_set";
 /** The units of each condition of the experiment that selects units. */
 export const CONDITION_SET = "condition_set";

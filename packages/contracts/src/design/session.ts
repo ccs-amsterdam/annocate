@@ -2,7 +2,7 @@ import { z } from "zod";
 import { SafeNameSchema } from "../common.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
-// the who codes (`invite`: specific coders with a link each, a
+// the who codes (`invite`: expert coders with a link each, a
 // login or names to pick, or a crowd with one link), and the URL parameters a link may
 // carry (context such as a distribution channel, or a panel's ids for its
 // return link). All are `$session.<name>` values, stored on the session
@@ -123,7 +123,7 @@ export const CoderParamSchema = z.object({
 export type CoderParam = z.infer<typeof CoderParamSchema>;
 
 /**
- * Specific coders (docs/architecture.md §6.1): who codes which units is the
+ * Expert coders (docs/architecture.md §6.1): who codes which units is the
  * units' `coder_set` column; each of its values is a coder
  * (`$session.coder`, also when the design has no unit loop: e.g. a survey
  * of known experts). Overlap units (`test_set`) are everyone's.
@@ -160,7 +160,7 @@ export const CrowdInviteSchema = z.object({
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
 
-/** How coders come to the study (who codes): specific coders, or a crowd (one link). */
+/** How coders come to the study (who codes): expert coders, or a crowd (one link). */
 export const InviteSchema = z.discriminatedUnion("mode", [CodersInviteSchema, CrowdInviteSchema]);
 export type Invite = z.infer<typeof InviteSchema>;
 
@@ -286,13 +286,13 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
 }
 
 /**
- * Who codes (the design's invitation): specific coders or a crowd. null:
+ * Who codes (the design's invitation): expert coders or a crowd. null:
  * not chosen yet. A design can't be deployed without it (`deployErrors`);
  * previews run it as a crowd.
  */
 export const inviteOf = (item: SessionItem | null | undefined): Invite | null => item?.invite ?? null;
 
-/** Whether coders must sign in to start: specific coders with a login, or a crowd that requires it. */
+/** Whether coders must sign in to start: expert coders with a login, or a crowd that requires it. */
 export function loginRequired(item: SessionItem | null | undefined): boolean {
   const invite = inviteOf(item);
   return invite?.mode === "coders" ? invite.link === "login" : invite?.login === true;
@@ -322,7 +322,7 @@ export function linkMaxCoders(item: SessionItem | null | undefined): number | un
 
 /**
  * The links a design makes, each as its values (name -> value): a link per
- * coder (specific coders with a link each; `coders`: the `coder_set`
+ * coder (expert coders with a link each; `coders`: the `coder_set`
  * column's values), else one link (no values).
  */
 export function linkCombinations(item: SessionItem | null, coders: readonly string[]): Record<string, string>[] {

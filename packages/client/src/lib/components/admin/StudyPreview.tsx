@@ -382,7 +382,7 @@ export function StudyPreview({ client, coderApiUrl = "" }: StudyPreviewProps) {
 
 /**
  * Who the preview runs as (the server's preview session values): with
- * specific coders, one of them (else the first); a URL parameter with a
+ * expert coders, one of them (else the first); a URL parameter with a
  * list of values, one of them (else its default, or the first).
  */
 function PreviewAs({

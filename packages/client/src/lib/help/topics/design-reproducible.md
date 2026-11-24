@@ -58,7 +58,7 @@ it uses (a coder set, a condition set, a part set); deploying checks this.
 
 - **Random draws differ** in a new run (conditions, unit order); the data
   records what each coder got.
-- **Specific coders** move who codes what into the coders' column:
+- **Expert coders** move who codes what into the coders' column:
   document how you divided units.
 - **Routing is a convenience, not a lock**: see
   [Privacy and where data lives](design-privacy.md).

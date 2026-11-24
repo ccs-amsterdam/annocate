@@ -5,7 +5,7 @@ import type { Invite } from "@annotinder/contracts";
 export const WHO_CODES: Record<Invite["mode"], { icon: LucideIcon; title: string; short: string; long: string }> = {
   coders: {
     icon: Users,
-    title: "Specific coders",
+    title: "Expert coders",
     short: "Coders you know, each with their own units",
     long: "Best for content analysis with trained coders. Each coder has their own session, can come back to their job, and you can add units and redistribute them at any time.",
   },

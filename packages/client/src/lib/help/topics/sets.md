@@ -10,7 +10,7 @@ is data (text to show, metadata).
 
 | Column          | Label         | Says                                                   | Used by                                   |
 | --------------- | ------------- | ------------------------------------------------------ | ----------------------------------------- |
-| `coder_set`     | Coder set     | who codes the unit: `anna`, `anna;bob`, an email address | **Specific coders** (see [Giving each coder their own units](own-units.md)) |
+| `coder_set`     | Coder set     | who codes the unit: `anna`, `anna;bob`, an email address | **Expert coders** (see [Giving each coder their own units](own-units.md)) |
 | `condition_set` | Condition set | the experiment's conditions the unit is for            | an [experiment](experimental-conditions.md) that gives each condition its own units |
 | `part_set`      | Part set      | the part of the study, e.g. `pre`, `post`              | a unit loop shows one part (see [Handing out units](unit-distribution.md)) |
 | `test_set`      | Test set      | `overlap`, `practice` or `gold` (empty: a coding unit) | where loops put test units, and their checks (see [Overlap, gold and practice units](special-units.md)) |
@@ -43,7 +43,7 @@ counts; click a value to see its units. The table shows each unit's cell.
 **Create special set…** on **Units** makes any of them:
 
 - **Coder set**: divides the units over your coders (also **Create coder
-  set…** in **Who codes**, Specific coders; see
+  set…** in **Who codes**, Expert coders; see
   [Giving each coder their own units](own-units.md)).
 - **Part set** or **condition set**: a number of values (`part1`,
   `part2`, ...) or names, one per line (`pre`, `post`). Units are shuffled
@@ -74,21 +74,25 @@ closed (**When coders finish** in the study's **Settings**).
 
 ## Moving units between coders
 
-**Coders…** next to the coder set shows per coder how many units they
-have, coded, and still have to code. Units a coder coded always stay
-theirs:
+**Coders…** in the coder set's row opens the coders: per coder the units
+they coded and how many they still have to code, and how many units no
+coder has (**unassigned**). Units a coder coded always stay theirs.
 
-- **Move** _n_ units from one coder to another: units the first coder
-  hasn't coded, the ones they were never sent first (a unit they were sent
-  may be on their screen).
-- **Hand out** gives all of a coder's uncoded units to the others, those
+- Change a coder's **To code**: type a number, or **0**, **−10**, **+10**
+  or **+n** (all unassigned units). Fewer makes units they haven't coded
+  unassigned (the ones never sent to them first: a unit they were sent may
+  be on their screen); more gives them unassigned units.
+- The hand icon gives all of a coder's uncoded units to the others, those
   with the fewest left first. A coder who coded nothing leaves the coder set
   (their link stops working).
-- **Add coder**, then move units to them.
+- Rename a coder who hasn't started (a started coder's name is how their
+  work is kept), or **Add coder**. **All coders are email addresses** shows
+  whether coders can sign in instead of each getting a link.
 
-Like every change to sets, this is a draft until you deploy the units. When
-you divide units again with the coder set dialog, **Keep the units coders
-already coded** does the same: coded units stay, the rest is divided anew.
+Nothing changes until **Confirm unit assignments**; like every change to
+sets, it is a draft until you deploy the units. When you divide units again
+with the coder set dialog, **Keep the units coders already coded** does the
+same: coded units stay, the rest is divided anew.
 
 ## Changing values by hand
 

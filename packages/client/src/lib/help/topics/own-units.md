@@ -10,7 +10,7 @@ for reliability.
 
 ## In four steps
 
-1. **Who codes** (above the item tree) → **Specific coders**.
+1. **Who codes** (above the item tree) → **Expert coders**.
 2. **The coder set**: the units' `coder_set` column names the coder(s) of
    each unit (`anna`, `bob`). From your CSV (a column named `coder_set`,
    see [Uploading units](uploading-units.md)), or **Create coder set…**:

@@ -73,7 +73,7 @@ describe("a loop's Units settings", () => {
     expect(testUnitsSummary({}, [])).toBe("None in the units");
   });
 
-  it("for specific coders: no dividing", () => {
+  it("for expert coders: no dividing", () => {
     const html = render({}, { mode: "coders", link: "per_coder" });
     expect(html).not.toContain("Divide units among coders");
     expect(html).toContain('<option value="" selected="">All units</option>');

@@ -103,7 +103,7 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
           {problems && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
               {noInvite
-                ? `Design v${candidateNumber}: choose who codes (specific coders or a crowd) before deploying it.`
+                ? `Design v${candidateNumber}: choose who codes (expert coders or a crowd) before deploying it.`
                 : `Design v${candidateNumber} has problems: fix them before deploying it.`}{" "}
               <Button variant="link" className="h-auto p-0" onClick={onOpenDesign}>
                 Open the design

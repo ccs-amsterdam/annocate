@@ -52,7 +52,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
       {
         id: "modes",
-        title: "Two modes: specific coders or a crowd",
+        title: "Two modes: expert or crowd coding",
         text: [
           "The first choice for a study is who codes. It decides how coders get in and how units are handed out, and a design can't be deployed without it.",
           "It is at the top of the tree: Who codes.",
@@ -62,13 +62,13 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
       {
         id: "coders",
-        title: "Specific coders",
+        title: "Expert coders",
         text: [
           "For content analysis with trained coders. Each coder has their own units: the units' coder set (the coder_set column) says whose they are.",
           "Coders get a link each, pick their name from one link, or sign in. Their session stays open: they come back to their job, and you can add and redistribute units at any time.",
         ],
         sample: { page: "design", select: "session", view: "form", invite: "coders" },
-        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Specific coders" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Expert coders" },
       },
       {
         id: "crowd",

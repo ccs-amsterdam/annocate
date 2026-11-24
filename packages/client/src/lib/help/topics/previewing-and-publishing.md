@@ -61,7 +61,7 @@ real units:
 - **Mobile**, **Desktop** and **Full Width** switch the screen size;
   **Preset** picks a device.
 - **Reset preview session** starts over as a new coder.
-- **Preview as** chooses which coder you are (with specific coders) and
+- **Preview as** chooses which coder you are (with expert coders) and
   URL parameter values.
 - Redirects are shown, not followed.
 

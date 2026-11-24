@@ -30,7 +30,7 @@ dismisses it.
 
 | Category | Example | Shows |
 | --- | --- | --- |
-| Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 specific coders (`coder_set`, a link each, `invite: { mode: "coders", link: "per_coder" }`) plus 5 overlap units (`test_set`); example answers that disagree on some overlap units |
+| Simple annotation | Sentiment by swiping | a swipe question; 20 units divided over 3 expert coders (`coder_set`, a link each, `invite: { mode: "coders", link: "per_coder" }`) plus 5 overlap units (`test_set`); example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
 | Surveys and experiments | A simple survey | survey question types, labelled branches (one holding an end item that screens out) |
 | Surveys and experiments | A simple experiment | an experiment whose condition chooses one of two versions of a text |

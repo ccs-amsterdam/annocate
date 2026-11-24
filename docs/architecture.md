@@ -150,7 +150,7 @@ columns have a fixed name and meaning; any other column is data:
 
 | Column | Values | Used by |
 | --- | --- | --- |
-| `coder_set` | coder names or email addresses (`anna;bob`: several) | specific coders: who codes the unit |
+| `coder_set` | coder names or email addresses (`anna;bob`: several) | expert coders: who codes the unit |
 | `condition_set` | an experiment's conditions (several per unit) | the experiment that selects units |
 | `part_set` | parts of the study, e.g. `pre`, `post` (several per unit) | a loop shows one part |
 | `test_set` | one of `overlap`, `practice`, `gold`, or empty (a coding unit) | where loops place test units, and their checks |
@@ -160,7 +160,7 @@ Right answers of practice and gold units are in the unit columns
 `q` (§6.2).
 
 One idea, *who is this session for*, decides a session's units: its coder
-(`coder_set`, specific coders) and the condition of the experiment that
+(`coder_set`, expert coders) and the condition of the experiment that
 selects units (`condition_set`). Loops only select (a part) and place units
 within those, and for a crowd divide them. "Three links for my three
 coders, with some overlap" is then one setting and two columns
@@ -186,7 +186,7 @@ session:
     maxCoders: 200                                # optional: the link's sample size
 ```
 
-**Specific coders** (`mode: "coders"`): the values of the units'
+**Expert coders** (`mode: "coders"`): the values of the units'
 `coder_set` are the coders; a session gets its coder's units plus the test
 units. Until the units have a `coder_set` there are no coders: the draft
 saves, deploying can't.
@@ -209,7 +209,7 @@ link for everyone.
 - Whether units are divided among the coders is each loop's (`divide`,
   §6.2). Without it every coder codes all their units.
 
-**Who the coder is** (`$session.coder`): the specific coder's value, the
+**Who the coder is** (`$session.coder`): the expert coder's value, the
 `coderParam` value, else the login's email where sign-in is required. A new
 device for a coder who already has a session is asked first (409
 `coder_has_session`, `coder-identity.md` §4).
@@ -349,7 +349,7 @@ coders. The Units page's split tooling makes `condition_set` or `part_set`
 
 **Deploy checks** (server `shared/sets.ts`, `assignmentChecks`):
 
-- errors: specific coders without `coder_set` values; sign-in coders
+- errors: expert coders without `coder_set` values; sign-in coders
   (`link: "login"`) whose values aren't all email addresses; an experiment
   that selects units without `condition_set`, or with listed conditions it
   has no units for;
@@ -427,7 +427,7 @@ settings of its own: its label is its values (or "Open link"), its
 `maxUses` the deployed design's crowd limit. The researcher can only revoke,
 reopen or renew its secret.
 
-**Sign-in** is required for specific coders with `link: "login"` and a crowd
+**Sign-in** is required for expert coders with `link: "login"` and a crowd
 with `login: true`; elsewhere it is optional and researchers don't see the
 email. Details: `coder-identity.md`.
 

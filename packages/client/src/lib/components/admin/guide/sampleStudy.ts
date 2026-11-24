@@ -125,7 +125,7 @@ const units: UnitResponse[] = [
 
 const now = new Date("2026-01-01T12:00:00Z");
 
-/** The sample's design version, as the server would send it: with a crowd, or specific coders. */
+/** The sample's design version, as the server would send it: with a crowd, or expert coders. */
 export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersion {
   return {
     id: invite === "crowd" ? DESIGN_ID : DESIGN_ID - 1,
@@ -153,7 +153,7 @@ const study: StudyResponse = {
   redirectUrls: {},
 };
 
-// Specific coders: whose units are whose
+// Expert coders: whose units are whose
 const groups: SetGroupResponse[] = [
   {
     name: "coder_set",

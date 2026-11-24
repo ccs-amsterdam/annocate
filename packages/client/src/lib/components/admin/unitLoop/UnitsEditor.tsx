@@ -79,7 +79,7 @@ export function UnitsEditor({
       {sameAs === undefined && (
         <PartEditor groups={groups} part={settings.part} client={client} onChange={(part) => set("part", part)} />
       )}
-      {/* For a crowd; shown for specific coders only to undo a leftover divide (an error there) */}
+      {/* For a crowd; shown for expert coders only to undo a leftover divide (an error there) */}
       {(invite?.mode === "crowd" || settings.divide) && sameAs === undefined && (
         <Divide criteria={settings.divide} agreeable={agreeable} onChange={(divide) => set("divide", divide)} />
       )}

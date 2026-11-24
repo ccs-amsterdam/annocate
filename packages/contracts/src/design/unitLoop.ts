@@ -5,7 +5,7 @@ import { SetNameSchema } from "../sets.js";
 
 // How a unit_loop gets its units (docs/architecture.md §6.2,
 // docs/plans/unit-sets.md). Who the coders are is the study's coder unit
-// assignment's (session.ts `invite`): specific coders by the units'
+// assignment's (session.ts `invite`): expert coders by the units'
 // `coder_set`, or a crowd; an experiment can select units by
 // `condition_set`. A loop works within a coder's units: one part of the
 // study (`part`, a value of `part_set`), the coding units yes or no, where

@@ -9,7 +9,7 @@ import {
 import { roleLabel } from "../admin/setKinds";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md),
-// as the editor shows it: specific coders by the units' `coder_set`, and the
+// as the editor shows it: expert coders by the units' `coder_set`, and the
 // experiment that selects units by `condition_set`, checked against the
 // draft units' columns with a role.
 
@@ -47,7 +47,7 @@ export interface ShareSource {
   inFlow?: boolean;
 }
 
-/** The share's sources: specific coders (`coder_set`), and the experiment that selects units (`condition_set`). */
+/** The share's sources: expert coders (`coder_set`), and the experiment that selects units (`condition_set`). */
 export function shareSources(
   invite: Invite | undefined,
   experiments: readonly { name: string; units?: boolean }[] = [],

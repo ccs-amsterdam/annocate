@@ -19,7 +19,7 @@ describe("the guide's steps", () => {
     expect(sectionIndexOf("Settings")).toBe(0);
   });
 
-  it("show items of the sample study, a design that could be deployed (with a crowd or specific coders)", () => {
+  it("show items of the sample study, a design that could be deployed (with a crowd or expert coders)", () => {
     for (const invite of ["crowd", "coders"] as const) {
       const items = designItems(sampleDesign(invite));
       expect(deployErrors(items)).toEqual([]);

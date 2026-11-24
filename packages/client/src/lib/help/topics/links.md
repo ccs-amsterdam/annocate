@@ -16,10 +16,10 @@ first; it can't be deployed without a choice):
 
 | Who codes            | For                                                                             | Links                                                   |
 | -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **Specific coders**  | coders you know, each with their own units (content analysis, trained coders)   | a link per coder, or one link to pick a name or sign in |
+| **Expert coders**  | coders you know, each with their own units (content analysis, trained coders)   | a link per coder, or one link to pick a name or sign in |
 | **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
 
-**Specific coders**: the units' **coder set** (`coder_set`) names the
+**Expert coders**: the units' **coder set** (`coder_set`) names the
 coder(s) of each unit; **Create coder set…** makes one. Then how they get
 in:
 
@@ -64,7 +64,7 @@ A **coder id** says who the coder is, in the **Coder** column and the
 
 | Invitation                        | Coder id                                  |
 | --------------------------------- | ----------------------------------------- |
-| Specific coders                   | their value in the coder set              |
+| Expert coders                   | their value in the coder set              |
 | One link                          | none (anonymous; a number)                |
 | One link, coder id from URL parameter | the parameter's value                 |
 | One link with sign-in             | their email address                       |
@@ -120,7 +120,7 @@ Coders sign in with the server's login. They can **always** sign in (via
 Whether they **must**, and whether you see their address, depends on the
 invitation:
 
-- **Specific coders, sign in**: their address must be in the coder set
+- **Expert coders, sign in**: their address must be in the coder set
   (others see _"This email address has no access to this study"_);
 - **One link with Coders sign in**: they sign in before starting;
 - **otherwise**: optional, and you don't see their address.

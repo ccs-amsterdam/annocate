@@ -50,7 +50,7 @@ import { UploadUnits } from "./UploadUnits";
 import { SplitIntoSets, type SplitColumn } from "./SplitIntoSets";
 import { TestSetDialog } from "./TestSetDialog";
 import { CoderSetDialog } from "../session/CoderSetDialog";
-import { CodersPanel } from "./CodersPanel";
+import { CodersDialog } from "./CodersDialog";
 import { HelpButton } from "../../../help/HelpButton";
 
 const PAGE_SIZE = 50;
@@ -152,7 +152,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
         onManageCoders={() => setPanel(panel === "coders" ? null : "coders")}
       />
       {panel === "coders" && coderGroup && (
-        <CodersPanel client={client} group={coderGroup} onClose={() => setPanel(null)} />
+        <CodersDialog client={client} groups={groups} onClose={() => setPanel(null)} />
       )}
 
       {(panel === CONDITION_SET || panel === PART_SET) && (
@@ -231,7 +231,7 @@ function SetsBar({
 }) {
   const deleteGroup = useDeleteSetGroupMutation(client);
   const chip = (active: boolean) =>
-    `rounded-full border px-2.5 py-1 text-xs transition-colors ${
+    `shrink-0 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition-colors ${
       active ? "border-primary bg-primary/10 font-semibold text-foreground" : "border-border hover:border-primary/50"
     }`;
 
@@ -247,7 +247,7 @@ function SetsBar({
         </div>
       </div>
       {groups.map((g) => (
-        <div key={g.name} className="flex flex-wrap items-center gap-1.5">
+        <div key={g.name} className="flex items-center gap-1.5">
           <span
             className="flex w-28 items-center gap-1 truncate text-xs font-semibold"
             title={`${g.name}: ${isEmailColumn(g) ? EMAIL_COLUMN_INFO : ROLE_INFO[g.name]}`}
@@ -255,27 +255,30 @@ function SetsBar({
             {isEmailColumn(g) && <Mail className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Email addresses" />}
             <span className="truncate">{ROLE_LABELS[g.name]}</span>
           </span>
-          {g.sets.map((set) => (
-            <button
-              key={set.name}
-              type="button"
-              title={isTestSetType(g.name, set.name) ? TEST_SET_INFO[set.name] : undefined}
-              className={cn(
-                chip(current?.group === g.name && current.set === set.name),
-                g.name === TEST_SET && "border-dashed italic",
-              )}
-              onClick={() => onSelect({ group: g.name, set: set.name })}
-            >
-              {g.name === TEST_SET && <Sparkles className="mr-0.5 inline h-3 w-3 text-ember" aria-hidden="true" />}
-              <span className="font-mono">{set.name}</span>{" "}
-              <span className="text-muted-foreground">{set.unitIds.length}</span>
-            </button>
-          ))}
           {g.name === CODER_SET && (
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={onManageCoders}>
+            <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 text-xs" onClick={onManageCoders}>
               <Users className="h-3.5 w-3.5" /> Coders…
             </Button>
           )}
+          {/* Many values: the row scrolls */}
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto py-0.5">
+            {g.sets.map((set) => (
+              <button
+                key={set.name}
+                type="button"
+                title={isTestSetType(g.name, set.name) ? TEST_SET_INFO[set.name] : undefined}
+                className={cn(
+                  chip(current?.group === g.name && current.set === set.name),
+                  g.name === TEST_SET && "border-dashed italic",
+                )}
+                onClick={() => onSelect({ group: g.name, set: set.name })}
+              >
+                {g.name === TEST_SET && <Sparkles className="mr-0.5 inline h-3 w-3 text-ember" aria-hidden="true" />}
+                <span className="font-mono">{set.name}</span>{" "}
+                <span className="text-muted-foreground">{set.unitIds.length}</span>
+              </button>
+            ))}
+          </div>
           <Button
             size="icon-sm"
             variant="ghost"
@@ -302,7 +305,7 @@ function SetsBar({
 }
 
 const CREATE_INFO: Record<RoleColumn, string> = {
-  coder_set: "Divide the units over named coders (specific coders).",
+  coder_set: "Divide the units over named coders (expert coders).",
   condition_set: "Split the units over an experiment's conditions.",
   part_set: "Split the units into parts of the study, e.g. pre and post.",
   test_set: "Draw overlap, practice and gold units at random.",

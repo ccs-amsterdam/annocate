@@ -105,10 +105,10 @@ describe("validateDesignItems", () => {
     expect(validateDesignItems([loop, random({ units: true })])).toEqual([
       expect.objectContaining({ warning: true, message: expect.stringContaining("comes before experiment 'set'") }),
     ]);
-    // Conditions with their own units only for a crowd: specific coders get their coder set
+    // Conditions with their own units only for a crowd: expert coders get their coder set
     const session = { type: "session", invite: { mode: "coders", link: "per_coder" } };
     expect(messages([session, random({ units: true }), loop])).toEqual([
-      expect.stringContaining("Experiment 'set' selects units by condition, but specific coders"),
+      expect.stringContaining("Experiment 'set' selects units by condition, but expert coders"),
     ]);
     const param = { type: "session", urlParams: [{ name: "set" }] };
     expect(messages([param, random({ units: true })])).toEqual([
@@ -157,7 +157,7 @@ describe("the Session item", () => {
   const session = (extra: object) => ({ type: "session", ...extra });
   const q = questionVar("q1");
 
-  it("specific coders: who codes which units is the units' coder_set (checked when deploying)", () => {
+  it("expert coders: who codes which units is the units' coder_set (checked when deploying)", () => {
     const invite = { mode: "coders", link: "per_coder" };
     expect(DesignWriteSchema.safeParse({ items: [], session: { invite } }).success).toBe(true);
     expect(messages([session({ invite }), unitLoop("loop", [q], "$unit.text")])).toEqual([]);
@@ -207,7 +207,7 @@ describe("the Session item", () => {
     ]);
   });
 
-  it("checks the invitation: specific coders, or a crowd", () => {
+  it("checks the invitation: expert coders, or a crowd", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"])), questionVar("c1")]);
     expect(messages([session({ invite: { mode: "coders", link: "per_coder" } }), loop])).toEqual([]);
     expect(messages([session({ invite: { mode: "crowd", maxCoders: 10 } })])).toEqual([]);

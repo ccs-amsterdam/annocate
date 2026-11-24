@@ -24,7 +24,7 @@ export const ROLE_LABELS: Record<RoleColumn, string> = {
 
 /** What each role column does, for a tooltip. */
 export const ROLE_INFO: Record<RoleColumn, string> = {
-  coder_set: "Who codes which units (specific coders): per unit the coders' names or email addresses.",
+  coder_set: "Who codes which units (expert coders): per unit the coders' names or email addresses.",
   condition_set: "The units of each condition of the experiment that selects units.",
   part_set: "Parts of the study, e.g. pre and post: a unit loop shows one part.",
   test_set: "Test units: overlap (coded by everyone), practice (with feedback) and gold (checked silently).",

@@ -25,7 +25,7 @@ const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
  * Who codes, and how they get in (the Study entry's `invite`,
- * docs/architecture.md §6, docs/plans/unit-sets.md): specific coders (the
+ * docs/architecture.md §6, docs/plans/unit-sets.md): expert coders (the
  * values of the units' `coder_set`, each with their own units; a link each,
  * one link where they pick their name, or one where they sign in with their
  * email address), or one link (for anyone: a survey, an experiment, or a

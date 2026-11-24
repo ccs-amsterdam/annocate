@@ -405,7 +405,7 @@ test("dividing units again keeps the units coders already coded", async ({ page,
   expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);
 });
 
-test("specific coders without a coder set: how coders get in waits for one, and the draft still saves", async ({
+test("expert coders without a coder set: how coders get in waits for one, and the draft still saves", async ({
   page,
   request,
 }) => {
@@ -414,11 +414,11 @@ test("specific coders without a coder set: how coders get in waits for one, and 
   await api(request, "POST", `/study/${study.id}/design`, { items: [loop()] });
   await page.goto(`/research/studies/${study.id}/design`);
   await page.getByRole("button", { name: /^Who codes/ }).click();
-  await page.getByRole("radio", { name: /^Specific coders/ }).click();
+  await page.getByRole("radio", { name: /^Expert coders/ }).click();
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
   await expect(page.getByLabel(/A link per coder/)).toBeDisabled();
   await expect(page.getByRole("button", { name: "Create coder set…" })).toBeVisible();
-  // Saved as a draft without a coder set: after a reload, still specific coders without one
+  // Saved as a draft without a coder set: after a reload, still expert coders without one
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await page.reload();

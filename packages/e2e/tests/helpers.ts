@@ -72,7 +72,7 @@ export async function shortcutStyle(page: Page, name: string): Promise<void> {
 }
 
 /** A new design asks who codes first (the design page shows only that): choose. */
-export async function chooseWhoCodes(page: Page, mode: "Crowd" | "Specific coders" = "Crowd"): Promise<void> {
+export async function chooseWhoCodes(page: Page, mode: "Crowd" | "Expert coders" = "Crowd"): Promise<void> {
   await page.getByRole("radio", { name: new RegExp(`^${mode}`) }).click();
   await expect(page.getByRole("button", { name: /add item/i })).toBeVisible();
 }

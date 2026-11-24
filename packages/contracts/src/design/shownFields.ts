@@ -130,7 +130,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
 
 /**
  * The set columns a design selects units by (docs/plans/unit-sets.md):
- * `coder_set` for specific coders, `condition_set` for an experiment that
+ * `coder_set` for expert coders, `condition_set` for an experiment that
  * selects units, `part_set` for loops that show a part.
  */
 export function designSetColumns(items: readonly unknown[]): RoleColumn[] {

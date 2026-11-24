@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coderCounts, moveUnits, spreadUnits, type CoderWork } from "./moveUnits";
+import { coderCounts, renameCoder, setToCode, spreadUnits, unassignedUnits, type CoderWork } from "./moveUnits";
 
 const set = (name: string, unitIds: number[]) => ({ name, unitIds, ordered: false });
 const work: CoderWork = new Map([
@@ -17,18 +17,25 @@ describe("moving units between coders", () => {
     ]);
   });
 
-  it("moves units the coder didn't code, never sent and last in the list first", () => {
-    const { sets: next, moved } = moveUnits(sets, "a", "b", 2, work);
-    expect(moved).toBe(2);
-    expect(next.find((s) => s.name === "a")!.unitIds).toEqual([1, 2, 3]);
-    expect(next.find((s) => s.name === "b")!.unitIds).toEqual([6, 7, 5, 4]);
-    // Then the unit they were sent; never the coded ones
-    expect(moveUnits(sets, "a", "b", 10, work).moved).toBe(3);
+  it("finds the units no coder has, test units aside", () => {
+    expect(unassignedUnits([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], sets, [11])).toEqual([12, 13]);
   });
 
-  it("skips units the other coder has already", () => {
-    const shared = [set("a", [1, 3, 4]), set("b", [4])];
-    expect(moveUnits(shared, "a", "b", 5, work).sets).toEqual([set("a", [1, 4]), set("b", [4, 3])]);
+  it("gives a coder fewer units: the ones never sent go first, the coded ones stay", () => {
+    const fewer = setToCode(sets, "a", 1, work, []);
+    expect(fewer.find((s) => s.name === "a")!.unitIds).toEqual([1, 2, 3]);
+    // To zero: only the coded units are left
+    expect(setToCode(sets, "a", 0, work, []).find((s) => s.name === "a")!.unitIds).toEqual([1, 2]);
+  });
+
+  it("gives a coder more units from the unassigned ones, as many as there are", () => {
+    const more = setToCode(sets, "b", 5, work, [12, 13, 7]);
+    // 7 is theirs already
+    expect(more.find((s) => s.name === "b")!.unitIds).toEqual([6, 7, 12, 13]);
+  });
+
+  it("renames a coder", () => {
+    expect(renameCoder(sets, "b", "bea").map((s) => s.name)).toEqual(["a", "bea", "c"]);
   });
 
   it("hands out a coder's uncoded units to whoever has the fewest left; the coded ones stay", () => {

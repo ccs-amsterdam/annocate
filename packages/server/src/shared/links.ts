@@ -41,7 +41,7 @@ export function toLinkResponse(row: LinkRow, session: SessionItem | null): LinkR
 
 /**
  * The links a design makes with the deployed coders (`coder_set`, `live`)
- * or the draft's: one per coder (specific coders with a link each), else one.
+ * or the draft's: one per coder (expert coders with a link each), else one.
  */
 async function linksOf(db: Db, studyId: number, items: DesignItem[], live: boolean): Promise<Record<string, string>[]> {
   return linkCombinations(sessionItem(items), await groupSets(db, studyId, CODER_SET, live));
@@ -83,7 +83,7 @@ export async function deployedSession(db: Db, studyId: number): Promise<SessionI
 
 /**
  * Makes the study's links match its deployed design version
- * (docs/architecture.md §7): one link, or with specific coders who get a
+ * (docs/architecture.md §7): one link, or with expert coders who get a
  * link each, a link per coder. Missing links are made (with `secrets` in
  * order, else random ones); links the design no longer makes
  * are retired, never deleted (coders came from them); retired links that

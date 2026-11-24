@@ -4,7 +4,7 @@ import { answers, api, question } from "./helpers";
 
 // Sets and links (docs/architecture.md §6, docs/plans/unit-sets.md): columns
 // of the CSV named like a role column (coder_set, test_set) are that
-// column; with specific coders each coder_set value gets a link, and a coder
+// column; with expert coders each coder_set value gets a link, and a coder
 // gets their units, with the overlap units (test_set).
 
 type Groups = SetGroupResponse[];
@@ -42,7 +42,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
   ]);
   expect(counts(groups, "test_set")).toEqual([["overlap", 1]]);
 
-  // Specific coders: a link each, with the overlap units first
+  // Expert coders: a link each, with the overlap units first
   const codebook = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
     session: { invite: { mode: "coders", link: "per_coder" } },
     items: [

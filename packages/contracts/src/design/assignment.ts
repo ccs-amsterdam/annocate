@@ -4,7 +4,7 @@ import { forEachItem } from "./walk.js";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
 // a session's units are those whose cells hold its values, in every set
-// column a value is linked to (its share). The coder (specific coders,
+// column a value is linked to (its share). The coder (expert coders,
 // `coder_set`) holds for every loop; the condition of the experiment that
 // selects units (`condition_set`) for the loops after it in the flow.
 
@@ -29,7 +29,7 @@ export function selectsUnits(item: unknown): item is { type: "experiment"; name:
 
 /**
  * Per loop (by key, as `unitLoops`), the session values that select its
- * units: the coder (specific coders), and the experiment that selects
+ * units: the coder (expert coders), and the experiment that selects
  * units if it comes before the loop (in the order of the flow).
  */
 export function loopShareColumns(items: readonly unknown[]): Map<string, ShareColumn[]> {

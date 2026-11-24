@@ -88,7 +88,7 @@ tree). It can't be deployed until you choose:
   every coder codes all units. Optionally take a coder id from the URL
   (for a panel), ask coders to sign in, or set a maximum number of
   coders. Whether coders divide the units is set on each unit loop.
-- **Specific coders**: coders you know, each with their own units, named
+- **Expert coders**: coders you know, each with their own units, named
   in the units' coder set (`coder_set`). They get a link each, pick their
   name from one link, or sign in.
 

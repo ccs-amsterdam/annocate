@@ -27,7 +27,7 @@ export interface SessionRules {
   coders: readonly string[];
 }
 
-/** Specific coders who sign in: their units are their address's. */
+/** Expert coders who sign in: their units are their address's. */
 export const emailCoders = (rules: SessionRules) => {
   const invite = runtimeInvite(rules.item);
   return invite.mode === "coders" && invite.link === "login";
@@ -43,7 +43,7 @@ const fits = (value: string, pattern?: string) => !pattern || new RegExp(`^(?:${
  * doesn't start. Where sign-in is required only logins (401
  * `auth_required`), and with email coders only their addresses (403
  * `email_not_allowed`). A link's coder that is no longer one: 403
- * `link_inactive`. The coder (also `$session.coder`): specific coders' value
+ * `link_inactive`. The coder (also `$session.coder`): expert coders' value
  * in `coder_set`; a crowd's URL parameter, or with a required login the email.
  */
 export function sessionValues(

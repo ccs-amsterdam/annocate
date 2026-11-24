@@ -43,7 +43,7 @@ values are the conditions, e.g. 100 sets drawn balanced for a multilevel
 design.
 
 One experiment at most gives its conditions their own units, and only
-with **Crowd (one link)** (specific coders get the units of their coder set).
+with **Crowd (one link)** (expert coders get the units of their coder set).
 
 ## Conditions from a URL parameter
 

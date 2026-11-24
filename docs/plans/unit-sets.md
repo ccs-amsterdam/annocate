@@ -10,7 +10,7 @@ compatibility; examples, tests and docs move to the new format.
 
 | Column          | Values                                         | Per unit | Used by                                   |
 | --------------- | ---------------------------------------------- | -------- | ----------------------------------------- |
-| `coder_set`     | coder names or email addresses (`anna;bob`)    | several  | specific coders only                      |
+| `coder_set`     | coder names or email addresses (`anna;bob`)    | several  | expert coders only                      |
 | `condition_set` | an experiment's conditions                     | several  | the experiment that selects units         |
 | `part_set`      | parts of the study, e.g. `pre`, `post`         | several  | a unit loop shows one part                |
 | `test_set`     | `overlap`, `practice` or `gold` (empty: a coding unit) | one | the loops' placement and checks of test units |
@@ -29,12 +29,12 @@ compatibility; examples, tests and docs move to the new format.
   They are text (alternatives, ranges), and must never be shown to coders
   (validation error, as now). Deploy warnings as now (test units without a
   right answer for a checked question; answers that can never be right).
-- Overlap units: coded by everyone (specific coders) / by every coder in a
+- Overlap units: coded by everyone (expert coders) / by every coder in a
   crowd that divides its units.
 
 ## Study modes (the Study entry's `invite`)
 
-- `coders` — **Specific coders**: who codes which units is `coder_set`
+- `coders` — **Expert coders**: who codes which units is `coder_set`
   (the `column` field goes; its absence-handling from 88bcfdc becomes "the
   units have no coder_set column yet"). Links: a link per coder, pick a
   name, or sign in — as now.
@@ -58,7 +58,7 @@ compatibility; examples, tests and docs move to the new format.
   units, from `condition_set` (its values are then the conditions;
   `options` optional, as now with a linked column). At most one experiment
   selects units (validation).
-- No conditions with specific coders (validation: an experiment that
+- No conditions with expert coders (validation: an experiment that
   selects units needs a crowd).
 
 ## Unit loops
@@ -75,7 +75,7 @@ compatibility; examples, tests and docs move to the new format.
 
 ## Validation and warnings
 
-- Errors: an experiment selecting units with specific coders; more than
+- Errors: an experiment selecting units with expert coders; more than
   one experiment selecting units; answer columns shown to coders; a loop
   part with `divide`… (whatever the current rules become with the new
   names).
@@ -126,12 +126,12 @@ compatibility; examples, tests and docs move to the new format.
   `stratify` don't apply.
 - Every `$unit.answer_*` / `$unit.feedback_*` in a loop is an error, checked
   question or not (they'd be sent with every unit).
-- Deploy errors: specific coders without `coder_set` values; an experiment
+- Deploy errors: expert coders without `coder_set` values; an experiment
   that selects units without `condition_set`, or with listed conditions it
   has no units for. A part no loop shows is a warning only when every loop
   has a part (a loop without one shows them all); "units no coder gets"
   counts, of the units that aren't test units, those without a coder
-  (specific coders), a condition (an experiment that selects units) or a
+  (expert coders), a condition (an experiment that selects units) or a
   part some loop shows (every loop has a part), in one message.
 - `distributeUnits` (coder set dialog): `testUnits` (existing test units,
   left out) and `newTestUnits` (counts per type, drawn now); it returns the
