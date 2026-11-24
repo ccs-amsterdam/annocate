@@ -4,7 +4,7 @@ import type { ReferenceScope } from "@annotinder/contracts";
 import { renderTemplate } from "../codebook/renderTemplate";
 import { RESIZE_SCRIPT, RESIZE_SCRIPT_HASH } from "@annotinder/contracts";
 import { SandboxFrame } from "./SandboxedHtml";
-import { sandboxDocument } from "./sandboxDocument";
+import { FrameLoads, sandboxDocument } from "./sandboxDocument";
 import { TemplateMarkdown } from "./TemplateMarkdown";
 
 describe("SandboxedHtml", () => {
@@ -26,9 +26,21 @@ describe("SandboxedHtml", () => {
     expect(html).toContain('data-field="unit.body"');
     expect(html).not.toContain("<p>Article</p>"); // the frame is made in the browser, with the srcdoc escaped
     const look = { colorScheme: "dark", color: "rgb(1, 2, 3)", fontSize: "14px", primary: "teal", border: "gray" };
-    const frame = renderToStaticMarkup(<SandboxFrame html="<p>Article</p>" look={look} title="t" />);
+    const frame = renderToStaticMarkup(<SandboxFrame srcDoc={sandboxDocument("<p>Article</p>", look)} title="t" />);
     expect(frame).toContain('sandbox="allow-scripts"');
     expect(frame).not.toContain("<p>Article</p>");
     expect(sandboxDocument("<p>x</p>", look)).toMatch(/color-scheme:dark.*color:rgb\(1, 2, 3\).*<p>x<\/p>/);
+  });
+
+  it("tells a frame that left its document (a link, a meta refresh) from one given another document", () => {
+    const loads = new FrameLoads();
+    loads.show("light");
+    loads.show("light");
+    expect(loads.load()).toBe(false);
+    // Another look: the frame loads its new document
+    loads.show("dark");
+    expect(loads.load()).toBe(false);
+    // A load nobody asked for: the HTML sent the frame elsewhere
+    expect(loads.load()).toBe(true);
   });
 });

@@ -1,26 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { resolveLayout, type AnyVariableType, type DisplayEntry, type ResolvedLayout } from "@annotinder/contracts";
 import { useKeyMapping } from "../keyboard/hooks";
-import { useDisplay } from "./context";
+import { useDisplay, type DisplayState } from "./context";
 
 /** Wider than a phone: the question column has more room. */
 const WIDE_PX = 600;
 
+export type WidthClass = DisplayState["width"];
+
+/** The width class of a width in px. */
+export const widthClass = (px: number): WidthClass => (px >= WIDE_PX ? "wide" : "narrow");
+
 /**
  * The width class of the coding area (an element: a phone-sized preview on
- * a desktop is narrow), following resizes. Returns it and a ref callback for
- * the element (which may appear later, after loading).
+ * a desktop is narrow), following resizes; null until the element is there
+ * and measured (it may appear later, after loading). Returns it and a ref
+ * callback for the element.
  */
-export function useWidthClass(): ["narrow" | "wide", (el: HTMLElement | null) => void] {
+export function useWidthClass(): [WidthClass | null, (el: HTMLElement | null) => void] {
   const [el, setEl] = useState<HTMLElement | null>(null);
-  const [width, setWidth] = useState<"narrow" | "wide">("narrow");
+  const [width, setWidth] = useState<WidthClass | null>(null);
+  // Measured as the element appears: before paint, and before anything is recorded (useDisplayLog)
+  const measured = useCallback((element: HTMLElement | null) => {
+    setEl(element);
+    if (element) setWidth(widthClass(element.getBoundingClientRect().width));
+  }, []);
   useEffect(() => {
     if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width >= WIDE_PX ? "wide" : "narrow"));
+    const observer = new ResizeObserver(([entry]) => setWidth(widthClass(entry.contentRect.width)));
     observer.observe(el);
     return () => observer.disconnect();
   }, [el]);
-  return [width, setEl];
+  return [width, measured];
 }
 
 /**

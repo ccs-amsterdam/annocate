@@ -7,7 +7,7 @@ import { useEffect, useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
 
-const STORAGE_KEY = "annocate_theme";
+const STORAGE_KEY = "annotinder:theme";
 const listeners = new Set<() => void>();
 let current: Theme | null = null;
 

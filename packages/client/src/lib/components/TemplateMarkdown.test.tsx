@@ -24,6 +24,16 @@ describe("TemplateMarkdown blocks", () => {
     expect(html.match(/data-field="unit.headline"/g)).toHaveLength(3);
   });
 
+  it("opens links in a new tab, without a way back to the study's page: in the text and in markdown values", async () => {
+    const s: ReferenceScope = { $unit: { body: "see [the source](https://example.org/a)" }, $var: {} };
+    const rendered = await renderTemplate("[Codebook](https://example.org/codebook)\n\n$unit.body::markdown", s);
+    const html = renderToStaticMarkup(<TemplateMarkdown rendered={rendered} />);
+    expect(html).toContain(
+      '<a href="https://example.org/codebook" target="_blank" rel="noopener noreferrer">Codebook</a>',
+    );
+    expect(html).toContain('<a href="https://example.org/a" target="_blank" rel="noopener noreferrer">the source</a>');
+  });
+
   it("renders the blocks of a snippet", async () => {
     const snippets = { banner: "::: style color: blue; font-size: 90%\n> **Experiment group.** A banner.\n:::" };
     const html = renderToStaticMarkup(

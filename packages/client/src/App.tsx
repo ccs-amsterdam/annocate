@@ -76,7 +76,7 @@ function useResearcherState(): Researcher {
 const ResearcherContext = createContext<Researcher | null>(null);
 const useResearcher = () => useContext(ResearcherContext)!;
 
-/** The app's header (not on coding screens): home, the two sections, the account. */
+/** The app's header (not on the coding screen): home, the two sections, the account. */
 function AppHeader() {
   const researcher = useResearcher();
   // The active section: the wood accent underneath (one of the few places wood is used)
@@ -163,12 +163,17 @@ function WithHeader({ children }: { children: ReactNode }) {
 function Root() {
   // The researcher pages follow the theme too (the coding screen applies it itself).
   useTheme();
+  return <Outlet />;
+}
+
+/**
+ * The pages with the app's header (all but the coding screen): who is using
+ * the app as a researcher is asked here, once for all of them. A coder on a
+ * study's link is never asked.
+ */
+function ResearcherPages({ children = <Outlet /> }: { children?: ReactNode }) {
   const researcher = useResearcherState();
-  return (
-    <ResearcherContext.Provider value={researcher}>
-      <Outlet />
-    </ResearcherContext.Provider>
-  );
+  return <ResearcherContext.Provider value={researcher}>{children}</ResearcherContext.Provider>;
 }
 
 /** Asks before leaving the editor with unsaved edits (the router's blocker; the editor shows its dialog). */
@@ -266,9 +271,31 @@ type StringSearch = Record<string, string>;
 const stringSearch = (search: Record<string, unknown>): StringSearch =>
   Object.fromEntries(Object.entries(search).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
 
+/** An unknown address: shown by the nearest route, which may be the root (no researcher asked for yet). */
+function NotFound() {
+  const page = (
+    <WithHeader>
+      <div className="mx-auto max-w-md p-8 text-center">
+        <h1 className="font-heading text-xl font-bold">Page not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          <Link to="/" className="underline">
+            Go to the start page
+          </Link>
+        </p>
+      </div>
+    </WithHeader>
+  );
+  return useContext(ResearcherContext) ? page : <ResearcherPages>{page}</ResearcherPages>;
+}
+
 const rootRoute = createRootRoute({ component: Root });
-const welcomeRoute = createRoute({
+const researcherPagesRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: "researcher-pages",
+  component: ResearcherPages,
+});
+const welcomeRoute = createRoute({
+  getParentRoute: () => researcherPagesRoute,
   path: "/",
   component: () => (
     <WithHeader>
@@ -276,7 +303,11 @@ const welcomeRoute = createRoute({
     </WithHeader>
   ),
 });
-const researchRoute = createRoute({ getParentRoute: () => rootRoute, path: "/research", component: ResearchLayout });
+const researchRoute = createRoute({
+  getParentRoute: () => researcherPagesRoute,
+  path: "/research",
+  component: ResearchLayout,
+});
 const researchIndexRoute = createRoute({ getParentRoute: () => researchRoute, path: "/" });
 const serverAdminRoute = createRoute({ getParentRoute: () => researchRoute, path: "/admin" });
 const studyRoute = createRoute({
@@ -297,7 +328,7 @@ const studyTabRoute = createRoute({
     typeof search.version === "string" ? { version: search.version } : {},
 });
 const codeHomeRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => researcherPagesRoute,
   path: "/code",
   component: function CodeHome() {
     return (
@@ -331,9 +362,11 @@ const codeRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  welcomeRoute,
-  researchRoute.addChildren([researchIndexRoute, serverAdminRoute, studyRoute, studyTabRoute]),
-  codeHomeRoute,
+  researcherPagesRoute.addChildren([
+    welcomeRoute,
+    researchRoute.addChildren([researchIndexRoute, serverAdminRoute, studyRoute, studyTabRoute]),
+    codeHomeRoute,
+  ]),
   codeRoute,
 ]);
 
@@ -345,18 +378,7 @@ const router = createRouter({
     const query = new URLSearchParams(stringSearch(search)).toString();
     return query ? `?${query}` : "";
   },
-  defaultNotFoundComponent: () => (
-    <WithHeader>
-      <div className="mx-auto max-w-md p-8 text-center">
-        <h1 className="font-heading text-xl font-bold">Page not found</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Link to="/" className="underline">
-            Go to the start page
-          </Link>
-        </p>
-      </div>
-    </WithHeader>
-  ),
+  defaultNotFoundComponent: NotFound,
 });
 
 declare module "@tanstack/react-router" {

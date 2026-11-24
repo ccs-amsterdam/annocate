@@ -4,6 +4,13 @@ import { CLIENT_HEADERS } from "../api/httpCoderApi";
 import { CoderSettingsContext } from "./coderSettings";
 import { useTheme } from "./theme";
 
+/** Where each setting is kept in this browser (as all the app's keys: `annotinder:<name>`). */
+const STORAGE_KEYS = {
+  showShortcuts: "annotinder:show-shortcuts",
+  keyMapping: "annotinder:key-mapping",
+  answerKeys: "annotinder:answer-keys",
+} as const;
+
 /** The browser's storage can be unavailable (private windows, blocked site data): settings then last the visit. */
 function read(key: string): string | null {
   try {
@@ -35,13 +42,13 @@ export function CoderSettingsProvider({ children, accountUrl }: { children: Reac
   // The badges: shown by default on devices with a keyboard (not on touch-only devices)
   const [showShortcuts, setShowShortcutsState] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
-    const saved = read("annocate_show_shortcuts");
+    const saved = read(STORAGE_KEYS.showShortcuts);
     if (saved !== null) return saved !== "false";
     return !window.matchMedia?.("(hover: none) and (pointer: coarse)").matches;
   });
-  const [keyMapping, setKeyMappingState] = useState<string>(() => read("annotinder_key_mapping") ?? "numbers");
+  const [keyMapping, setKeyMappingState] = useState<string>(() => read(STORAGE_KEYS.keyMapping) ?? "numbers");
   // Answer shortcuts: off until the coder turns them on (stray keys don't answer)
-  const [answerKeys, setAnswerKeysState] = useState<boolean>(() => read("annotinder_answer_keys") === "true");
+  const [answerKeys, setAnswerKeysState] = useState<boolean>(() => read(STORAGE_KEYS.answerKeys) === "true");
 
   // Logged in: the account's settings, and later changes saved there too (no login: 401, the browser's only)
   const [account, setAccount] = useState(false);
@@ -84,17 +91,17 @@ export function CoderSettingsProvider({ children, accountUrl }: { children: Reac
 
   function setShowShortcuts(s: boolean) {
     setShowShortcutsState(s);
-    write("annocate_show_shortcuts", String(s));
+    write(STORAGE_KEYS.showShortcuts, String(s));
     save({ showShortcuts: s });
   }
   function setAnswerKeys(on: boolean) {
     setAnswerKeysState(on);
-    write("annotinder_answer_keys", String(on));
+    write(STORAGE_KEYS.answerKeys, String(on));
     save({ answerKeys: on });
   }
   function setKeyMapping(id: string) {
     setKeyMappingState(id);
-    write("annotinder_key_mapping", id);
+    write(STORAGE_KEYS.keyMapping, id);
     save({ keyMapping: id as UserSettings["keyMapping"] });
   }
   function setThemeAndSave(next: "light" | "dark") {

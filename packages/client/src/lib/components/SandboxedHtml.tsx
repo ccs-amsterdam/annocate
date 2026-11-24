@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { sandboxDocument, type FrameLook } from "./sandboxDocument";
+import { FrameLoads, sandboxDocument, type FrameLook } from "./sandboxDocument";
 
 // `::html` values in a sandboxed frame: see sandboxDocument.ts for its policy.
+// The policy can't keep the HTML from sending the frame elsewhere (a link, a
+// meta refresh), so a frame that leaves its document is taken away (`FrameLoads`).
 
 /** Reads the app's look at an element (its colours follow light or dark mode). */
 function lookAt(element: HTMLElement): FrameLook {
@@ -48,30 +50,35 @@ export function SandboxedHtml({ html, title = "HTML content" }: { html: string; 
     return () => window.removeEventListener("message", onMessage);
   }, []);
   return (
-    <div ref={box}>{look && <SandboxFrame ref={frame} html={html} look={look} title={title} height={height} />}</div>
+    <div ref={box}>
+      {look && <SandboxFrame ref={frame} srcDoc={sandboxDocument(html, look)} title={title} height={height} />}
+    </div>
   );
 }
 
-/** The frame itself (sandboxed: scripts only, no same origin). */
+/** The frame itself (sandboxed: scripts only, no same origin), showing a `sandboxDocument` until it leaves it. */
 export function SandboxFrame({
   ref,
-  html,
-  look,
+  srcDoc,
   title,
   height,
 }: {
   ref?: React.Ref<HTMLIFrameElement>;
-  html: string;
-  look?: FrameLook;
+  srcDoc: string;
   title: string;
   height?: number;
 }) {
+  const [loads] = useState(() => new FrameLoads());
+  const [left, setLeft] = useState(false);
+  useLayoutEffect(() => loads.show(srcDoc), [loads, srcDoc]);
+  if (left) return null;
   return (
     <iframe
       ref={ref}
       title={title}
       sandbox="allow-scripts"
-      srcDoc={sandboxDocument(html, look)}
+      srcDoc={srcDoc}
+      onLoad={() => setLeft(loads.load())}
       className="block w-full border-0"
       style={{ height: height || undefined }}
     />

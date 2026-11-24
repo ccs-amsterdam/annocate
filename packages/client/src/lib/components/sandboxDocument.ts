@@ -57,3 +57,26 @@ export function sandboxDocument(html: string, look?: FrameLook): string {
     `<style>${defaultStyle(look)}</style></head><body>${html}<script>${RESIZE_SCRIPT}</script></body></html>`
   );
 }
+
+/**
+ * Tells a frame's loads of its own documents from the frame going elsewhere:
+ * each document shown loads once, so one load more means it left.
+ */
+export class FrameLoads {
+  private shown: string | null = null;
+  private documents = 0;
+  private loads = 0;
+
+  /** The document the frame is given now. */
+  show(srcDoc: string): void {
+    if (srcDoc === this.shown) return;
+    this.shown = srcDoc;
+    this.documents += 1;
+  }
+
+  /** A `load` of the frame; true when it is not of a document it was given. */
+  load(): boolean {
+    this.loads += 1;
+    return this.loads > this.documents;
+  }
+}

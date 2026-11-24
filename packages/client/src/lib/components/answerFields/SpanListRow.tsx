@@ -46,7 +46,7 @@ export function SpanListRow({
           &ldquo;{truncateSpanText(summary, menu ? 50 : 55)}&rdquo;
         </span>
         {span.slices.length > 1 && (
-          <span className="py-0.2 shrink-0 rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground">
+          <span className="shrink-0 rounded bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground">
             {span.slices.length} frags
           </span>
         )}

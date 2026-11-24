@@ -26,6 +26,7 @@ export function TemplateMarkdown({
   marks?: Marks;
 }) {
   const allComponents = {
+    ...LINKS,
     ...components,
     "template-value": ({ index, block }: { index?: string; block?: string }) => {
       const value = rendered.values[Number(index)];
@@ -46,6 +47,15 @@ export function TemplateMarkdown({
     </ReactMarkdown>
   );
 }
+
+/** Links open in a new tab (the coder stays in the study), without a way back to this page for the site opened. */
+const LINKS: Components = {
+  a: ({ href, title, children }) => (
+    <a href={href} title={title} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+};
 
 /** Inline markdown values can't contain paragraphs (they're inside one). */
 const INLINE_MARKDOWN: Components = { p: ({ children }) => <>{children}</> };
@@ -99,7 +109,7 @@ function TemplateValueView({
       return wrap(
         <ReactMarkdown
           remarkPlugins={[remarkGfm, [remarkTemplateValues, []]]}
-          components={{ ...styleComponents(styles), ...(block ? {} : INLINE_MARKDOWN) }}
+          components={{ ...LINKS, ...styleComponents(styles), ...(block ? {} : INLINE_MARKDOWN) }}
         >
           {value.text}
         </ReactMarkdown>,

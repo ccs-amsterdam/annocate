@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { RotateCcw } from "lucide-react";
 
-const STORAGE_KEY = "annocate_docked_pane_height";
+const STORAGE_KEY = "annotinder:docked-pane-height";
 const MIN_HEIGHT = 100;
 /** Room left below the content, so small changes don't flash a scrollbar. */
 const SLACK = 8;

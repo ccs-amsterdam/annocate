@@ -31,6 +31,7 @@ import {
   useLeaveWarning,
   useNavDirection,
   usePracticeFlash,
+  useUnitSlide,
 } from "./studyRunner/hooks";
 
 export interface StudyRunnerProps {
@@ -191,18 +192,9 @@ function CodingScreen({
 
   // A new unit slides in from the side the coder moved to
   const currentUnitId = snapshot.currentUnit?.id ?? snapshot.navigation.currentUnitIndex ?? "none";
-  const prevUnitIdRef = useRef<number | string | null>(currentUnitId);
+  const unitSlide = useUnitSlide(currentUnitId, navDirection);
   /** The unit's content: relation arrows are positioned against it. */
   const unitContentRef = useRef<HTMLDivElement>(null);
-  const [unitAnimationKey, setUnitAnimationKey] = useState<string>(() => `unit-${currentUnitId}`);
-  const [unitSlideClass, setUnitSlideClass] = useState<string>("");
-  useEffect(() => {
-    if (prevUnitIdRef.current !== currentUnitId) {
-      prevUnitIdRef.current = currentUnitId;
-      setUnitAnimationKey(`unit-${currentUnitId}-${Date.now()}`);
-      setUnitSlideClass(navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left");
-    }
-  }, [currentUnitId, navDirection]);
 
   if (snapshot.phase === "loading") return <LoadingScreen />;
 
@@ -383,10 +375,10 @@ function CodingScreen({
                         className="min-h-[100px] flex-1 subtle-scrollbar [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto p-3 sm:p-5"
                       >
                         <div
-                          key={unitAnimationKey}
+                          key={unitSlide.key}
                           ref={unitContentRef}
-                          className={`relative mx-auto max-w-2xl ${relationVariable ? "pt-12" : ""} ${unitSlideClass}`}
-                          onAnimationEnd={() => setUnitSlideClass("")}
+                          className={`relative mx-auto max-w-2xl ${relationVariable ? "pt-12" : ""} ${unitSlide.slideClass}`}
+                          onAnimationEnd={unitSlide.onAnimationEnd}
                         >
                           {relationVariable && <RelationArrows containerRef={unitContentRef} />}
                           {swipeVariable ? (

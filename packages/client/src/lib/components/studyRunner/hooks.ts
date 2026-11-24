@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { DisplayEntry } from "@annotinder/contracts";
 import type { CoderApi } from "../../api/httpCoderApi";
 import { useCoderSettings } from "../../context/coderSettings";
 import type { DisplayState } from "../../display/context";
-import { useDisplayLog, useWidthClass } from "../../display/hooks";
+import { useDisplayLog, useWidthClass, type WidthClass } from "../../display/hooks";
 import type { StudyManagerNavigation, StudyManagerSnapshot } from "../../studyManager/types";
 
 export type NavDirection = "next" | "previous";
@@ -100,7 +101,8 @@ export function useCodingDisplay(
   const display: DisplayState = {
     layouts: snapshot.display.layouts ?? "fixed",
     theme: snapshot.display.theme ?? "coder",
-    width,
+    // Narrow until measured (before the first paint)
+    width: width ?? "narrow",
   };
   const { lockTheme, keyMapping, theme: shownTheme } = useCoderSettings();
   useEffect(() => {
@@ -110,13 +112,59 @@ export function useCodingDisplay(
   const loaded = snapshot.phase !== "loading" && snapshot.phase !== "error";
   useDisplayLog(
     coderApi.postDisplay ? (entry) => coderApi.postDisplay!(entry) : undefined,
-    loaded
-      ? {
-          keys: keyMapping === "numpad" && display.layouts !== "responsive" ? "numbers" : keyMapping,
-          ...(display.layouts === "responsive" ? { width } : {}),
-          ...(display.theme === "coder" ? { theme: shownTheme } : {}),
-        }
-      : null,
+    loaded ? displayEntry(display, width, keyMapping, shownTheme) : null,
   );
   return [display, screen];
+}
+
+/**
+ * The display to record: the keys (the numpad only where it works), the
+ * width where layouts follow it, and the theme where the coder chooses it.
+ * Null while a width to record isn't measured yet (so a wide screen is never
+ * recorded as narrow first).
+ */
+export function displayEntry(
+  display: Pick<DisplayState, "layouts" | "theme">,
+  width: WidthClass | null,
+  keyMapping: string,
+  shownTheme: "light" | "dark",
+): DisplayEntry | null {
+  const responsive = display.layouts === "responsive";
+  if (responsive && width === null) return null;
+  return {
+    keys: keyMapping === "numpad" && !responsive ? "numbers" : keyMapping,
+    ...(responsive && width ? { width } : {}),
+    ...(display.theme === "coder" ? { theme: shownTheme } : {}),
+  };
+}
+
+/** A unit on screen and the slide it came in with (`""`: none, or over). */
+export interface UnitSlide {
+  unitId: number | string;
+  slideClass: string;
+}
+
+/** The slide for the unit on screen: kept for the same unit; a new unit comes in from the side the coder moved to. */
+export function unitSlide(shown: UnitSlide, unitId: number | string, direction: NavDirection): UnitSlide {
+  if (shown.unitId === unitId) return shown;
+  return { unitId, slideClass: direction === "next" ? "animate-slide-in-right" : "animate-slide-in-left" };
+}
+
+/**
+ * A new unit slides in from the side the coder moved to. Returns the props
+ * of the unit's content: a key per unit (decided while rendering, so the
+ * content mounts once per unit) and the slide's class until it has run.
+ */
+export function useUnitSlide(
+  unitId: number | string,
+  direction: NavDirection,
+): { key: string; slideClass: string; onAnimationEnd: () => void } {
+  const [shown, setShown] = useState<UnitSlide>({ unitId, slideClass: "" });
+  const current = unitSlide(shown, unitId, direction);
+  if (current !== shown) setShown(current);
+  return {
+    key: `unit-${current.unitId}`,
+    slideClass: current.slideClass,
+    onAnimationEnd: () => setShown((s) => (s.slideClass ? { ...s, slideClass: "" } : s)),
+  };
 }

@@ -54,14 +54,18 @@ export function RelationArrows({ containerRef }: { containerRef: RefObject<HTMLE
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [pointer, setPointer] = useState<Point | null>(null);
 
+  // What the arrows are drawn from: pointing at one (`highlighted`) changes how it looks, not where it is
+  const relations = ctx?.relations;
+  const options = ctx?.options;
+  const start = ctx?.start ?? null;
   const measure = useCallback(() => {
     const container = containerRef.current;
-    if (!ctx || !container) return;
+    if (!relations || !options || !container) return;
     const box = container.getBoundingClientRect();
     const pairs = new Map<string, number>();
     const ends = new Map<string, number>();
     const drawn: DrawnArrow[] = [];
-    for (const r of ctx.relations) {
+    for (const r of relations) {
       const from = spanRects(container, box, r.fromId);
       const to = spanRects(container, box, r.toId);
       if (from.length === 0 || to.length === 0) continue;
@@ -85,19 +89,17 @@ export function RelationArrows({ containerRef }: { containerRef: RefObject<HTMLE
         id: r.id,
         path,
         head,
-        label: { ...mid, text: optionLabelOf(ctx.options, r.value) },
-        color: optionColor(ctx.options, r.value) ?? "var(--foreground)",
+        label: { ...mid, text: optionLabelOf(options, r.value) },
+        color: optionColor(options, r.value) ?? "var(--foreground)",
         ends: [r.fromId, r.toId],
       });
     }
     setArrows(drawn);
-    const start = ctx.start ? spanRects(container, box, ctx.start) : [];
-    setStartPoint(
-      start.length > 0 ? { x: start[start.length - 1].right - 3, y: start[start.length - 1].top + 2 } : null,
-    );
-  }, [ctx, containerRef]);
+    const from = start ? spanRects(container, box, start).at(-1) : undefined;
+    setStartPoint(from ? { x: from.right - 3, y: from.top + 2 } : null);
+  }, [relations, options, start, containerRef]);
 
-  // Measured after every render that can move spans (the relations, the start), before paint
+  // Measured when the relations or the start change, before paint
   useLayoutEffect(() => measure(), [measure]);
 
   // A resize of the content (the window, the font, the answer pane) moves the text; so can fonts loading
@@ -113,7 +115,7 @@ export function RelationArrows({ containerRef }: { containerRef: RefObject<HTMLE
   // While a relation is started: an arrow follows the pointer
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !ctx?.start) {
+    if (!container || !start) {
       setPointer(null);
       return;
     }
@@ -124,7 +126,7 @@ export function RelationArrows({ containerRef }: { containerRef: RefObject<HTMLE
     };
     container.addEventListener("pointermove", onMove);
     return () => container.removeEventListener("pointermove", onMove);
-  }, [containerRef, ctx?.start]);
+  }, [containerRef, start]);
 
   if (!ctx) return null;
   const highlighted = ctx.highlighted;
