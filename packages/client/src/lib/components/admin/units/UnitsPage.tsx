@@ -130,7 +130,11 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
             )}
           </div>
         </div>
-        <Button onClick={() => setPanel(panel === "upload" ? null : "upload")} className="gap-1.5">
+        <Button
+          data-guide="upload-units"
+          onClick={() => setPanel(panel === "upload" ? null : "upload")}
+          className="gap-1.5"
+        >
           <Upload className="h-4 w-4" />
           Upload CSV
         </Button>

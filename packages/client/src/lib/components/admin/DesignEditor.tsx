@@ -59,6 +59,10 @@ interface DesignEditorProps {
   restore?: DesignBackup | null;
   /** Called once the editor started from `restore` (it is used once). */
   onRestored?: () => void;
+  /** Tree, form and preview side by side, whatever the window's width (the guide's sample). */
+  wideLayout?: boolean;
+  /** The item selected at the start, by name (`session`: the Study entry, on who codes). */
+  initialSelect?: string;
 }
 
 /** Wide enough for the tree, the form and the preview side by side. */
@@ -91,6 +95,8 @@ export function DesignEditor({
   onReload,
   restore,
   onRestored,
+  wideLayout = false,
+  initialSelect,
 }: DesignEditorProps) {
   const readOnly = mode === "history";
   const draft = useDesignDraft({ client, version, readOnly, onSaved, restore });
@@ -98,8 +104,10 @@ export function DesignEditor({
   const deployment = useDeploymentQuery(client).data ?? null;
   const deployed = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data ?? null;
   const deployedValues = useMemo(() => deployedOptionValues(deployed ? designItems(deployed) : null), [deployed]);
-  const wide = useMediaQuery(WIDE_SCREEN);
-  const narrow = useMediaQuery(NARROW_SCREEN);
+  const wideScreen = useMediaQuery(WIDE_SCREEN);
+  const narrowScreen = useMediaQuery(NARROW_SCREEN);
+  const wide = wideLayout || wideScreen;
+  const narrow = !wideLayout && narrowScreen;
   // On a narrow screen: the selected item, else the tree (Back deselects)
   const showItemOnly = narrow && draft.selectedItem !== null;
   const [view, setView] = useState<EditorView>("tree");
@@ -152,6 +160,17 @@ export function DesignEditor({
     draft.select(keyOf(item) ?? itemTitle(item));
     setView("tree");
   }
+
+  useEffect(() => {
+    if (initialSelect === undefined) return;
+    const item =
+      initialSelect === "session"
+        ? (draft.items.find((i) => i.type === "session") ?? null)
+        : findItem(draft.items, initialSelect);
+    if (item) draft.select(keyOf(item) ?? itemTitle(item));
+    // Only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const restored = Boolean(restore);
   useEffect(() => {

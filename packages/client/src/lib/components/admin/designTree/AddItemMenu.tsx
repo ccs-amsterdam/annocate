@@ -115,6 +115,7 @@ export function AddItemMenu({
       ) : (
         <button
           type="button"
+          data-guide="add-item"
           onClick={toggle}
           className="flex cursor-pointer items-center gap-1.5 rounded px-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >

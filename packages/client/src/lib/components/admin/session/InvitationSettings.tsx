@@ -18,6 +18,7 @@ import { issuesAt } from "../issues";
 import { CoderSetDialog } from "./CoderSetDialog";
 import { WhoCodesCards } from "./WhoCodesCards";
 import { firstInvite } from "./whoCodes";
+import { openGuide } from "../guide/guideStore";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs font-normal";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
@@ -56,7 +57,7 @@ export function InvitationSettings({
 
   return (
     <div className="flex flex-col gap-4">
-      <WhoCodesCards value={invite?.mode ?? null} onChoose={setMode} />
+      <WhoCodesCards value={invite?.mode ?? null} onChoose={setMode} learnMore={() => openGuide("who-codes")} />
       {invite?.mode === "coders" ? (
         <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
       ) : invite?.mode === "crowd" ? (

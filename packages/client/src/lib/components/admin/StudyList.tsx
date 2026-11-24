@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ExamplesDialog } from "./ExamplesDialog";
 import { ImportStudyDialog } from "./ImportStudyDialog";
 import { HelpButton } from "../../help/HelpButton";
+import { requestGuidePrompt } from "./guide/guideStore";
 
 interface StudyListProps {
   client: ResearcherApi;
@@ -47,6 +48,13 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
   const [showImport, setShowImport] = useState(false);
   const [newStudyName, setNewStudyName] = useState("");
   const [studyToDelete, setStudyToDelete] = useState<StudyResponse | null>(null);
+
+  // A new study opens; the researcher's first one asks whether to take the guide
+  const firstStudy = (studiesQuery.data ?? []).length === 0;
+  const openNew = (id: number, open?: "design") => {
+    if (firstStudy) requestGuidePrompt();
+    onSelectStudy(id, open);
+  };
 
   if (studiesQuery.isLoading) {
     return (
@@ -80,7 +88,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         onSuccess: (created) => {
           setNewStudyName("");
           setShowCreateModal(false);
-          onSelectStudy(created.id, "design");
+          openNew(created.id, "design");
         },
       },
     );
@@ -212,7 +220,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           onClose={() => setShowExamples(false)}
           onCreated={(study) => {
             setShowExamples(false);
-            onSelectStudy(study.id);
+            openNew(study.id);
           }}
         />
       )}
@@ -223,7 +231,7 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
           onClose={() => setShowImport(false)}
           onCreated={(study) => {
             setShowImport(false);
-            onSelectStudy(study.id, "design");
+            openNew(study.id, "design");
           }}
         />
       )}

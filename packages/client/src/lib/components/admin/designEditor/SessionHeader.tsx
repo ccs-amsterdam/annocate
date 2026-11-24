@@ -52,6 +52,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
       </div>
       <div className="flex flex-wrap items-center gap-1 px-1">
         <HeaderButton
+          guide="who-codes"
           icon={invite?.mode === "coders" ? Users : Globe}
           label="Who codes"
           summary={inviteSummary(invite)}
@@ -89,6 +90,7 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
 
 /** A part of the session: its name and a summary; opens its form. */
 function HeaderButton({
+  guide,
   icon: Icon,
   label,
   summary,
@@ -97,6 +99,8 @@ function HeaderButton({
   title,
   onClick,
 }: {
+  /** Its name for the guide's "Show me". */
+  guide?: string;
   icon: LucideIcon;
   label: string;
   summary: string;
@@ -108,6 +112,7 @@ function HeaderButton({
   return (
     <button
       type="button"
+      data-guide={guide}
       onClick={onClick}
       title={title}
       className={cn(

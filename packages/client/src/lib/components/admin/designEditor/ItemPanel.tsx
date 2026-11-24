@@ -35,6 +35,7 @@ import type { UnitFieldWarning } from "../../../design/unitFieldRefs";
 import { savedLoop, shownByLayouts } from "../../../design/loopLayouts";
 import { WhoCodesCards } from "../session/WhoCodesCards";
 import { firstInvite } from "../session/whoCodes";
+import { openGuide } from "../guide/guideStore";
 
 type ItemPane = "edit" | "json" | "preview";
 
@@ -46,7 +47,6 @@ export function ItemPanel({
   warnings,
   previewBeside = false,
   onBack,
-  onLearnMore,
 }: {
   client: ResearcherApi;
   draft: DesignDraft;
@@ -56,8 +56,6 @@ export function ItemPanel({
   previewBeside?: boolean;
   /** Narrow screens: back to the tree (the panes are shown one at a time). */
   onBack?: () => void;
-  /** Opens the guide on who codes. */
-  onLearnMore?: () => void;
 }) {
   const [chosenPane, setPane] = useState<ItemPane>("edit");
   const [sessionPart] = useSessionTab();
@@ -144,7 +142,7 @@ export function ItemPanel({
           </div>
         </div>
       ) : !readOnly && sessionItem(draft.items) && !inviteOf(sessionItem(draft.items)) ? (
-        <ChooseWhoCodes draft={draft} onLearnMore={onLearnMore} />
+        <ChooseWhoCodes draft={draft} />
       ) : (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
           Select an item in the tree to edit properties or preview.
@@ -158,7 +156,7 @@ export function ItemPanel({
  * Before who codes is chosen (needed to deploy, contracts `deployErrors`):
  * the two ways, explained; choosing one opens its form.
  */
-function ChooseWhoCodes({ draft, onLearnMore }: { draft: DesignDraft; onLearnMore?: () => void }) {
+function ChooseWhoCodes({ draft }: { draft: DesignDraft }) {
   const [, setTab] = useSessionTab();
   const session = sessionItem(draft.items)!;
   const key = getItemKey(session as DesignItem);
@@ -173,7 +171,7 @@ function ChooseWhoCodes({ draft, onLearnMore }: { draft: DesignDraft; onLearnMor
       <WhoCodesCards
         value={null}
         long
-        learnMore={onLearnMore}
+        learnMore={() => openGuide("who-codes")}
         onChoose={(mode) => {
           draft.update(key, { ...session, invite: firstInvite(mode) });
           setTab("invite");

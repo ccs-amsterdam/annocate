@@ -14,6 +14,10 @@ import { setResultsView } from "./results/resultsView";
 import { LinksPanel } from "./LinksPanel";
 import { StudyOverview, StudySettingsPage } from "./overview/StudyOverview";
 import { StudyPreview } from "./StudyPreview";
+import { GuideButton } from "./guide/GuideButton";
+import { GuideDialog } from "./guide/GuideDialog";
+import { GuidePrompt } from "./guide/GuidePrompt";
+import { ShowMe } from "./guide/ShowMe";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { Button } from "@/components/ui/button";
 import { LogoSmoke } from "@/components/Logo";
@@ -322,6 +326,7 @@ function StudyAdminView({
                   <button
                     key={g.label}
                     type="button"
+                    data-guide={`tab-${g.pages[0].id}`}
                     aria-current={active ? "page" : undefined}
                     onClick={() => onTabChange(g.pages[0].id)}
                     className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
@@ -338,8 +343,10 @@ function StudyAdminView({
             </nav>
 
             <div className="ml-auto flex items-center gap-1">
+              <GuideButton page={tab} />
               <IconButton icon={CircleHelp} label="Help" onClick={() => openHelp(TAB_HELP[tab])} />
               <Button
+                data-guide="preview"
                 variant={tab === "Preview" ? "default" : "outline"}
                 size="sm"
                 onClick={() => onTabChange("Preview")}
@@ -434,6 +441,10 @@ function StudyAdminView({
         {tab === "Results" && <ResultsPanel client={client} />}
         {tab === "Preview" && <StudyPreview client={client} coderApiUrl={coderApiUrl} />}
       </main>
+
+      <GuideDialog onGoTo={onTabChange} />
+      <ShowMe />
+      <GuidePrompt />
 
       {/* Leaving the editor with unsaved edits: save, discard or stay */}
       <UnsavedChangesDialog
