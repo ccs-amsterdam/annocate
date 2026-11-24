@@ -37,6 +37,7 @@ const meta = (id: number, immutable: boolean, revision = 1): DesignVersionMeta =
 const version = (id: number, immutable: boolean, items: TopLevelItem[], revision = 1): DesignVersion => ({
   ...meta(id, immutable, revision),
   studyId: 1,
+  formatVersion: 1,
   items,
   units: { fields: [] },
   session: { urlParams: [{ name: "wave" }] },

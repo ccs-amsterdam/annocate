@@ -16,6 +16,7 @@ const version = (id: number, immutable: boolean, title: string): DesignVersion =
   id,
   studyId: 1,
   note: null,
+  formatVersion: 1,
   created: new Date(0),
   updated: new Date(0),
   updatedBy: null,

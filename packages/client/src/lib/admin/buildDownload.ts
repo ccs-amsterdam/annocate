@@ -67,7 +67,7 @@ function usedDesignVersions(
   { liveDesignVersionId, withReset }: DownloadOptions,
 ): RawExport["designVersions"] {
   const ids = new Set(answersOf(raw, withReset).map((a) => a.designVersionId));
-  ids.add(liveDesignVersionId);
+  if (liveDesignVersionId !== null) ids.add(liveDesignVersionId);
   return raw.designVersions.filter((version) => ids.has(version.id));
 }
 
