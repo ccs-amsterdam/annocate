@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ListItem } from "../common.js";
 import type { VariableValue } from "../variableValue.js";
 import { valueFromLabel, type NominalOption } from "./options.js";
+import { own } from "../common.js";
 
 // Options from data (docs/client.md §4 "Options from data"): a category
 // question can take options from the unit or from an earlier answer, in one
@@ -48,7 +49,7 @@ function unique(base: string, taken: Set<string>): string {
 function sourceOptions(from: string, ctx: OptionsContext, taken: Set<string>): NominalOption[] {
   const { ns, name } = optionsSource(from);
   if (ns === "unit") {
-    const list = ctx.unit?.[name];
+    const list = own(ctx.unit, name);
     if (!Array.isArray(list)) return [];
     return (list as ListItem[]).map((item) => {
       const label = typeof item === "string" ? item : item.label;
@@ -61,7 +62,7 @@ function sourceOptions(from: string, ctx: OptionsContext, taken: Set<string>): N
       };
     });
   }
-  const spans = ctx.answers?.[name]?.spans ?? [];
+  const spans = own(ctx.answers, name)?.spans ?? [];
   const labels = ctx.questions?.get(name)?.options ?? [];
   return spans.map((span) => {
     const color = labels.find((o) => o.value === span.value)?.color;

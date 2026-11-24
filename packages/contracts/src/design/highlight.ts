@@ -126,21 +126,24 @@ export function highlightRanges(
   query: HighlightQuery,
   texts: Record<string, string>,
 ): Record<string, [number, number][]> {
-  const words = Object.fromEntries(Object.entries(texts).map(([key, text]) => [key, wordsOf(text)]));
-  const out: Record<string, [number, number][]> = {};
+  const words = new Map(Object.entries(texts).map(([key, text]) => [key, wordsOf(text)]));
+  const found = new Map<string, [number, number][]>();
   for (const group of query) {
     const matches = group.map((term) =>
-      Object.entries(words).flatMap(([key, ws]) => termMatches(term, ws).map((m) => ({ key, m }))),
+      [...words].flatMap(([key, ws]) => termMatches(term, ws).map((m) => ({ key, m }))),
     );
     if (matches.some((m) => m.length === 0)) continue;
     for (const { key, m } of matches.flat()) {
-      const ws = words[key];
-      (out[key] ??= []).push(...m.map((i) => [ws[i].start, ws[i].end] as [number, number]));
+      const ws = words.get(key)!;
+      const ranges = m.map((i) => [ws[i].start, ws[i].end] as [number, number]);
+      found.set(key, [...(found.get(key) ?? []), ...ranges]);
     }
   }
-  for (const key of Object.keys(out)) {
-    const sorted = out[key].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    out[key] = sorted.filter((r, i) => i === 0 || r[0] !== sorted[i - 1][0]);
-  }
-  return out;
+  return Object.fromEntries([...found].map(([key, ranges]) => [key, distinctStarts(ranges)]));
+}
+
+/** Ranges in order, one per start (the shortest). */
+function distinctStarts(ranges: [number, number][]): [number, number][] {
+  const sorted = [...ranges].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  return sorted.filter((r, i) => i === 0 || r[0] !== sorted[i - 1][0]);
 }

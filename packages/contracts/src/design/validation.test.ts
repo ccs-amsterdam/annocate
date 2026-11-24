@@ -370,7 +370,7 @@ describe("validateDesignItems (more)", () => {
 
     const invalidNameItems: TopLevelItem[] = [questionVar("invalid name with spaces!")];
     const invalidIssues = validateDesignItems(invalidNameItems);
-    expect(invalidIssues.some((i) => i.message.includes("contains invalid characters"))).toBe(true);
+    expect(invalidIssues.some((i) => i.message.includes("a name starts with a letter"))).toBe(true);
   });
 });
 

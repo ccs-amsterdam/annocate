@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SafeNameSchema } from "../common.js";
+import { SafeNameSchema, own } from "../common.js";
 import { ConditionSchema, type Condition } from "./condition.js";
 import { UnitLayoutSchema } from "./layout.js";
 import { outputText, parseTemplate, referenceValue, type ReferenceScope } from "./references.js";
@@ -133,7 +133,7 @@ export function resolveRedirects<T>(items: readonly T[], urls: Record<string, st
     if (item.type === "end" && typeof item.redirectSetting === "string") {
       const resolved: Record<string, unknown> = { ...next };
       delete resolved.redirectSetting;
-      const url = urls[item.redirectSetting];
+      const url = own(urls, item.redirectSetting);
       if (url) resolved.redirectUrl = url;
       next = resolved;
     }

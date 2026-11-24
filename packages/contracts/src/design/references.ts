@@ -1,6 +1,7 @@
 import type { ValueAnswer, VariableValue } from "../variableValue.js";
 import { optionLabel, specialLabel, type OptionValue, type SpecialKind } from "./options.js";
 import type { AnyVariableType } from "./variableTypes.js";
+import { own } from "../common.js";
 
 // One reference syntax for scripts, templates, question texts and conditions
 // (docs/client.md "References and conditions"). The name says the shape:
@@ -629,7 +630,7 @@ function methodShape(
 ): ReferenceShape {
   if (!(KIND_METHODS[kind] as readonly string[]).includes(method)) {
     const available = KIND_METHODS[kind].map((m) => `"${METHOD_TEXT[m]}"`);
-    const what = (METHOD_TEXT as Record<string, string>)[method];
+    const what = own(METHOD_TEXT as Record<string, string>, method);
     const unsupported = what ? `"${what}"${ORDER_METHODS.includes(method) ? " comparisons" : ""}` : `.${method}()`;
     const use =
       kind === "scale"
@@ -766,8 +767,10 @@ export function buildScope(
   unit?: Record<string, unknown> | null,
   session?: Record<string, string>,
 ): ReferenceScope {
-  const $var: Record<string, VarScopeEntry> = {};
-  for (const [name, variable] of questions) $var[name] = varEntry(variable, answers[name]);
+  // Object.fromEntries: every name is a key of its own, also `__proto__`
+  const $var = Object.fromEntries(
+    [...questions].map(([name, variable]) => [name, varEntry(variable, own(answers, name))]),
+  );
   return { $unit: { ...(unit ?? {}) }, $var, $session: { ...(session ?? {}) } };
 }
 
@@ -834,15 +837,14 @@ function varEntry(variable: AnyVariableType, answer: VariableValue | undefined):
       return { answered, values: relations.map((r) => r.value), labels: relations.map((r) => labelOf(r.value)) };
     }
     case "scale": {
-      const items: Record<string, ItemScopeEntry> = {};
       const values: OptionValue[] = [];
-      for (const item of variable.type === "scale" ? variable.items : []) {
+      const entries = (variable.type === "scale" ? variable.items : []).map((item): [string, ItemScopeEntry] => {
         const answer = v?.values?.find((a) => a.item === item.name);
         const value = typeof answer?.value === "number" ? answer.value : null;
-        items[item.name] = withSpecial({ value, label: answer ? answerLabel(answer) : null }, answer ? [answer] : []);
         if (value !== null) values.push(value);
-      }
-      return { answered, values, items };
+        return [item.name, withSpecial({ value, label: answer ? answerLabel(answer) : null }, answer ? [answer] : [])];
+      });
+      return { answered, values, items: Object.fromEntries(entries) };
     }
     case "multiple": {
       const answers = (v?.values ?? []).filter((a) => a.item === undefined);
@@ -870,7 +872,7 @@ export function referenceValue(scope: ReferenceScope, ref: Pick<Reference, "ns" 
   let value: unknown = scope[`$${ref.ns}`];
   for (const key of ref.path) {
     if (value === null || typeof value !== "object") return undefined;
-    value = (value as Record<string, unknown>)[key];
+    value = own(value as Record<string, unknown>, key);
   }
   return value;
 }

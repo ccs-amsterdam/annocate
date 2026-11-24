@@ -79,7 +79,7 @@ describe("template blocks", () => {
       ["html", undefined],
       ["text", "bad.name"],
     ]);
-    expect(errors.map((e) => e.message)).toEqual([expect.stringContaining("a name is letters, digits and _")]);
+    expect(errors.map((e) => e.message)).toEqual([expect.stringContaining("a name starts with a letter, then letters, digits and _")]);
   });
 
   it("names unit fields, answers and named blocks; selectable: unit fields shown as plain text", () => {

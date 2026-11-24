@@ -38,6 +38,7 @@ import {
   type ReferenceError,
   type ReferenceShape,
 } from "./references.js";
+import { nameError, own } from "../common.js";
 
 export interface DesignIssue {
   path: (string | number)[];
@@ -694,9 +695,8 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       } else if (!item.name || item.name.trim() === "") {
         issue([...itemPath, "name"], "Item name cannot be empty");
       } else {
-        if (!/^[a-zA-Z0-9_]+$/.test(item.name)) {
-          issue([...itemPath, "name"], `Name '${item.name}' contains invalid characters (letters, numbers and _ only)`);
-        }
+        const problem = nameError(item.name);
+        if (problem) issue([...itemPath, "name"], `Name '${item.name}': ${problem}`);
         if (item.name === STUDY_END_NAME)
           issue([...itemPath, "name"], `'${STUDY_END_NAME}' is the study's own end: choose another name`);
         if (seenNames.has(item.name)) issue([...itemPath, "name"], `Duplicate name '${item.name}'`);
@@ -885,7 +885,7 @@ export function callArgumentProblems(
     hasAny: [1, Infinity],
     hasAll: [1, Infinity],
   };
-  const [min, max] = arity[call.method] ?? [1, 1];
+  const [min, max] = own(arity, call.method) ?? [1, 1];
   if (call.args.length < min || call.args.length > max) {
     if (max === 0) return [`"${METHOD_TEXT[call.method]}" takes no values`];
     const n = min === max ? `${min}` : `at least ${min}`;

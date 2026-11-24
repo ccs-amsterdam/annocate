@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { HighlightSchema } from "./highlight.js";
 import { styleProblems } from "./safeCss.js";
+import { SafeNameSchema } from "../common.js";
 
 // A unit's layout (docs/client.md §3): a single markdown template, rendered
 // with a real, XSS-safe-by-construction markdown library (no raw HTML, see
@@ -23,7 +24,7 @@ export const UnitLayoutSchema = z.object({
    * with `[[name]]` as if typed there (snippets.ts).
    */
   snippets: z
-    .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "A snippet name is letters, digits and _"), z.string())
+    .record(SafeNameSchema, z.string())
     .optional()
     .describe(
       "Named pieces of the template, put in with [[name]] as if typed there (anywhere: lines, block fences, scripts)",

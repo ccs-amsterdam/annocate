@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sameValue, type OptionValue } from "./options.js";
 import { HELPER_METHODS, type HelperMethod, type ReferenceScope } from "./references.js";
+import { own } from "../common.js";
 
 // The condition notation of branches and unit loops (docs/client.md "References
 // and conditions"): a script. A *simple*
@@ -318,7 +319,7 @@ export function evaluateSimpleCondition(condition: SimpleCondition, scope: Refer
     case "const":
       return condition.value;
     case "answered":
-      return scope.$var[condition.question]?.answered === true;
+      return own(scope.$var, condition.question)?.answered === true;
     case "not":
       return !evaluateSimpleCondition(condition.arg, scope);
     case "and":
@@ -326,8 +327,8 @@ export function evaluateSimpleCondition(condition: SimpleCondition, scope: Refer
     case "or":
       return condition.args.some((a) => evaluateSimpleCondition(a, scope));
     case "call": {
-      const entry = scope.$var[condition.question];
-      const target = condition.item ? entry?.items?.[condition.item] : entry;
+      const entry = own(scope.$var, condition.question);
+      const target = condition.item ? own(entry?.items, condition.item) : entry;
       const result = applyHelper(target, condition.method, condition.args);
       if (condition.compare)
         return typeof result === "number" && compareCount(result, condition.compare.op, condition.compare.value);

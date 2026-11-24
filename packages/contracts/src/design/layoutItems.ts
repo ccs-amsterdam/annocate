@@ -78,5 +78,5 @@ export function previewLayout(children: unknown, name: string): LayoutItem | nul
  * loop may use, whichever layout applies.
  */
 export function loopSnippets(children: unknown): Record<string, string> {
-  return Object.assign({}, ...loopLayouts(children).map((l) => l.snippets ?? {}));
+  return Object.fromEntries(loopLayouts(children).flatMap((l) => Object.entries(l.snippets ?? {})));
 }

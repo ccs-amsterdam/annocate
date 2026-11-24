@@ -10,6 +10,7 @@ import {
   type ReferenceError,
   type TemplateFence,
 } from "./references.js";
+import { nameError } from "../common.js";
 
 // Blocks in a template (docs/client.md §3, "Blocks"): fenced lines, as
 // Pandoc's fenced divs, that show part of a template only if a condition
@@ -195,12 +196,9 @@ export function parseTemplateBlocks(source: string): ParsedBlocks {
       case "markdown":
       case "html":
       case "image": {
-        if (fence.arg && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(fence.arg)) {
-          error(
-            fence,
-            `::: ${fence.keyword} ${fence.arg}: a name is letters, digits and _ (e.g. ::: ${fence.keyword} highlighted)`,
-          );
-        }
+        const problem = fence.arg ? nameError(fence.arg) : null;
+        if (problem)
+          error(fence, `::: ${fence.keyword} ${fence.arg}: ${problem} (e.g. ::: ${fence.keyword} highlighted)`);
         const outer = stack.find((o) => o.kind === "display");
         if (outer)
           error(fence, `A ::: ${fence.keyword} block can't be inside a ::: ${(outer.node as DisplayNode).kind} block`);

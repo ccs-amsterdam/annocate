@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, RoleSchema } from "./common.js";
+import { IdSchema, RoleSchema, SafeNameSchema } from "./common.js";
 
 /** The reopen time of new studies (`reopenMinutes`): a day. */
 export const DEFAULT_REOPEN_MINUTES = 24 * 60;
@@ -24,15 +24,7 @@ export const StudyWriteSchema = z.object({
    * link, which differs per run. May contain `$var` and `$session`
    * references, like an end item's own URL. Left out: unchanged.
    */
-  redirectUrls: z
-    .record(
-      z
-        .string()
-        .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
-        .max(64),
-      z.string().max(2000),
-    )
-    .optional(),
+  redirectUrls: z.record(SafeNameSchema, z.string().max(2000)).optional(),
 });
 export type StudyWrite = z.infer<typeof StudyWriteSchema>;
 

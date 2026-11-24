@@ -1,4 +1,5 @@
 import { codeRanges } from "./references.js";
+import { own } from "../common.js";
 
 // Snippets (docs/client.md §3, "Snippets"): named pieces of a unit loop's
 // template (`layout.snippets`), written `[[name]]` and pasted in as text
@@ -7,7 +8,7 @@ import { codeRanges } from "./references.js";
 // values in them all work. A snippet takes no suffix (it isn't a value).
 // Names must be written out literally (no `"[[" + name + "]]"`).
 
-const SNIPPET = /\[\[([A-Za-z_][A-Za-z0-9_]*)\]\]/g;
+const SNIPPET = /\[\[([A-Za-z][A-Za-z0-9_]*)\]\]/g;
 
 /** Whether a template uses snippets (outside code). */
 export function usesSnippets(source: string): boolean {
@@ -18,6 +19,12 @@ function snippetMatches(source: string): RegExpExecArray[] {
   if (!source.includes("[[")) return [];
   const code = codeRanges(source);
   return [...source.matchAll(SNIPPET)].filter((m) => !code.some(([s, e]) => m.index >= s && m.index < e));
+}
+
+/** A snippet's text; undefined for an unknown snippet (and for one that is not text). */
+function snippetText(snippets: Readonly<Record<string, string>> | undefined, name: string): string | undefined {
+  const text: unknown = own(snippets, name);
+  return typeof text === "string" ? text : undefined;
 }
 
 /**
@@ -40,7 +47,7 @@ export function expandSnippets(
     out += source.slice(last, m.index);
     last = m.index + m[0].length;
     const name = m[1];
-    const text = snippets?.[name];
+    const text = snippetText(snippets, name);
     const suffix = /^::([A-Za-z]+)/.exec(source.slice(last));
     if (suffix)
       errors.push(`[[${name}]]::${suffix[1]}: a snippet takes no suffix (it is pasted into the template as it is)`);

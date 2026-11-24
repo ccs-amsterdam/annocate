@@ -2,6 +2,7 @@ import { MAX_TEXT_LENGTH, type AnyVariableType, type RelationType } from "./vari
 import { relationTypesFor, ruleVariables, type RuleSpan } from "./relations.js";
 import type { VariableValue } from "../variableValue.js";
 import { questionKind, questionValues } from "./references.js";
+import { own } from "../common.js";
 
 // Checks answers against the *current* design. Shared by the server
 // (rejects invalid submissions) and the client (treats answers that no longer
@@ -117,7 +118,8 @@ function relationErrors(
 ): string[] {
   const spans = new Map<string, RuleSpan>();
   for (const question of ruleVariables(variable.rules))
-    for (const s of variables[question]?.spans ?? []) spans.set(s.id, { id: s.id, variable: question, value: s.value });
+    for (const s of own(variables, question)?.spans ?? [])
+      spans.set(s.id, { id: s.id, variable: question, value: s.value });
   const errors: string[] = [];
   for (const r of value.relations ?? []) {
     const from = spans.get(r.fromId);
