@@ -16,18 +16,18 @@ test("writing a design in the editor, as the help describes it, and saving it", 
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
   await page.getByPlaceholder("e.g. News items").fill("News articles");
   // A new loop hands out all the session's units, once: nothing to specify
   await expect(page.getByText("to specify")).toHaveCount(0);
 
   // A new loop starts with its layout (the first item in it)
-  await expect(page.getByRole("button", { name: /^Layout/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Unit layout/ })).toBeVisible();
   // The first question, after the layout: the layout row's "+", then where, then what
   // (the session parameters are above the tree, not a row: the loop is the first row)
   await page.getByRole("button", { name: "Add an item below" }).nth(1).click();
-  await page.getByRole("button", { name: "After Layout" }).click();
+  await page.getByRole("button", { name: 'In "News articles"' }).click();
   await page
     .getByRole("button", { name: /^Question/ })
     .first()
@@ -79,7 +79,7 @@ test("an experiment: balanced conditions, each with its own units (condition_set
   await chooseWhoCodes(page);
 
   // An experiment at the top level
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await page.getByRole("button", { name: /^Experiment/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("framing");
   await expect(page.getByText("never shown to the coder")).toBeVisible();
@@ -111,24 +111,30 @@ test("branches: a label and a condition, else items; questions and loops at the 
   await chooseWhoCodes(page);
 
   // A question at the top level, then a unit loop: no end item there (they go in a branch)
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await expect(page.getByRole("button", { name: /^End/ })).toHaveCount(0);
   await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("age");
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await page.getByRole("button", { name: "At the end", exact: true }).first().click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
 
   // A branch after the loop, with a label and a condition (a new branch's is empty until set)
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await page.getByRole("button", { name: "At the end", exact: true }).first().click();
   await page.getByRole("button", { name: /^Branch/ }).click();
   await page.getByPlaceholder("e.g. Screen-out").fill("Adults");
   await page.getByRole("button", { name: "Script", exact: true }).click();
   await page.getByPlaceholder(`$var.topics.has("sports") && $var.age.gte(18)`).fill("true");
-  // Else items: begun from the branch's row, with the usual menu (its header says what it adds)
-  await page.getByRole("button", { name: /Add else items/ }).click();
-  await expect(page.getByText("If not, then…")).toBeVisible();
+  // Else items: the branch's + asks where, its items or otherwise
+  const branch = page
+    .locator("div.group")
+    .filter({ hasText: /^Adults/ })
+    .first();
+  await branch.hover();
+  await branch.getByRole("button", { name: "Add an item below" }).click();
+  await expect(page.getByRole("button", { name: "If always", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Otherwise", exact: true }).click();
   await page.getByRole("button", { name: /^Question/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("guardian");
   await expect(page.getByText("otherwise", { exact: true })).toBeVisible();

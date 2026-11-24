@@ -77,8 +77,8 @@ export function TreeRow({ rails = [], knot, children, actions, dimActions = fals
 export function InsertionLine() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex -translate-y-1/2 items-center">
-      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-      <div className="h-[2px] flex-1 bg-primary/30" />
+      <div className="h-1 w-1 shrink-0 rounded-full bg-primary/50" />
+      <div className="h-px flex-1 bg-primary/25" />
     </div>
   );
 }

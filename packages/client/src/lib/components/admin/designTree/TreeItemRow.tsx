@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { AlertCircle, CornerDownLeft, Split } from "lucide-react";
+import { AlertCircle, CornerDownLeft } from "lucide-react";
 import { cn } from "cn";
 import { useDesignTree } from "./context";
 import { ITEM_TYPES, answerTypeWord } from "./itemTypes";
@@ -19,29 +19,26 @@ function rowTitle(item: TreeNode): string {
   return itemTitle(item) || "(unnamed)";
 }
 
-/** How a position is called in the add menu. */
-function positionLabel(items: TopLevelItem[], position: TreePosition): string {
-  if ("into" in position) {
-    if (position.into === null) return "At the end of the design";
-    const container = findItem(items, position.into);
-    return `Inside ${container ? rowTitle(container as TreeNode) : "it"}`;
+/** A container as the add menu names it: in quotes, an else part as its branch's "otherwise". */
+function levelName(items: TopLevelItem[], container: TreeNode): string {
+  if (isElse(container)) {
+    const branch = findParent(items, getItemKey(container));
+    return `"otherwise" of ${branch ? `"${rowTitle(branch as TreeNode)}"` : "the branch"}`;
   }
-  if ("before" in position) {
-    // Before the first item of a container: the top of the container.
-    const parent = findParent(items, position.before);
-    if (parent && parent.children[0] && getItemKey(parent.children[0]) === position.before) {
-      return `At the top of ${rowTitle(parent)}`;
-    }
-  }
-  const key = "before" in position ? position.before : position.after;
-  const item = findItem(items, key);
-  return `${"before" in position ? "Before" : "After"} ${item ? rowTitle(item as TreeNode) : "it"}`;
+  return `"${rowTitle(container)}"`;
 }
 
-/** A position's label as a move: "Move after x", "Move to the top of y", "Move into z". */
+/** How a position is called in the add menu: by its level ("In "Headlines"", "At the top level"). */
+function positionLabel(items: TopLevelItem[], position: TreePosition): string {
+  let container: TreeNode | null;
+  if ("into" in position) container = position.into === null ? null : (findItem(items, position.into) as TreeNode);
+  else container = findParent(items, "before" in position ? position.before : position.after) as TreeNode | null;
+  return container ? `In ${levelName(items, container)}` : "At the top level";
+}
+
+/** A position's label as a move: "Move into "Headlines"", "Move to the top level". */
 function moveLabel(label: string): string {
-  const rest = label.replace(/^At the top of/, "to the top of").replace(/^Inside/, "into");
-  return `Move ${rest[0].toLowerCase()}${rest.slice(1)}`;
+  return label.startsWith("In ") ? `Move into ${label.slice(3)}` : "Move to the top level";
 }
 
 /**
@@ -90,40 +87,39 @@ export function TreeItemRow({ item, rails }: { item: TreeNode; rails: Rail[] }) 
         <span className="pl-1 text-xs text-muted-foreground italic">otherwise</span>
       </TreeRow>
     );
-  // A branch with no else items yet: a button to begin them
-  const canAddElse =
-    !tree.readOnly &&
-    !tree.moving &&
-    item.type === "branch" &&
-    !(childrenOf(item) ?? []).some((c) => isElse(c) && (childrenOf(c) ?? []).length > 0);
   const selected = tree.selected === key;
+  // A branch's +: its items ("If …"), or (none yet) its else items ("Otherwise"), then the places further out
+  const branchOptions = (): AddOption[] => {
+    if (item.type !== "branch") return options;
+    const hasElse = (childrenOf(item) ?? []).some((c) => isElse(c) && (childrenOf(c) ?? []).length > 0);
+    const [own, ...outer] = options;
+    const condition = item.condition?.script.trim() ? describeCondition(item.condition) : "the condition holds";
+    const inside = own ? [{ ...own, label: `If ${condition}` }] : [];
+    const otherwise: AddOption[] = hasElse
+      ? []
+      : [
+          {
+            position: { into: key },
+            label: "Otherwise",
+            types: insertableTypesAt(tree.items, { into: key }),
+            add: (type) => tree.addElse(key, type),
+          },
+        ];
+    // An empty branch: "into" is its own place; "after" and further out follow
+    return [...inside, ...otherwise, ...outer.filter((o) => !("into" in o.position))];
+  };
+  const rowAction =
+    item.type === "branch" && !tree.readOnly && !tree.moving ? (
+      <AddItemMenu key="add" options={branchOptions()} onAdd={tree.addAt} onPreview={tree.setPreview} />
+    ) : (
+      action
+    );
 
   return (
     <TreeRow
       rails={rails}
       knot={onLine && <ItemKnot item={item} />}
-      actions={
-        canAddElse ? (
-          <>
-            {/* The usual add menu, its header saying where: the else items */}
-            <AddItemMenu
-              icon={Split}
-              title="Add else items (shown when the condition doesn't hold)"
-              options={[
-                {
-                  position: { into: key },
-                  label: "If not, then…",
-                  types: insertableTypesAt(tree.items, { into: key }),
-                },
-              ]}
-              onAdd={(_, type) => tree.addElse(key, type)}
-            />
-            {action}
-          </>
-        ) : (
-          action
-        )
-      }
+      actions={rowAction}
       dimActions={!tree.moving}
       className={cn(
         item.type === "unit_loop" && "h-10",
@@ -196,7 +192,7 @@ function ItemLabel({
           {item.type === "unit_loop"
             ? treeLoopTitle(item)
             : item.type === "layout"
-              ? item.label?.trim() || "Layout"
+              ? item.label?.trim() || "Unit layout"
               : itemTitle(item) || <em className="font-normal text-muted-foreground">(unnamed)</em>}
         </span>
       )}
@@ -251,6 +247,8 @@ function ItemMeta({ item }: { item: TreeNode }) {
   if (item.type === "layout") {
     // What it shows: unit fields and answers, by their names
     const fields = layoutNames(item).shown.map((name) => name.replace(/^(unit|var)\./, ""));
+    // An empty layout: the questions after it show without the unit
+    if (fields.length === 0 && !item.template?.trim()) return <span className={meta}>unit not shown</span>;
     return (
       <span className="ml-auto flex min-w-0 shrink gap-1 overflow-hidden pl-2" title={fields.join(", ")}>
         {fields.map((field) => (

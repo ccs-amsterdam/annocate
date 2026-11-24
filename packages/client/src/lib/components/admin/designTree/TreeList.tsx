@@ -25,7 +25,7 @@ export function MainLine({ items }: { items: TopLevelItem[] }) {
           // The line runs on to the "At the end" row: no last twig here
           <TreeNodeView key={getItemKey(item)} item={item} lines={[]} twig="tee" />
         ))}
-      <PreviewLine position={{ into: null }} />
+      <PreviewLine position={{ into: null }} depth={1} />
     </div>
   );
 }
@@ -47,7 +47,7 @@ function TreeList({ nodes, parent, lines }: TreeListProps) {
       {shown.map((node, i) => (
         <TreeNodeView key={getItemKey(node)} item={node} lines={lines} twig={i === shown.length - 1 ? "end" : "tee"} />
       ))}
-      <PreviewLine position={{ into: getItemKey(parent) }} />
+      <PreviewLine position={{ into: getItemKey(parent) }} depth={lines.length + 1} />
     </div>
   );
 }
@@ -75,7 +75,7 @@ function TreeNodeView({ item, lines, twig }: { item: TreeNode; lines: Rail[]; tw
   const rails: Rail[] = item.type === "layout" && lines.length === 0 ? ["node"] : [...lines, twig];
   return (
     <>
-      <PreviewLine position={before} />
+      <PreviewLine position={before} depth={rails.length} />
       {/* data-flip-key: glides to its new place when moved (useFlip in DesignTreeView) */}
       <div data-flip-key={getItemKey(item)}>
         {item.type === "unit_loop" ? (
@@ -87,7 +87,7 @@ function TreeNodeView({ item, lines, twig }: { item: TreeNode; lines: Rail[]; tw
           </>
         )}
       </div>
-      <PreviewLine position={after} />
+      <PreviewLine position={after} depth={rails.length} />
     </>
   );
 }
@@ -120,7 +120,7 @@ function LoopCard({ loop, lines }: { loop: UnitLoopItem; lines: Rail[] }) {
           twig={forked && i === children.length - 1 ? "end" : "tee"}
         />
       ))}
-      <PreviewLine position={{ into: getItemKey(loop) }} />
+      <PreviewLine position={{ into: getItemKey(loop) }} depth={1} />
       {forked ? <div className="h-2" /> : <RailGap lines={["pass"]} />}
     </div>
   );
@@ -151,12 +151,12 @@ function RailGap({ lines }: { lines: Rail[] }) {
   );
 }
 
-/** Where an add or move button will put items. */
-function PreviewLine({ position }: { position: TreePosition }) {
+/** Where an add or move button will put items: from where that level's rows start (`depth`: their lines). */
+function PreviewLine({ position, depth }: { position: TreePosition; depth: number }) {
   const { preview } = useDesignTree();
   if (!preview.some((p) => samePosition(p, position))) return null;
   return (
-    <div className="relative h-0">
+    <div className="relative h-0" style={{ marginLeft: 8 + 22 * Math.max(0, depth - 1) + 11 }}>
       <InsertionLine />
     </div>
   );

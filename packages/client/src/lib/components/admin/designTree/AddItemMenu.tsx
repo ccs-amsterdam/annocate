@@ -12,6 +12,8 @@ export interface AddOption {
   /** E.g. "After topic", "Inside Unit loop 1". */
   label: string;
   types: ItemType[];
+  /** Adds the item itself, instead of the menu's `onAdd` (a branch's "Otherwise"). */
+  add?: (type: ItemType) => void;
 }
 
 interface AddItemMenuProps {
@@ -117,16 +119,22 @@ export function AddItemMenu({
           type="button"
           data-guide="add-item"
           onClick={toggle}
-          className="flex cursor-pointer items-center gap-1.5 rounded px-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          onMouseEnter={() => setTriggerHovered(true)}
+          onMouseLeave={() => setTriggerHovered(false)}
+          className="flex cursor-pointer items-center gap-1 rounded pl-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          <Plus className="h-4 w-4" /> {label}
+          {label}
+          {/* Where rows have their + */}
+          <span className="flex h-[22px] w-[22px] items-center justify-center">
+            <Plus className="h-3.5 w-3.5" />
+          </span>
         </button>
       )}
       {open && (
         <div
           className={cn(
             "absolute z-50 max-w-80 min-w-56 animate-in rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg fade-in-0 zoom-in-95",
-            label === undefined ? "right-0" : "left-0",
+            "right-0",
             upwards ? "bottom-full mb-1" : "top-full mt-1",
           )}
         >
@@ -179,7 +187,8 @@ export function AddItemMenu({
                   type={type}
                   onClick={() => {
                     close();
-                    onAdd(option.position, type);
+                    if (option.add) option.add(type);
+                    else onAdd(option.position, type);
                   }}
                 />
               ))}

@@ -37,7 +37,7 @@ test("a study's pages are URLs: a reload stays; leaving unsaved edits asks first
 
   // An unsaved edit (choosing who codes is one): going elsewhere (another page, the browser's back button) asks first
   await chooseWhoCodes(page);
-  await page.getByRole("button", { name: /Add item/ }).click();
+  await page.getByRole("button", { name: /add item/i }).click();
   await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Unsaved Changes" })).toBeVisible();
@@ -85,7 +85,7 @@ test("on a phone the editor shows one pane at a time: the tree, then an item wit
   await page.setViewportSize({ width: 390, height: 844 });
   const { study } = await fromExample(request, "simple-survey");
   await page.goto(`/research/studies/${study.id}/design`);
-  const tree = page.getByText(/^Items \(\d+\)$/);
+  const tree = page.getByRole("button", { name: /add item/i });
   await expect(tree).toBeVisible();
   // The title above the tree; the session settings open their form, full width, without the tree
   await expect(page.getByLabel("Title shown to coders", { exact: true })).toHaveValue("A short survey");

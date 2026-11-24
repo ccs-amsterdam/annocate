@@ -26,7 +26,6 @@ import type {
   ResetAnnotations,
   UnitResponse,
   DeploymentResponse,
-  DeploymentStatus,
   StudyOverview,
   StudyResponse,
   StudyWrite,
@@ -346,17 +345,6 @@ export function useOverviewQuery(client: ResearcherApi): UseQueryResult<StudyOve
   return useQuery({
     queryKey: keys.overview(client.studyId),
     queryFn: () => client.getOverview(),
-    refetchInterval: 30_000,
-  });
-}
-
-/** Progress of the live study; errors are not retried. */
-export function useDeploymentStatusQuery(client: ResearcherApi, enabled: boolean): UseQueryResult<DeploymentStatus> {
-  return useQuery({
-    queryKey: keys.deploymentStatus(client.studyId),
-    queryFn: () => client.getDeploymentStatus(),
-    enabled,
-    retry: false,
     refetchInterval: 30_000,
   });
 }

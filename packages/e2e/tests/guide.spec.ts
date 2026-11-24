@@ -10,10 +10,10 @@ test("a new design asks who codes first; it can't be deployed without", async ({
   await page.goto(`/research/studies/${study.id}/design`);
   // Only the choice: no tree yet
   await expect(page.getByRole("heading", { name: "Who codes?" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add item" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /add item/i })).toHaveCount(0);
   await page.getByRole("radio", { name: /Crowd \(one link\)/ }).click();
   // The editor opens on its form, with the choice made
-  await expect(page.getByRole("button", { name: "Add item" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /add item/i })).toBeVisible();
   await expect(page.getByText("crowd, one link").first()).toBeVisible();
 
   // Saved without it, the server refuses to deploy it

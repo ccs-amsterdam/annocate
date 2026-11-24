@@ -20,7 +20,11 @@ export function WhoCodesCards({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className={cn("grid gap-2", long ? "sm:grid-cols-2" : "grid-cols-2")} role="radiogroup" aria-label="Who codes">
+      <div
+        className={cn("grid gap-2", long ? "sm:grid-cols-2" : "grid-cols-2")}
+        role="radiogroup"
+        aria-label="Who codes"
+      >
         {(["coders", "crowd"] as const).map((mode) => {
           const { icon: Icon, title, short, long: text } = WHO_CODES[mode];
           const active = value === mode;

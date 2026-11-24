@@ -44,7 +44,7 @@ More: [Uploading units](uploading-units.md).
 Open **Design**. Left: the design as a tree of items. Right: the
 form of what you select.
 
-1. Click **Add item** → **Unit loop**. A unit loop asks its questions for
+1. Click **add item +** on the **Start** row → **Unit loop**. A unit loop asks its questions for
    every unit. Give it a **Label**, e.g. _News articles_.
 2. Hover over the loop, click **+** → **Inside News articles** →
    **Question**.
@@ -56,14 +56,14 @@ form of what you select.
    article?_ with _Negative_, _Neutral_, _Positive_ (stored as 1, 2, 3).
 
 Questions asked once per coder, such as consent or background questions,
-go before or after the loop (**Add item** → **Question**).
+go before or after the loop (**add item +** → **Question**).
 
 More: [The design editor](design-editor.md), [Questions](questions.md),
 [Choosing a question type](question-types.md).
 
 ## 4. Show the units
 
-Select the loop's **Layout** item (the first item in the loop).
+Select the loop's **Unit layout** item (the first item in the loop).
 Click **Title** and choose `headline`, then **Body** and choose `text`:
 
 ```example

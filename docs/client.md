@@ -659,12 +659,17 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   `assignWithoutValue`); put selected units in a value,
   remove them, or reset their answers. A coded unit is replaced only by
   uploading it again, after a warning.
-- **Overview** (`overview/`): live/paused/unpublished, live and draft
-  versions, counts, role columns, answers per day, progress per loop, the
-  last five deploys; pausing and resuming (`LiveControls.tsx`) is on the
-  Deploy page.
+- **Overview** (`overview/`), kept simple: live/paused/not deployed with
+  the live and draft versions; the study in one card of facts (who codes:
+  the expert coders and how many started, or the crowd coders who started;
+  units; finished units and answers; last activity; active links), each
+  opening its page; and the answers per day. Example studies' answers are
+  spread over the past two weeks (server `exampleTime`), so this looks like
+  a running study. Pausing and resuming (`LiveControls.tsx`) is on the
+  Deploy page, the deploys' history too.
 - **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
-  one ADMIN), rename, archive, keep sessions open, export, delete.
+  one ADMIN), rename, archive, when coders finish (the reopen time), export,
+  delete.
 - **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their
   label, coder or set, uses (of the design's maximum), status and the URL
   parameters they take (copied with placeholders). Per link: revoke,

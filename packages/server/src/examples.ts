@@ -152,7 +152,12 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       .from(linksTable)
       .where(and(eq(linksTable.studyId, study.id), isNull(linksTable.retiredAt)))
       .orderBy(asc(linksTable.id));
+    // The example coders worked over the past days, as real ones would: each starts on another day
+    // and codes a few units a day (`exampleTime`), so the overview's activity looks like a study's
+    const started = Date.now();
     for (const [i, coder] of example.answers.entries()) {
+      const at = (unit: number) => exampleTime(started, i, example.answers.length, unit);
+      const unitCount = Object.keys(coder.units).length;
       // The link whose values the coder's session has (a link per coder: their coder id)
       const link = links.find((l) => Object.entries(l.params).every(([name, value]) => coder.session[name] === value));
       if (Object.keys(coder.session).length > 0 && !link)
@@ -164,7 +169,8 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
           coder: `Example coder ${i + 1}`,
           linkId: link?.id ?? firstLink,
           session: coder.session,
-          ended: { outcome: "complete", at: new Date() },
+          created: at(0),
+          ended: { outcome: "complete", at: at(unitCount) },
         })
         .returning({ id: coderSessions.id });
       const sessionId = made!.id;
@@ -179,8 +185,12 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       const answered = Object.fromEntries(Object.entries(values).filter(([name]) => !isRandom(name)));
       await putCoderValues(tx, study.id, { sessionId, values: assigned, assigned: true, designVersionId });
       await putCoderValues(tx, study.id, { sessionId, values: answered, designVersionId });
+      await tx
+        .update(annotationValues)
+        .set({ created: at(0), updated: at(0) })
+        .where(and(eq(annotationValues.sessionId, sessionId), isNull(annotationValues.unitId)));
 
-      for (const [externalId, answers] of Object.entries(coder.units)) {
+      for (const [n, [externalId, answers]] of Object.entries(coder.units).entries()) {
         // A finished unit: every question of a loop answered (`skip` for hidden ones)
         if (!loops.some((loop) => [...loop.variables.keys()].every((name) => name in answers))) {
           throw new Error(`examples/${id}.json: example coder ${i + 1}'s answers to ${externalId} don't finish a loop`);
@@ -191,7 +201,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
           .select({ id: unitVersions.id })
           .from(unitVersions)
           .where(and(eq(unitVersions.unitId, uid), isNull(unitVersions.toDeploy)));
-        const now = new Date();
+        const now = at(n + 1);
         for (const [name, short] of Object.entries(answers)) {
           const value = answerValue(short);
           check(name, unitTypes.get(name), value);
@@ -212,4 +222,18 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
     }
     return study;
   });
+}
+
+/**
+ * When example coder `coder` (of `coders`) gave their `unit`th answer (0:
+ * the questions before the units): coders start on different days over the
+ * past two weeks, the last a few days ago, and code three units a day, a
+ * few minutes apart. Never in the future.
+ */
+export function exampleTime(now: number, coder: number, coders: number, unit: number): Date {
+  const day = 24 * 60 * 60 * 1000;
+  const startDay = 13 - Math.round((coder * 10) / Math.max(1, coders - 1));
+  const start = now - startDay * day + ((coder * 3) % 8) * 60 * 60 * 1000;
+  const at = start + Math.floor(unit / 3) * day + (unit % 3) * 7 * 60 * 1000;
+  return new Date(Math.min(at, now - 60 * 1000));
 }

@@ -74,6 +74,14 @@ describe("example studies", () => {
       // Their finished units count (every question of the loop answered)
       const units = page.annotations.filter((a) => a.unitId !== null).length;
       if (units > 0) expect(coders.some((c) => Object.values(c.finished).some((n) => n > 0))).toBe(true);
+      // Given over several past days, never in the future
+      if (units > 0) {
+        const days = new Set(
+          page.annotations.map((a: AnnotationRow) => new Date(a.created).toISOString().slice(0, 10)),
+        );
+        expect(days.size).toBeGreaterThan(1);
+        expect(page.annotations.every((a: AnnotationRow) => new Date(a.created).getTime() <= Date.now())).toBe(true);
+      }
 
       // A coder can start
       const coder = await app.request(`/api/d/${study.id}/session`, {

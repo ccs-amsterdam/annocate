@@ -40,8 +40,8 @@ The tree lists the **items**, in the order coders meet them:
 A loop can have a condition too, so only some coders get it. An
 [end item](end-items.md) goes in a branch, not at the top level.
 
-**Add item** above the tree adds a **Question**, **Experiment**,
-**Branch** or **Unit loop** **At the end** or **At the start**. A new
+**add item +** on the **Start** row adds a **Question**, **Experiment**,
+**Branch** or **Unit loop** **At the start** or **At the end**. A new
 branch starts empty, without a condition: set one in its form.
 
 ## The tree
@@ -54,9 +54,9 @@ items around it, its items one step in; its else items follow under an
 Each item shows an icon for its type (a question: its answer type). A loop
 shows its label and which units it hands out. A branch shows its label
 and/or its condition (_if age < 18_); without either it says **Branch**. A
-branch has an **Add else items** button on its row, which
-opens the add menu (_If not, then…_); its **Else** part shows under its
-items once it has items.
+branch's **+** asks where: its items (**If …**) or, while it has none,
+**Otherwise**; its **otherwise** part shows under its items once it has
+items.
 
 Below the tree, **At the end** is what coders see after the whole study,
 and where they go next (see [Ending a session](end-items.md)).
@@ -68,8 +68,8 @@ for an issue (hover to read it).
 
 1. Hover over a row and click **+** at its right.
 2. Where there is more than one place (e.g. below the last item of a
-   loop), choose **Where?**: **After tone**, **After News articles**, ...
-   A line in the tree shows the place.
+   loop), choose **Where?**, by level: **In "News articles"**, **At the
+   top level**, ... A line in the tree shows the place.
 3. Choose the type: at the top level **Question**, **Experiment**,
    **Branch** or **Unit loop**; in a branch **Question**,
    **Experiment**, **Branch** or **End**; in a loop **Question**,

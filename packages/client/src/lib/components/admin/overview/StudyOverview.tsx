@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { ChevronRight, CircleDot, FilePen, PauseCircle, CircleOff } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
+import { CODER_SET, designItems, inviteOf, sessionItem } from "@annotinder/contracts";
 import {
+  useDesignVersionQuery,
   useDesignVersionsQuery,
   useDeploymentQuery,
-  useDeploymentStatusQuery,
   useLinksQuery,
   useOverviewQuery,
 } from "../../../admin/queries";
@@ -12,10 +13,8 @@ import { describeVersions } from "../../../design/versions";
 import { formatWhen } from "../../../admin/format";
 import { StudySettings } from "../StudySettings";
 import { ActivityChart } from "./ActivityChart";
-import { LoopProgress } from "./LoopProgress";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
-import { DeployHistory } from "../DeployHistory";
 
 type OverviewTarget = "Units" | "Links" | "Coders";
 
@@ -27,9 +26,10 @@ interface StudyOverviewProps {
 }
 
 /**
- * The study's front page (docs/client.md §7): whether it's live, which
- * design versions are live and in draft, units, coders, activity and
- * progress. The study's settings are on their own page (`StudySettingsPage`).
+ * The study's front page (docs/client.md §7), kept simple: whether it's
+ * live (and which design versions are live and in draft), the study in a
+ * few facts (who codes, units, coded, last activity, links), and the
+ * answers per day. The study's settings are on their own page (`StudySettingsPage`).
  */
 export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOverviewProps) {
   const overviewQuery = useOverviewQuery(client);
@@ -37,17 +37,22 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
   const designVersionsQuery = useDesignVersionsQuery(client);
   const linksQuery = useLinksQuery(client);
   const deployment = deploymentQuery.data ?? null;
-  const statusQuery = useDeploymentStatusQuery(client, deployment !== null);
 
   const designVersions = designVersionsQuery.data ?? [];
   const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
+  // Who codes: as deployed, else as the design is now
+  const shown = useDesignVersionQuery(client, versions.liveId ?? versions.currentId).data ?? null;
+  const invite = shown ? inviteOf(sessionItem(designItems(shown))) : null;
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
     (link) => !link.revokedAt && !link.retiredAt && (link.maxUses === undefined || link.uses < link.maxUses),
   ).length;
+  const experts = overview?.groups.find((g) => g.name === CODER_SET)?.sets.length ?? 0;
+  const count = (n: number | undefined, one: string, many = `${one}s`) =>
+    n === undefined ? "…" : `${n.toLocaleString()} ${n === 1 ? one : many}`;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <ExampleNotice client={client} />
       <Card title="Status" tone={deployment?.active ? "leaf" : undefined}>
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
@@ -77,76 +82,62 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile
-          label="Units"
-          value={overview?.units}
-          detail={overview && `${overview.groups.length} set group${overview.groups.length === 1 ? "" : "s"}`}
-          onClick={() => onNavigate("Units")}
-        />
-        <StatTile
-          label="Coders started"
-          value={overview?.coders.started}
-          detail={overview && `of ${overview.coders.total} · ${overview.coders.activeLastDay} active today`}
-          onClick={() => onNavigate("Coders")}
-        />
-        <StatTile
-          label="Finished codings"
-          value={overview?.codings}
-          detail={overview && `${overview.answers} answers · last ${formatWhen(overview.lastActivity)}`}
-          onClick={() => onNavigate("Coders")}
-        />
-        <StatTile
-          label="Active links"
-          value={linksQuery.data ? openLinks : undefined}
-          detail={linksQuery.data && `of ${linksQuery.data.length}`}
-          onClick={() => onNavigate("Links")}
-        />
-      </div>
+      {/* The study in a few facts, each opening its page */}
+      <Card title="The study">
+        <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          <Fact
+            label="Who codes"
+            onClick={() => onNavigate("Coders")}
+            value={
+              invite === null
+                ? "Not chosen yet"
+                : invite.mode === "coders"
+                  ? `${count(experts, "expert coder")} · ${overview ? overview.coders.started : "…"} started`
+                  : `${count(overview?.coders.started, "crowd coder")} started`
+            }
+          />
+          <Fact label="Units" value={count(overview?.units, "unit")} onClick={() => onNavigate("Units")} />
+          <Fact
+            label="Coded"
+            value={
+              overview ? `${count(overview.codings, "finished unit")} · ${count(overview.answers, "answer")}` : "…"
+            }
+            onClick={() => onNavigate("Coders")}
+          />
+          <Fact
+            label="Last activity"
+            value={overview ? (overview.lastActivity ? formatWhen(overview.lastActivity) : "None yet") : "…"}
+            onClick={() => onNavigate("Coders")}
+          />
+          <Fact
+            label="Links"
+            value={linksQuery.data ? `${openLinks} active` : "…"}
+            onClick={() => onNavigate("Links")}
+          />
+        </dl>
+      </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Answers per day" subtitle="Last 30 days">
-          {overview ? <ActivityChart activity={overview.activity} /> : <Loading />}
-        </Card>
-
-        <Card title="Progress" subtitle="Complete units per loop and set">
-          {deployment === null ? (
-            <p className="text-sm text-muted-foreground">Deploy the design to start coding.</p>
-          ) : statusQuery.data ? (
-            <LoopProgress status={statusQuery.data} />
-          ) : statusQuery.isError ? (
-            <p className="text-sm text-muted-foreground">Progress can&apos;t be loaded right now.</p>
-          ) : (
-            <Loading />
-          )}
-        </Card>
-      </div>
-
-      {/* What each deploy changed: history, so last */}
-      {deployment && (
-        <Card title="Deploys" subtitle="What each deploy made live">
-          <DeployHistory client={client} limit={5} />
-        </Card>
-      )}
-
-      {overview && overview.groups.length > 0 && (
-        <Card title="Set groups">
-          <ul className="flex flex-col gap-2">
-            {overview.groups.map((g) => (
-              <li key={g.name} className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-mono font-medium">{g.name}</span>
-                {g.sets.map((set) => (
-                  <span key={set.name} className="rounded-md bg-muted px-2 py-1">
-                    <span className="font-mono">{set.name}</span>
-                    <span className="text-muted-foreground"> · {set.units} units</span>
-                  </span>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      <Card title="Activity" subtitle="Answers per day, the last 30 days">
+        {overview ? <ActivityChart activity={overview.activity} /> : <Loading />}
+      </Card>
     </div>
+  );
+}
+
+/** One fact about the study, opening the page it is about. */
+function Fact({ label, value, onClick }: { label: string; value: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+    >
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="flex items-center gap-1 font-medium text-foreground tabular-nums">
+        {value}
+        <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60" />
+      </dd>
+    </button>
   );
 }
 
@@ -221,33 +212,6 @@ function VersionLink({
         </button>
       )}
     </div>
-  );
-}
-
-/** A number with a detail line, opening the page it is about. */
-function StatTile({
-  label,
-  value,
-  detail,
-  onClick,
-}: {
-  label: string;
-  value: number | undefined;
-  detail?: string | false;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-start rounded-xl border border-border bg-card p-4 text-left shadow-xs transition-colors hover:border-primary/50"
-    >
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="mt-1 text-2xl font-semibold text-foreground tabular-nums">
-        {value === undefined ? "…" : value.toLocaleString()}
-      </span>
-      {detail && <span className="mt-0.5 text-xs text-muted-foreground">{detail}</span>}
-    </button>
   );
 }
 

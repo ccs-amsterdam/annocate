@@ -35,8 +35,9 @@ The examples in the help are live: edit the template and see the result.
 
 ## Layout items
 
-A layout is an item in the loop, shown in the tree as **Layout** (with
-its **Label**: _Layout – Headline_). It shows the unit for the questions after it, until the
+A layout is an item in the loop, shown in the tree by its **Label**, or
+as **Unit layout** without one. An empty layout says _unit not shown_:
+the questions after it show without the unit. It shows the unit for the questions after it, until the
 next layout item.
 
 - **Several layouts**: add one with **+** → **Layout** in the loop,

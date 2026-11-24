@@ -27,8 +27,8 @@ Unit loop
 
 ## Adding a branch
 
-1. At the top level: **Add item** above the tree → **Branch**. Inside a
-   branch or loop: click **+** and choose **Branch** (see
+1. At the top level: **add item +** on the **Start** row → **Branch**.
+   Inside a branch or loop: click an item's **+** and choose **Branch** (see
    [The design editor](design-editor.md#adding-items)).
 2. Set its condition under **Only show these items if…**: a new branch
    has none yet, and the editor flags it until it does.
@@ -45,9 +45,8 @@ the loop a condition instead (see [Loop conditions](#loop-conditions)).
 ## Else items
 
 A branch can also have items shown when its condition doesn't hold. Click
-**Add else items** on the branch's row and choose the first item in the
-menu (_If not, then…_): this adds an **Else** part, under the branch's
-items.
+the **+** on the branch's row and choose **Otherwise** (its items are
+**If …**): this adds an **otherwise** part, under the branch's items.
 
 ## Loop conditions
 

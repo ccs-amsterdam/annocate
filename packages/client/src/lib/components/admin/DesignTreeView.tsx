@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFlip } from "../../hooks/useFlip";
 import { AlertCircle, CornerDownLeft, Flag, Move, Trash2, X } from "lucide-react";
 import { inviteOf, sessionItem, type DesignIssue, type DesignItem, type TopLevelItem } from "@annotinder/contracts";
@@ -143,7 +143,7 @@ export function DesignTreeView({
 
   return (
     <DesignTreeProvider value={state}>
-      {/* One bar, always there, so the tree doesn't move: Add item; with items ticked, Move and Delete; while moving, where to */}
+      {/* One bar, always there, so the tree doesn't move: empty; with items ticked, Move and Delete; while moving, where to */}
       {!readOnly && (
         <div className="sticky top-0 z-30 flex min-h-9 flex-wrap items-center gap-2 bg-card px-1 pb-1 text-xs text-muted-foreground">
           {moving ? (
@@ -178,30 +178,37 @@ export function DesignTreeView({
                 <X className="h-3.5 w-3.5" />
               </Button>
             </>
-          ) : (
-            <AddItemMenu
-              label="Add item"
-              options={[
-                {
-                  position: end,
-                  label: shown.length ? "At the end" : "First item",
-                  types: insertableTypesAt(items, end),
-                },
-                ...(top ? [{ position: top, label: "At the start", types: insertableTypesAt(items, top) }] : []),
-              ]}
-              onAdd={state.addAt}
-              onPreview={setPreview}
-            />
-          )}
+          ) : null}
         </div>
       )}
       <div ref={list} className="flex flex-col px-1.5 pt-1 pb-3">
-        <StartRow items={items} selected={selected} onSelect={onSelect} />
+        <StartRow
+          items={items}
+          selected={selected}
+          onSelect={onSelect}
+          add={
+            readOnly ? null : (
+              <AddItemMenu
+                label="add item"
+                options={[
+                  ...(top ? [{ position: top, label: "At the start", types: insertableTypesAt(items, top) }] : []),
+                  {
+                    position: end,
+                    label: shown.length ? "At the end" : "The first item",
+                    types: insertableTypesAt(items, end),
+                  },
+                ]}
+                onAdd={state.addAt}
+                onPreview={setPreview}
+              />
+            )
+          }
+        />
         {shown.length === 0 && !readOnly && (
           <div className="flex px-2">
             <Rails rails={["pass"]} />
             <p className="py-2 pl-1 text-sm text-muted-foreground">
-              No items yet: add a unit loop (coders code units) or questions above.
+              No items yet: add a unit loop (coders code units) or questions with the + above.
             </p>
           </div>
         )}
@@ -221,10 +228,13 @@ function StartRow({
   items,
   selected,
   onSelect,
+  add,
 }: {
   items: TopLevelItem[];
   selected: string | null;
   onSelect: (key: string) => void;
+  /** Its "add item +": where items are added from (at the start or the end). */
+  add: ReactNode;
 }) {
   const tree = useDesignTree();
   const [, setTab] = useSessionTab();
@@ -234,7 +244,11 @@ function StartRow({
   const { icon, color, knotClass, nameClass } = ITEM_TYPES.session;
   const issue = tree.getIssue(session as DesignItem);
   return (
-    <TreeRow rails={["root"]} knot={<Knot icon={icon} className={cn("h-5 w-5", knotClass)} iconClass={color} />}>
+    <TreeRow
+      rails={["root"]}
+      knot={<Knot icon={icon} className={cn("h-5 w-5", knotClass)} iconClass={color} />}
+      actions={add}
+    >
       <button
         type="button"
         title="Where coders come in: who codes, and how they get in. Open to edit"
