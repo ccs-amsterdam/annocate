@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "cn";
 import { useCoderSettings } from "../../context/coderSettings";
 import { useDisplay } from "../../display/context";
+import { LEADER_TIMEOUT } from "../../keyboard/leader";
 import { MAPPINGS, mappingById } from "../../keyboard/mappings";
 import { useMenuKeys } from "../../keyboard/hooks";
 
@@ -65,6 +66,10 @@ export function KeyboardMenu() {
             </div>
           ))}
         </dl>
+        <p className="text-[11px] text-muted-foreground">
+          / is the key that types / on your keyboard, or the one on the numpad. Press it, then the command within{" "}
+          {LEADER_TIMEOUT / 1000} seconds.
+        </p>
 
         <Switch id="toggle-answer-keys" label="Answer with keys" on={answerKeys} onChange={setAnswerKeys} />
         {answerKeys && !allowedHere && (

@@ -38,6 +38,7 @@ function keyboard(...uses: string[]) {
 
 afterEach(() => {
   setLeader(false);
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -104,6 +105,60 @@ describe("key presses on the coding screen", () => {
     press(keyDown("Enter"));
     expect(leaderActive()).toBe(false);
     expect(seen).toMatchObject([{ key: "Enter", ctrlKey: true }]);
+  });
+
+  it("the leader is the typed / too: Shift + 7 on a German keyboard, then 8", () => {
+    const { press, seen } = keyboard("8");
+    press(keyDown("Shift", { code: "ShiftLeft", shiftKey: true }));
+    const leader = keyDown("/", { code: "Digit7", shiftKey: true });
+    press(leader);
+    expect([leader.prevented, leaderActive()]).toEqual([true, true]);
+    press(keyDown("8", { code: "Digit8" }));
+    expect(leaderActive()).toBe(false);
+    expect(seen.at(-1)).toMatchObject({ key: "8", code: "Digit8", ctrlKey: true });
+  });
+
+  it("the leader is the physical / key too, whatever it types (- on a German keyboard), and the numpad's", () => {
+    for (const [key, code] of [
+      ["-", "Slash"],
+      ["/", "NumpadDivide"],
+    ]) {
+      const { press } = keyboard();
+      press(keyDown(key, { code }));
+      expect([code, leaderActive()]).toEqual([code, true]);
+      setLeader(false);
+    }
+  });
+
+  it("the leader with Ctrl, Alt or ⌘ is not the leader", () => {
+    const { press } = keyboard();
+    for (const modifier of ["ctrlKey", "altKey", "metaKey"]) press(keyDown("/", { code: "Slash", [modifier]: true }));
+    expect(leaderActive()).toBe(false);
+  });
+
+  it("the leader is dropped after 3 seconds: / then 8 after 4 seconds types 8", () => {
+    vi.useFakeTimers();
+    const { press, seen } = keyboard("8");
+    press(keyDown("/", { code: "Slash" }));
+    vi.advanceTimersByTime(2900);
+    expect(leaderActive()).toBe(true);
+    vi.advanceTimersByTime(1100);
+    expect(leaderActive()).toBe(false);
+    press(keyDown("8", { code: "Digit8" }));
+    expect(seen).toMatchObject([{ key: "8", ctrlKey: false }]);
+  });
+
+  it("a command in time ends the wait: a later leader gets its own 3 seconds", () => {
+    vi.useFakeTimers();
+    const { press, seen } = keyboard("8");
+    press(keyDown("/", { code: "Slash" }));
+    vi.advanceTimersByTime(2000);
+    press(keyDown("8", { code: "Digit8" }));
+    press(keyDown("/", { code: "Slash" }));
+    vi.advanceTimersByTime(2000);
+    expect(leaderActive()).toBe(true);
+    press(keyDown("8", { code: "Digit8" }));
+    expect(seen).toMatchObject([{ ctrlKey: true }, { ctrlKey: true }]);
   });
 
   it("ignores a key while an input method composes, and one already handled", () => {

@@ -3,13 +3,24 @@ import type { KeyPress } from "./controller";
 
 // The leader key (docs/client.md §4 "Keyboard"): / (on the main keyboard or
 // the numpad), then one key for a command, so every command also works with
-// one hand on the numpad. / again (or Esc) cancels. A command after the
-// leader is the Ctrl press it stands for: / Enter is Ctrl + Enter.
+// one hand on the numpad. / again (or Esc) cancels, and so does waiting
+// (`LEADER_TIMEOUT`). A command after the leader is the Ctrl press it stands
+// for: / Enter is Ctrl + Enter.
 
-/** Whether a key press is the leader: / on either keyboard, without modifiers (by the physical key where known). */
+/** The physical keys that are / on a US keyboard and on the numpad. */
+const LEADER_CODES = new Set(["Slash", "NumpadDivide"]);
+
+/** How long the leader waits for its command (ms): after that the next key is an ordinary key again. */
+export const LEADER_TIMEOUT = 3000;
+
+/**
+ * Whether a key press is the leader, without Ctrl, Alt or ⌘: the character
+ * / however the keyboard types it (Shift + 7 on a German one), or the
+ * physical / key of a US keyboard and of the numpad, whatever it types.
+ */
 export function isLeader(press: KeyPress): boolean {
   if (press.ctrlKey || press.metaKey || press.altKey) return false;
-  return press.code ? press.code === "Slash" || press.code === "NumpadDivide" : press.key === "/";
+  return press.key === "/" || LEADER_CODES.has(press.code ?? "");
 }
 
 const ctrl = (key: string, code?: string): KeyPress => ({
@@ -42,11 +53,15 @@ export const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "AltGra
 
 // Whether the leader was pressed (shown while waiting for the command)
 let active = false;
+let timeout: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
 
+/** Starts or ends the wait for the leader's command; a wait ends by itself after `LEADER_TIMEOUT`. */
 export function setLeader(on: boolean): void {
   if (active === on) return;
   active = on;
+  clearTimeout(timeout);
+  if (on) timeout = setTimeout(() => setLeader(false), LEADER_TIMEOUT);
   listeners.forEach((l) => l());
 }
 

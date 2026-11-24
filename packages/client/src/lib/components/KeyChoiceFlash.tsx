@@ -36,7 +36,7 @@ export function KeyChoiceFlash() {
   );
 }
 
-/** The commands after the leader key (/), while it waits for one. */
+/** The commands after the leader key (/), while it waits for one (a few seconds: `LEADER_TIMEOUT`). */
 function LeaderHint() {
   const keys: [string, string][] = [
     ["↵", "continue"],
@@ -44,7 +44,7 @@ function LeaderHint() {
     ["␣", "instruction (0)"],
     ["8", "don't know"],
     ["9", "not applicable"],
-    ["/", "cancel"],
+    ["/", "cancel (or wait)"],
   ];
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4" role="status">
