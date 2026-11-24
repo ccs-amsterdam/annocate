@@ -76,6 +76,14 @@ B1-26 still stand (the fix narrows B1-26 but makes B1-27 easier to reach).
 
 - Done before the run: B1-29 (`updateItem` replaces an item's settings; `itemShape` accepts layout items: `4c710ea`), B1-21 part (2) (import appends rows in place). Still open in B1-29: `itemJson.ts`/`carryKeys` with layout and else items, if the worker finds a gap.
 
+### Added by the owner (after the review)
+
+- **P-A1 · Deleting a study needs a fresh second factor and typing its name** (as GitHub does for a repository): today it is too easy. Server: the delete route requires step-up; client: a dialog asking for the study's name. `srv-data` + `cli-admin`.
+- **P-A2 · Researchers can delete their own account** (with step-up and typing their email), with what happens to studies they own spelled out (refuse while they own studies with other members' access, or delete them after the same confirmation). `srv-login` + `cli-admin`.
+- **P-A3 · Server info page**: who runs this server, where it is hosted, contact, links to the privacy statement and terms; configured per server (settings), linked from the welcome page and the coder screen footer. Docs say nothing about where annotinder.com is hosted; the page does. `srv-app` + `cli-runner`.
+- **P-A4 · Web basics**: robots.txt, page metadata, no cookie banner if only strictly necessary storage is used (to confirm), a cookie/storage section in the privacy statement. `docs` + client `index.html`.
+- **P-A5 · Hosting and legal**: one deployment guide (lab VM; public server behind the Cloudflare proxy; backups with restic/rustic to an off-site store; monitoring), KV assessment (Postgres only?), first drafts of the privacy statement, terms and a DPA outline, an MIT LICENSE, and `docs/plans/go-live.md` with this week's and this month's checklists. `docs` + `ops`.
+
 ## A. Decisions for the owner
 
 Only choices about product behaviour or the frozen surfaces. Recommendation
