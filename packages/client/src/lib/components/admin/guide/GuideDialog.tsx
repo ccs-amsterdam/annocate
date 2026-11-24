@@ -44,11 +44,7 @@ export function GuideDialog({ onGoTo }: { onGoTo: (page: TabId) => void }) {
         <div className="flex flex-col gap-1 pr-6">
           <p className="text-xs font-medium text-muted-foreground">
             Guide · {topic.title}
-            {guide.full && (
-              <span className="ml-1">
-                ({topicIndex + 1} of {GUIDE_TOPICS.length})
-              </span>
-            )}
+            {guide.full && ` (${topicIndex + 1} of ${GUIDE_TOPICS.length})`}
           </p>
           <DialogTitle className="font-heading text-xl">{step.title}</DialogTitle>
           <DialogDescription asChild>
@@ -65,10 +61,7 @@ export function GuideDialog({ onGoTo }: { onGoTo: (page: TabId) => void }) {
         {guide.full && (
           <div className="flex justify-center gap-1" aria-hidden>
             {GUIDE_TOPICS.map((t, i) => (
-              <span
-                key={t.id}
-                className={cn("h-1.5 w-6 rounded-full", i <= topicIndex ? "bg-primary" : "bg-muted")}
-              />
+              <span key={t.id} className={cn("h-1.5 w-6 rounded-full", i <= topicIndex ? "bg-primary" : "bg-muted")} />
             ))}
           </div>
         )}
