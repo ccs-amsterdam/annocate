@@ -354,7 +354,7 @@ export class StudyManager {
     }
     this.unitHistoryIndex = index;
     this.currentUnit = entry.unit;
-    this.unitVariableValues = currentAnswers(entry.answers ?? {}, loopVariables(loop));
+    this.unitVariableValues = currentAnswers(entry.answers ?? {}, loopVariables(loop), entry.unit?.data);
   }
 
   /** Opens a history entry and shows it at its first or last question. */

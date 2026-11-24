@@ -42,7 +42,7 @@ const USE_LABEL: Record<FieldUse | "none", { label: string; title: string; class
   },
 };
 
-const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
+const TYPES: UnitFieldType[] = ["text", "number", "boolean", "list"];
 
 /**
  * The design's unit fields (docs/architecture.md §8.4): per field its type,

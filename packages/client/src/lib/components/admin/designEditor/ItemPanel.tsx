@@ -193,6 +193,7 @@ function ItemEditForm({
         inLoop={!!loop}
         loopItems={(saved?.children ?? []) as DesignItem[]}
         unitFields={(unitFieldsQuery.data ?? []).map((f) => f.name)}
+        listFields={(unitFieldsQuery.data ?? []).filter((f) => f.type === "list").map((f) => f.name)}
         loopNames={saved && name ? shownByLayouts(saved, name) : undefined}
         readOnly={readOnly}
         validationIssues={itemIssues}

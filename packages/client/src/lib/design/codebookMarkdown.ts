@@ -52,6 +52,8 @@ function optionLines(variable: AnyVariableType): string[] {
   if (variable.type === "scale") {
     lines.push("Items:", ...(variable.items ?? []).map((i) => `- \`${i.name}\`: ${i.label ?? i.name}`));
   }
+  if ("optionsFrom" in variable && variable.optionsFrom)
+    lines.push(`- Options from \`${variable.optionsFrom.from}\`, for each unit`);
   // Special answers: their code, or missing without one
   for (const s of "specials" in variable ? (variable.specials ?? []) : [])
     lines.push(`- ${s.value === undefined ? "missing" : `\`${String(s.value)}\``}: ${specialLabel(s)} (${s.kind})`);

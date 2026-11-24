@@ -1,6 +1,6 @@
 import { KeyChoiceFlash } from "./KeyChoiceFlash";
 import { useState, useMemo, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
-import type { RelationType, VariableValue } from "@annotinder/contracts";
+import { resolveVariable, type OptionsContext, type RelationType, type VariableValue } from "@annotinder/contracts";
 import { CircleCheck, Sparkles, X } from "lucide-react";
 import { HttpCoderApi } from "../api/httpCoderApi";
 import { defaultTransferUrl, redeemTransfer, type CoderSessionScope } from "../session/coderSession";
@@ -245,8 +245,15 @@ function CodingScreen({
     );
   }
 
-  const item = snapshot.currentItem;
   const inUnit = snapshot.phase === "unit_variable";
+  // Options from data: the unit's list field, or an earlier span question's spans (contracts optionsFrom.ts)
+  const item = inUnit
+    ? resolveVariableOf(snapshot.currentItem, {
+        unit: snapshot.currentUnit?.data,
+        answers: snapshot.currentUnitVariables ?? undefined,
+        questions: snapshot.currentLoopVariables ?? undefined,
+      })
+    : snapshot.currentItem;
   // Answer shortcuts: the coder's choice, where the study allows them (its display setting)
   const allowed = snapshot.display.answerKeys?.[inUnit ? "unitQuestions" : "coderQuestions"] !== false;
   const answerKeys = coderAnswerKeys && allowed;
@@ -435,6 +442,12 @@ function CodingScreen({
 }
 
 /** The relation question's state around the unit and the answer pane, while one is on screen. */
+/** A question item with its options from data resolved for the unit on screen. */
+function resolveVariableOf<T extends { variable: unknown }>(item: T, ctx: OptionsContext): T {
+  const variable = resolveVariable(item.variable, ctx);
+  return variable === item.variable ? item : { ...item, variable };
+}
+
 function MaybeRelations({
   variable,
   children,

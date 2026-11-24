@@ -1,11 +1,12 @@
 import type { UnitField, UnitFieldType } from "@annotinder/contracts";
-import { FlaskConical, Hash, Tags, ToggleLeft, Type } from "lucide-react";
+import { FlaskConical, Hash, Tags, ToggleLeft, Type, List } from "lucide-react";
 import { roleLabel } from "../../../admin/setKinds";
 
 const ICON: Record<UnitFieldType, typeof Type> = {
   text: Type,
   number: Hash,
   boolean: ToggleLeft,
+  list: List,
   set: Tags,
   unit_type: FlaskConical,
 };

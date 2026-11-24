@@ -52,10 +52,19 @@ Field names: letters, digits and `_`, not starting with a digit, at most
 | `text`    | anything              | headlines, texts, image links |
 | `number`  | numbers (`.` decimal) | `128`, `-3.5`                 |
 | `boolean` | `true` or `false`     | whether a post was deleted    |
+| `list`    | a list per unit       | `EU; NATO`, `["EU", "NATO"]`  |
 
 The type is suggested from the values. Values that don't fit block the
 upload (_3 values aren't numbers ('n/a', '3,5')_). Use `number` to
 calculate or compare; ids with leading zeros (`007`) should be `text`.
+
+A `list` is for things that differ per unit, such as the topics or
+people a question offers for this unit
+([options from data](nominal-and-ordinal.md#options-from-data)). A cell
+is words with `;` between them, or a JSON list: of words, or of options
+with a label and optionally a value and colour
+(`[{"label": "EU", "value": "eu", "color": "blue"}]`). JSON lists are
+recognized by themselves; choose `list` for a column of words with `;`.
 
 ### Role columns
 

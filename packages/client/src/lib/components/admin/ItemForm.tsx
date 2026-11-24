@@ -58,6 +58,7 @@ export function ItemForm({
   inLoop = false,
   loopItems = [],
   unitFields = [],
+  listFields = [],
   loopNames,
   readOnly = false,
   validationIssues = [],
@@ -81,6 +82,8 @@ export function ItemForm({
   loopItems?: DesignItem[];
   /** The study's unit fields (completions in a layout's template). */
   unitFields?: string[];
+  /** The unit fields of type list (a question can take its options from one). */
+  listFields?: string[];
   /** For a question in a loop: what the layouts before it show ("Show field"), and what span questions can select in. */
   loopNames?: { shown: string[]; selectable: string[] };
   readOnly?: boolean;
@@ -190,6 +193,18 @@ export function ItemForm({
                     q.variable.type === "span" ? [{ name: q.name, options: q.variable.options }] : [],
                   )}
                   layoutFields={inLoop ? loopNames?.selectable : undefined}
+                  optionSources={
+                    inLoop
+                      ? [
+                          ...listFields.map((f) => ({ from: `$unit.${f}`, label: `The unit's ${f} (a list field)` })),
+                          ...availableQuestions.flatMap((q) =>
+                            q.variable.type === "span"
+                              ? [{ from: `$var.${q.name}`, label: `The spans of ${q.name}` }]
+                              : [],
+                          ),
+                        ]
+                      : []
+                  }
                   stratifyChoices={stratifyChoices}
                   onChange={(variable) => onChange({ ...item, variable } as DesignItem)}
                 />

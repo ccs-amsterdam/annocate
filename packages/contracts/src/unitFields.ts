@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { UnitData, UnitDataValue } from "./common.js";
+import { ListItemSchema, type ListItem, type UnitData, type UnitDataValue } from "./common.js";
 import { TEST_SET, isRoleColumn } from "./sets.js";
 
 /**
@@ -15,8 +15,14 @@ import { TEST_SET, isRoleColumn } from "./sets.js";
  * (cells name the sets a unit is in: `anna`, `anna;bob`), `unit_type` for
  * `test_set` (`overlap`, `practice` or `gold`, or empty). Their cells are
  * stored as sets (sets.ts), not in the units' data.
+ *
+ * A `list` field holds a list per unit (`ListItem`s: words, or options with
+ * a label and optionally a value and colour), e.g. the topics a unit can be
+ * coded with, which a question can take as options (`optionsFrom`). In a CSV
+ * a cell is a JSON list (`["EU", "NATO"]`, `[{"label": "EU", "color":
+ * "blue"}]`) or, in a column uploaded as a list, words with `;` between them.
  */
-export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "set", "unit_type"]);
+export const UnitFieldTypeSchema = z.enum(["text", "number", "boolean", "list", "set", "unit_type"]);
 export type UnitFieldType = z.infer<typeof UnitFieldTypeSchema>;
 
 export const UnitFieldSchema = z.object({
@@ -113,6 +119,7 @@ export function typeOfValue(value: UnitDataValue): UnitFieldType | null {
   if (value === null) return null;
   if (typeof value === "number") return "number";
   if (typeof value === "boolean") return "boolean";
+  if (Array.isArray(value)) return "list";
   return "text";
 }
 
@@ -186,14 +193,33 @@ const BOOLEAN = /^(true|false)$/i;
 
 /**
  * The type of a text column (e.g. from a CSV): number if every non-empty
- * value is a number, boolean if every one is true/false, else text.
+ * value is a number, boolean if every one is true/false, list if every one
+ * is a JSON list, else text.
  */
 export function inferFieldType(values: string[]): UnitFieldType {
   const filled = values.map((v) => v.trim()).filter((v) => v !== "");
   if (filled.length === 0) return "text";
   if (filled.every((v) => NUMBER.test(v))) return "number";
   if (filled.every((v) => BOOLEAN.test(v))) return "boolean";
+  if (filled.every((v) => v.startsWith("[") && parseList(v) !== undefined)) return "list";
   return "text";
+}
+
+/** A list cell: a JSON list of words or options, or words with `;` between them; undefined if it doesn't parse. */
+export function parseList(raw: string): ListItem[] | undefined {
+  const value = raw.trim();
+  if (value.startsWith("[")) {
+    try {
+      const parsed = z.array(ListItemSchema).safeParse(JSON.parse(value));
+      return parsed.success ? parsed.data : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return value
+    .split(";")
+    .map((w) => w.trim())
+    .filter((w) => w !== "");
 }
 
 /**
@@ -204,6 +230,7 @@ export function parseFieldValue(raw: string, type: UnitFieldType): UnitDataValue
   if (type === "text" || isSetType(type)) return raw;
   const value = raw.trim();
   if (value === "") return null;
+  if (type === "list") return parseList(value);
   if (type === "number") return NUMBER.test(value) ? Number(value) : undefined;
   return BOOLEAN.test(value) ? value.toLowerCase() === "true" : undefined;
 }

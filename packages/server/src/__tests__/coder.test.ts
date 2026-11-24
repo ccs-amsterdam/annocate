@@ -1636,6 +1636,42 @@ describe("auto questions", () => {
   });
 });
 
+describe("options from data", () => {
+  it("checks an answer against the options as the coder saw them: here an earlier span question's spans", async () => {
+    await redeploy({
+      layout: { template: "$unit.headline" },
+      children: [
+        { type: "layout", template: "$unit.headline" },
+        {
+          type: "question",
+          name: "actors",
+          variable: { type: "span", question: "?", options: [{ value: "person" }], fields: ["headline"] },
+        },
+        {
+          type: "question",
+          name: "politician",
+          variable: {
+            type: "nominal",
+            question: "?",
+            options: [{ value: "none" }],
+            optionsFrom: { from: "$var.actors" },
+          },
+        },
+      ],
+    });
+    const c = coder("spans");
+    const unit = (await c.next())!;
+    const slice = { offset: 0, length: 1, text: (unit.data.headline as string).slice(0, 1) };
+    const answers = (politician: string) => ({
+      actors: { done: true, spans: [{ id: "s1", field: "headline", value: "person", slices: [slice] }] },
+      politician: { done: true, values: [{ value: politician }] },
+    });
+    expect((await c.submit(unit.id, answers("nobody"))).status).toBe(400);
+    expect((await c.submit(unit.id, answers("s1"))).status).toBe(200);
+    expect((await c.submit(unit.id, answers("none"))).status).toBe(200);
+  });
+});
+
 describe("balanced draws", () => {
   it("break a tie at random", async () => {
     const experiment = {

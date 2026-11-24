@@ -1,14 +1,17 @@
 import { NOMINAL_LAYOUTS, ORDINAL_LAYOUTS, type AnyVariableType, type CategoricalType } from "@annotinder/contracts";
-import { OptionsEditor } from "../OptionsEditor";
+import { OptionsEditor, type OptionSource } from "../OptionsEditor";
 import { LayoutSelect, selectClass } from "./LayoutSelect";
 import { SpecialAnswersFields } from "./SpecialAnswersFields";
 
 /** Options, several answers (nominal) and layout of a nominal or ordinal question. */
 export function CategoricalFields({
   variable: v,
+  sources = [],
   onChange,
 }: {
   variable: CategoricalType;
+  /** Where options from data can come from (category questions). */
+  sources?: OptionSource[];
   onChange: (next: AnyVariableType) => void;
 }) {
   const ordinal = v.type === "ordinal";
@@ -27,7 +30,18 @@ export function CategoricalFields({
           onChange={(options) => onChange({ ...v, options })}
         />
       ) : (
-        <OptionsEditor key="nominal" options={v.options} onChange={(options) => onChange({ ...v, options })} />
+        <OptionsEditor
+          key="nominal"
+          options={v.options}
+          onChange={(options) => onChange({ ...v, options })}
+          from={v.optionsFrom}
+          sources={sources}
+          onFrom={(optionsFrom) => {
+            const next = { ...v, optionsFrom };
+            if (!optionsFrom) delete next.optionsFrom;
+            onChange(next);
+          }}
+        />
       )}
       <SpecialAnswersFields
         specials={v.specials}

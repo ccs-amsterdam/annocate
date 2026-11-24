@@ -41,6 +41,9 @@ function loopReferences(loop: UnitLoopItem, spanFields?: (field: string) => void
       };
       addTemplate(variable.question);
       addTemplate((item as { instruction?: unknown }).instruction);
+      // Options from a unit's list field: a reference to it
+      const from = (variable as { optionsFrom?: { from?: unknown } }).optionsFrom?.from;
+      if (typeof from === "string" && from.startsWith("$unit.")) addScript(from);
       if (spanFields && variable.type === "span" && Array.isArray(variable.fields)) {
         for (const f of variable.fields) if (typeof f === "string") spanFields(f);
       }

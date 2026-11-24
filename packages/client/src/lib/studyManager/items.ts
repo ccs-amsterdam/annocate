@@ -6,7 +6,7 @@ import type {
   TopLevelItem,
   VariableValue,
 } from "@annotinder/contracts";
-import { validateAnswer } from "@annotinder/contracts";
+import { resolveVariable, validateAnswer } from "@annotinder/contracts";
 import { flattenTree } from "../codebook/tree";
 
 // Lookups in the coder codebook that StudyManager needs.
@@ -31,11 +31,14 @@ export function loopQuestionNames(loop: CoderUnitLoopItem): string[] {
 export function currentAnswers(
   answers: Record<string, VariableValue>,
   variables: Map<string, AnyVariableType>,
+  unit?: Record<string, unknown> | null,
 ): Record<string, VariableValue> {
+  // Options from data: as the unit (and its answers) give them
+  const ctx = { unit, answers, questions: variables };
   return Object.fromEntries(
     Object.entries(answers).filter(([name, value]) => {
       const variable = variables.get(name);
-      return variable !== undefined && validateAnswer(name, variable, value).length === 0;
+      return variable !== undefined && validateAnswer(name, resolveVariable(variable, ctx), value).length === 0;
     }),
   );
 }

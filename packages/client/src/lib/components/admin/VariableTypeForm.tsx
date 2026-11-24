@@ -1,7 +1,7 @@
 import { MAX_TEXT_LENGTH } from "@annotinder/contracts";
 import { InfoTip } from "@/components/ui/info-tip";
 import { SCALE_LAYOUTS, type AnyVariableType } from "@annotinder/contracts";
-import { OptionsEditor } from "./OptionsEditor";
+import { OptionsEditor, type OptionSource } from "./OptionsEditor";
 import { SpecialAnswersFields } from "./variableType/SpecialAnswersFields";
 import { ScaleItemsEditor } from "./ScaleItemsEditor";
 import { QuestionField } from "./variableType/QuestionField";
@@ -23,6 +23,7 @@ export function VariableTypeForm({
   onChange,
   spanQuestions = [],
   layoutFields,
+  optionSources = [],
   stratifyChoices = [],
   experiment,
 }: {
@@ -32,6 +33,8 @@ export function VariableTypeForm({
   spanQuestions?: SpanQuestion[];
   /** In a loop: what span questions can select in (`unit.<field>` shown as plain text, ::: text blocks). */
   layoutFields?: string[];
+  /** Where a category question can take options from (`optionsFrom`): list fields, earlier span questions. */
+  optionSources?: OptionSource[];
   /** For a random condition: what a balanced draw can balance within (earlier questions, `session.<name>`). */
   stratifyChoices?: string[];
   /** For an experiment: the units' role columns, the URL parameters, the API (to make a condition set). */
@@ -44,7 +47,7 @@ export function VariableTypeForm({
       return (
         <>
           <QuestionField value={v} onChange={(patch) => onChange({ ...v, ...patch })} />
-          <CategoricalFields variable={v} onChange={onChange} />
+          <CategoricalFields variable={v} sources={optionSources} onChange={onChange} />
         </>
       );
     }

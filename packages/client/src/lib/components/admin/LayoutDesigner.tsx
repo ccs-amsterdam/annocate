@@ -1,6 +1,6 @@
 import { useState, type DragEvent, type ReactNode } from "react";
 import type { UnitFieldType } from "@annotinder/contracts";
-import { ChevronDown, ChevronUp, FlaskConical, Hash, Plus, Tags, ToggleLeft, Type, X } from "lucide-react";
+import { ChevronDown, ChevronUp, FlaskConical, Hash, Plus, Tags, ToggleLeft, Type, X, List } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { placeField, placedFields, removeField, type LayoutSlot, type SimpleLayout } from "../../design/simpleLayout";
@@ -20,6 +20,7 @@ const TYPE_ICON: Record<UnitFieldType, typeof Type> = {
   text: Type,
   number: Hash,
   boolean: ToggleLeft,
+  list: List,
   set: Tags,
   unit_type: FlaskConical,
 };

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
   itemName,
+  resolveVariable,
   type AnyVariableType,
   type DesignItem,
   type UnitData,
@@ -130,7 +131,8 @@ export function QuestionPreview({
               </div>
               <Question
                 key={`${item.name}-${JSON.stringify(item.variable)}`}
-                item={item}
+                // Options from data: from the unit shown and the answers given in the preview
+                item={{ ...item, variable: resolveVariable(item.variable, { unit: unitData, answers, questions }) }}
                 onAnswer={(value) => setAnswerState({ value })}
               />
             </div>

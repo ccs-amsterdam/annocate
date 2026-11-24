@@ -286,7 +286,15 @@ export function unitsTable(
       v.externalId,
       v.hash,
       time(v.created),
-      ...fields.map((f) => (v.data[f] === null || v.data[f] === undefined ? "" : String(v.data[f]))),
+      // A list as JSON (as uploaded), so it reads back the same
+      ...fields.map((f) => {
+        const value = v.data[f];
+        return value === null || value === undefined
+          ? ""
+          : typeof value === "object"
+            ? JSON.stringify(value)
+            : String(value);
+      }),
       ...cells.map((c) => c.get(v.unitId) ?? ""),
     ]),
   };

@@ -39,6 +39,7 @@ import {
   type PickNamesResponse,
   type DisplayEntry,
   validateVariables,
+  resolveVariable,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
 import { Codings, UnitPool, pickNext, type AgreementKeys, type OverlapPlacement } from "./distribution.js";
@@ -1125,7 +1126,10 @@ export class DeploymentRuntime {
       const missing = [...loops[0].variables.keys()].filter((name) => !(name in variables));
       throw new HttpError(400, `Unit not finished: no answer for ${missing.join(", ")}`);
     }
-    const errors = validateVariables(info.variables, variables);
+    // Options from data are the unit's (its list fields, its earlier spans): checked as the coder saw them
+    const earlier = await this.store.unitAnswers(coder.sessionId, unitId);
+    const types = await this.unitVariableTypes(info.variables, unitId, { ...earlier, ...variables });
+    const errors = validateVariables(types, variables);
     if (errors.length > 0) throw new HttpError(400, errors.join("; "));
     await this.store.checkAnswers(variables);
 
@@ -1138,7 +1142,7 @@ export class DeploymentRuntime {
       unitVersionId = unit && (await this.shownVersion(unit)).versionId;
     }
     // The loops these answers (with the unit's earlier ones) finish the unit in.
-    const merged = { ...(await this.store.unitAnswers(coder.sessionId, unitId)), ...variables };
+    const merged = { ...earlier, ...variables };
     const codings = finishedLoops(merged, this.loops.values()).map((l) => ({
       loop: l.key,
       agreement: agreementKeys(merged, l),
@@ -1356,6 +1360,18 @@ export class DeploymentRuntime {
     const shown = await this.shownVersion(unit);
     await this.store.recordServe(sessionId, unit.id, shown.versionId);
     return shown;
+  }
+
+  /** A loop's questions with their options from data resolved for a unit (`resolveVariable`); unchanged without any. */
+  private async unitVariableTypes(
+    variables: Map<string, AnyVariableType>,
+    unitId: number,
+    answers: Record<string, VariableValue>,
+  ): Promise<Map<string, AnyVariableType>> {
+    if (![...variables.values()].some((v) => v.type === "nominal" && v.optionsFrom)) return variables;
+    const unit = (await this.getUnits([unitId])).get(unitId);
+    const ctx = { unit: unit?.data, answers, questions: variables };
+    return new Map([...variables].map(([name, v]) => [name, resolveVariable(v, ctx)]));
   }
 
   private async getUnits(ids: number[], store: Store = this.store): Promise<Map<number, Unit>> {

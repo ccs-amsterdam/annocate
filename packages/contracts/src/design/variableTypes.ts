@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OptionsFromSchema } from "./optionsFrom.js";
 import { SafeNameSchema } from "../common.js";
 import {
   NominalOptionSchema,
@@ -55,12 +56,23 @@ const columnsField = z.number().int().min(1).max(4).optional().describe("Columns
  */
 export const NominalTypeSchema = VariableBaseSchema.extend({
   type: z.literal("nominal"),
-  options: NominalOptionsSchema,
+  options: z
+    .array(NominalOptionSchema)
+    .superRefine((options, ctx) =>
+      nominalValueErrors(options).forEach((message) => ctx.addIssue({ code: "custom", message })),
+    ),
+  optionsFrom: OptionsFromSchema.optional().describe(
+    "Options from data, in one row among the options: $unit.<list field> or $var.<span question>.",
+  ),
   multiple: z.boolean().optional().describe("Several answers."),
   specials: SpecialAnswersSchema,
   layout: z.enum(NOMINAL_LAYOUTS).optional().describe("Default auto: chosen from the options (resolveLayout)."),
   columns: columnsField,
-}).superRefine(checkSpecials(true));
+}).superRefine((v, ctx) => {
+  if (v.options.length === 0 && !v.optionsFrom)
+    ctx.addIssue({ code: "custom", message: "At least one option is required", path: ["options"] });
+  checkSpecials(true)(v, ctx);
+});
 export type NominalType = z.infer<typeof NominalTypeSchema>;
 
 /** Ordinal: pick one of ordered options. Values are numbers rising in option order (default 1..n). */

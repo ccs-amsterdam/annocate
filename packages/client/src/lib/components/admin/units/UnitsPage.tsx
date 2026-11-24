@@ -651,6 +651,9 @@ function FieldCell({ field, value }: { field: UnitField; value: UnitResponse["da
   if (value === null || value === undefined || value === "") {
     return <td className="p-2 text-muted-foreground">–</td>;
   }
+  // A list: its labels
+  if (Array.isArray(value))
+    return <td className="max-w-sm p-2">{value.map((v) => (typeof v === "string" ? v : v.label)).join("; ")}</td>;
   if (field.type !== "text") return <td className="p-2 text-right tabular-nums">{String(value)}</td>;
   const text = String(value);
   return (

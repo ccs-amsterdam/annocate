@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures";
 import { answers, api, coders, fromExample, question, shortcutStyle } from "./helpers";
+import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 
 // Coders at work, in a real browser, on studies made from the examples.
 
@@ -310,4 +311,54 @@ test("open answers: one line continues with Enter, a text area with Ctrl + Enter
       ["comment", "First line\nsecond line"],
       ["name", "Kit"],
     ]);
+});
+
+test("options from data: each unit's own list of topics, among the question's own options", async ({
+  page,
+  request,
+}) => {
+  const created = await api<StudyResponse>(request, "POST", "/study", { name: "Options from data" });
+  await api<UnitResponse[]>(request, "POST", `/study/${created.id}/units`, {
+    units: [
+      { externalId: "u1", data: { text: "About the EU budget", topics: ["EU", { label: "Budget", color: "gold" }] } },
+      { externalId: "u2", data: { text: "About fishing", topics: ["Fishing"] } },
+    ],
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${created.id}/design`, {
+    items: [
+      {
+        type: "unit_loop",
+        children: [
+          { type: "layout", template: "$unit.text" },
+          {
+            type: "question",
+            name: "topic",
+            variable: {
+              type: "nominal",
+              question: "Topic?",
+              options: [{ value: "other", label: "Something else" }],
+              optionsFrom: { from: "$unit.topics", at: 0 },
+            },
+          },
+        ],
+      },
+    ],
+  });
+  await api(request, "PUT", `/study/${created.id}/deployment`, { designVersionId: design.id });
+  const [link] = await api<{ secret: string }[]>(request, "GET", `/study/${created.id}/links`);
+  await page.goto(`/code/${created.id}?link=${link.secret}`);
+  await question(page, "Topic?");
+  const buttons = page.locator("[data-key-target]");
+  // Each unit's list first (its row is at 0), then the question's own option
+  const first = (await page
+    .getByText(/About the EU budget|About fishing/)
+    .first()
+    .textContent())!;
+  const expected = first.includes("EU") ? ["EU", "Budget", "Something else"] : ["Fishing", "Something else"];
+  // (each with its key badge in front)
+  await expect(buttons).toHaveText(expected.map((label, i) => `${i + 1}${label}`));
+  await buttons.first().click();
+  await expect.poll(async () => (await answers(request, created.id)).length).toBe(1);
+  const saved = (await answers(request, created.id))[0].value as { values: { value: string }[] };
+  expect(saved.values).toEqual([{ value: first.includes("EU") ? "eu" : "fishing" }]);
 });

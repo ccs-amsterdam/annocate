@@ -79,6 +79,24 @@ results say which (a `_special` column in the download). Give it a
 isn't one of the options' values; categories: text). Numbers and scales
 have them too; swipe doesn't.
 
+## Options from data
+
+A category question can also offer options that differ per unit. Choose
+**+ Options from data…** under the options:
+
+- **A unit's list field** (see [list fields](uploading-units.md#types)):
+  its items. The label is shown; the value is the item's own, or made
+  from the label (`Mark Rutte` → `mark_rutte`).
+- **The spans of an earlier span question** in the same loop: one option
+  per span the coder marked, with its text and its label's colour. The
+  value is the span's id, so the answer links to that exact span in the
+  download (`_json` columns).
+
+They appear as one fixed row among the options: move it to put them
+before, between or after the question's own options (e.g. _None of
+these_ last). Conditions can't check these values ahead (they differ per
+unit), and the download shows them as values.
+
 ## Several answers
 
 Tick **Allow several answers** (categories only). Coders tick options and

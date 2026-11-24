@@ -5,6 +5,7 @@ import {
   buildScope,
   formatAnswerKey,
   isAnswerColumn,
+  parseList,
   parseAnswerKey,
   TEST_SET,
   unitScopeData,
@@ -47,6 +48,7 @@ function cellValue(text: string, field: UnitField | undefined): UnitDataValue | 
     return Number.isFinite(n) ? n : { error: `Column ${field.name} holds numbers: "${t}" can't go in it.` };
   }
   if (field?.type === "boolean") return t === "true";
+  if (field?.type === "list") return parseList(t) ?? { error: `Column ${field.name} holds lists: "${t}" isn't one.` };
   return t;
 }
 
@@ -241,7 +243,7 @@ export function AnswerKeyDialog({
         const data = { ...u.data };
         for (const [col, text] of Object.entries(edits[u.id] ?? {})) {
           const value = cellValue(text, byName.get(col));
-          if (value !== null && typeof value === "object") throw new Error(value.error);
+          if (value !== null && typeof value === "object" && "error" in value) throw new Error(value.error);
           data[col] = value;
         }
         return { externalId: u.externalId, data };

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, X } from "lucide-react";
-import { SWIPE_DIRECTIONS, valueFromLabel, type Option } from "@annotinder/contracts";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleHelp, Database, X } from "lucide-react";
+import { SWIPE_DIRECTIONS, valueFromLabel, type Option, type OptionsFrom } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,6 +20,17 @@ export interface OptionsEditorProps<T extends Option> {
   swipe?: boolean;
   /** Extra columns per option, e.g. the weight of a random condition's option. */
   extra?: (option: T, update: (patch: Partial<T>) => void) => React.ReactNode;
+  /** Options from data (category questions): one fixed row among the options, where they go. */
+  from?: OptionsFrom;
+  /** What options from data can come from. */
+  sources?: OptionSource[];
+  onFrom?: (from: OptionsFrom | undefined) => void;
+}
+
+/** A place options from data can come from: `$unit.<list field>` or `$var.<span question>`. */
+export interface OptionSource {
+  from: string;
+  label: string;
 }
 
 /**
@@ -39,7 +50,13 @@ export function OptionsEditor<T extends Option>({
   max,
   swipe,
   extra,
+  from,
+  sources = [],
+  onFrom,
 }: OptionsEditorProps<T>) {
+  // The options from data row: before option `at` (none: after the last)
+  const fromAt = from ? Math.min(from.at ?? options.length, options.length) : -1;
+  const placeFrom = (at: number) => from && onFrom?.(at >= options.length ? { from: from.from } : { ...from, at });
   const ordinal = level === "ordinal";
   const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
   const deployed = useDeployedOptionValues();
@@ -101,6 +118,54 @@ export function OptionsEditor<T extends Option>({
     (o, i) => i === 0 || (typeof o.value === "number" && o.value > (options[i - 1].value as number)),
   );
 
+  const fromRow = from && (
+    <div className="contents">
+      <span className="flex w-5 justify-center text-muted-foreground">
+        <Database className="size-3.5" />
+      </span>
+      <div
+        className="col-span-3 flex h-8 items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-2 text-xs text-foreground"
+        title="Options from data, made for each unit: they can't be edited here"
+      >
+        Options from <span className="font-mono">{from.from}</span>
+        <span className="text-muted-foreground">
+          {from.from.startsWith("$var.") ? "(one per span; the span's id is stored)" : "(the unit's list)"}
+        </span>
+      </div>
+      <span className="flex items-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={fromAt === 0}
+          onClick={() => placeFrom(fromAt - 1)}
+          aria-label="Move options from data up"
+        >
+          <ArrowUp className="size-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          disabled={fromAt >= options.length}
+          onClick={() => placeFrom(fromAt + 1)}
+          aria-label="Move options from data down"
+        >
+          <ArrowDown className="size-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => onFrom?.(undefined)}
+          aria-label="Remove options from data"
+        >
+          <X className="size-3.5" />
+        </Button>
+      </span>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
@@ -134,6 +199,7 @@ export function OptionsEditor<T extends Option>({
           const Direction = swipe ? DIRECTION_ICONS[SWIPE_DIRECTIONS[i]] : null;
           return (
             <div key={i} className="contents">
+              {i === fromAt && from && fromRow}
               <span data-option-row={i} className="flex w-5 justify-center">
                 {Direction ? (
                   <Direction className="size-4 text-foreground" aria-label={`swipe ${SWIPE_DIRECTIONS[i]}`} />
@@ -196,7 +262,10 @@ export function OptionsEditor<T extends Option>({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => commit(options.filter((_, j) => j !== i))}
+                  onClick={() => {
+                    if (from && i < fromAt) onFrom?.({ ...from, at: fromAt - 1 });
+                    commit(options.filter((_, j) => j !== i));
+                  }}
                   aria-label="Remove option"
                 >
                   <X className="size-3.5" />
@@ -205,15 +274,33 @@ export function OptionsEditor<T extends Option>({
             </div>
           );
         })}
+        {fromAt === options.length && from && fromRow}
       </div>
       {ordinal && !rising && (
         <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options.</p>
       )}
-      {(!max || options.length < max) && (
-        <Button type="button" variant="outline" size="sm" onClick={add} className="self-start">
-          + Add option
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {(!max || options.length < max) && (
+          <Button type="button" variant="outline" size="sm" onClick={add}>
+            + Add option
+          </Button>
+        )}
+        {onFrom && !from && sources.length > 0 && (
+          <select
+            aria-label="Add options from data"
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            value=""
+            onChange={(e) => e.target.value && onFrom({ from: e.target.value })}
+          >
+            <option value="">+ Options from data…</option>
+            {sources.map((s) => (
+              <option key={s.from} value={s.from}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
     </div>
   );
 }

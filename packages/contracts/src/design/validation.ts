@@ -2,6 +2,7 @@ import { TopLevelItemSchema, loopTitle, unitLoops, type DesignItem, type LayoutI
 import { layoutsByItem, loopSnippets } from "./layoutItems.js";
 import type { AnyVariableType } from "./variableTypes.js";
 import { sameValue } from "./options.js";
+import { optionsSource } from "./optionsFrom.js";
 import { parseSimpleCondition, simpleConditionCalls, type Condition, type SimpleCall } from "./condition.js";
 import { CHECKABLE_TYPES, supportsAgreement, type LoopUnits } from "./unitLoop.js";
 import {
@@ -716,6 +717,18 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
               rules?: { from?: RuleEnd; to?: RuleEnd; options?: unknown[] }[];
             }
           | undefined;
+        // Options from data: a unit's list (in a loop), or an earlier span question of the loop
+        const from = (variable as { optionsFrom?: { from?: unknown } } | undefined)?.optionsFrom?.from;
+        if (typeof from === "string" && /^\$(unit|var)\./.test(from)) {
+          const { ns, name } = optionsSource(from);
+          const path = [...itemPath, "variable", "optionsFrom", "from"];
+          if (ns === "unit" && !loop) issue(path, `${from}: options from a unit are for questions in a unit loop`);
+          if (ns === "var") {
+            const span = spanVariables.get(name);
+            if (!span || span.loop !== (loop?.name ?? null))
+              issue(path, `${from}: options come from a span question before this one in the same unit loop`);
+          }
+        }
         if (variable?.type === "relation" && Array.isArray(variable.rules)) {
           const types = new Set((variable.options ?? []).map((o) => o?.value));
           variable.rules.forEach((rule, r) => {
@@ -881,6 +894,8 @@ export function callArgumentProblems(
   // A special answer's kind is a value too: `.is("dont_know")`
   const specials = specialKinds(variable);
   const isSpecial = (arg: unknown) => !ORDER_METHODS.has(call.method) && specials.includes(arg as never);
+  // Options from data are each unit's: values can't be checked here
+  if (variable.type === "nominal" && variable.optionsFrom) return [];
   if (variable.type === "numeric") {
     const range =
       variable.min !== undefined && variable.max !== undefined ? ` (${variable.min} to ${variable.max})` : "";

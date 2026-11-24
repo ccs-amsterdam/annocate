@@ -272,6 +272,17 @@ or, for numbers, inside min..max); without one the value is missing. With
 for nominal questions and leave it out of ordinal and interval agreement;
 the download writes the code (or nothing) with a `_special` column.
 
+**Options from data** (`optionsFrom: { from, at? }` on a nominal question,
+`design/optionsFrom.ts`): `$unit.<list field>` (its items: words, or
+`{ label, value?, color? }`; values from the labels when not given, made
+unique) or `$var.<span question>` (an earlier one in the loop: one option
+per span, its text as label, its id as value, its label's colour), in one
+fixed row at `at` among the question's own options (default after them).
+`resolveVariable` makes the options for a unit: the coding screen
+(`StudyRunner`), resumed answers (`currentAnswers`) and the server's checks
+(`submitUnit`) use it. A `list` unit field (unitFields.ts) is a JSON list
+or words with `;` in a CSV.
+
 ### Types
 
 | Type         | What                                                             | Stored (`VariableValue`)                   |

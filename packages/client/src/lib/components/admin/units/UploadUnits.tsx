@@ -485,7 +485,7 @@ function FilePicker({ onFile }: { onFile: (file: File) => void }) {
   );
 }
 
-const TYPES: UnitFieldType[] = ["text", "number", "boolean"];
+const TYPES: UnitFieldType[] = ["text", "number", "boolean", "list"];
 
 function ColumnRow({
   header,
