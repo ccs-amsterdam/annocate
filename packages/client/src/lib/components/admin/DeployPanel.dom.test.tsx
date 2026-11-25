@@ -46,7 +46,7 @@ type OnDeploy = Parameters<typeof DeployPanel>[0]["onDeploy"];
 
 /** The deploy panel of a study, with these draft unit changes waiting. */
 function panel(
-  props: { version?: DesignVersion | null; live?: DesignVersion | null; onDeploy?: OnDeploy },
+  props: { version?: DesignVersion | null; live?: DesignVersion | null; onDeploy?: OnDeploy; experts?: string[] },
   units: Partial<typeof NO_UNIT_CHANGES> = {},
 ) {
   const { version: draft = DRAFT, live = LIVE } = props;
@@ -58,6 +58,9 @@ function panel(
     units: { ...NO_UNIT_CHANGES, ...units },
     designVersionId: draft?.id ?? null,
   });
+  // The study's expert coders, as the Coders page lists them
+  const coders = (props.experts ?? []).map((coder) => ({ coder, kind: "expert", email: null }));
+  queryClient.setQueryData(["admin", "study", 1, "coders"], { coders, unassigned: { live: null, draft: 0 } });
   render(
     <QueryClientProvider client={queryClient}>
       <DeployPanel
@@ -175,6 +178,27 @@ describe("the deploy panel", () => {
     const [design, note, units, settings] = await deployed();
     expect([design, note, units]).toEqual([DRAFT, "First version", true]);
     expect(settings).toHaveProperty("reopenMinutes");
+  });
+});
+
+describe("a crowd's first deploy with expert coders left", () => {
+  const EXPERTS = { ...DRAFT, session: { invite: { mode: "coders", link: "per_coder" } } } as DesignVersion;
+  const said = () => screen.queryByText(/used and will be deleted/);
+
+  it("says beforehand that they aren't used and will be deleted", () => {
+    panel({ live: null, experts: ["anna", "bob", "carl"] });
+    expect(said()?.textContent).toContain("3 expert coders aren't used and will be deleted");
+  });
+
+  it("says nothing without expert coders, with a design for expert coders, or at a later deploy", () => {
+    panel({ live: null });
+    expect(said()).toBeNull();
+    cleanup();
+    panel({ live: null, version: EXPERTS, experts: ["anna"] });
+    expect(said()).toBeNull();
+    cleanup();
+    panel({ experts: ["anna"] });
+    expect(said()).toBeNull();
   });
 });
 

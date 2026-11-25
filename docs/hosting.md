@@ -58,25 +58,28 @@ rely on it. Cloudflare's limits come from its documentation of November
 
 ## Setting up
 
-Replace `annotinder.example.org` with your hostname and `/srv/annotinder`
+Replace `annotinder.example.org` with your hostname and `/opt/annotinder`
 with your app folder. Run Docker commands with `sudo` if your user isn't
 allowed to use Docker.
 
 ### 1. The files
 
-The repository is the app folder: `compose.yml` at the top, `.env` and
-`backups/` next to it (git ignores both).
+A server needs two files from the same release: `compose.yml` and
+`.env.example` (which becomes `.env`). No checkout of the code and no build:
+the app is the published image `ghcr.io/ccs-amsterdam/annotinder`, and the
+backup script is part of `compose.yml`. `.env` and `backups/` (made at the
+first start) come next to them.
 
 ```bash
-git clone https://github.com/ccs-amsterdam/annotinder.git /srv/annotinder
-cd /srv/annotinder
-git checkout v0.9.0      # the release to run
+mkdir -p /opt/annotinder && cd /opt/annotinder
+curl -fsSL -O https://raw.githubusercontent.com/ccs-amsterdam/annotinder/v0.9.0/compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/ccs-amsterdam/annotinder/v0.9.0/.env.example
 ```
 
-Check out a release tag, never a branch: the tag, `ANNOTINDER_VERSION` in
-`.env` and the image then match. `compose.yml` needs the checkout (it mounts
-`scripts/db-backup.sh`), but the app itself is the published image
-`ghcr.io/ccs-amsterdam/annotinder:<version>`, not built on your server.
+Take both from the release you run (the tag in the address, e.g. `v0.9.0`),
+so they match its image. Keep the folder readable by admins only, since
+`.env` holds the secrets. Docker Compose 2.23 or newer is needed (for the
+files `compose.yml` holds); amd64 and arm64 both work.
 
 ### 2. Register AnnoTinder at the login provider
 
@@ -144,10 +147,11 @@ a restored server needs the same `.env`.
 ### 4. Start
 
 ```bash
-docker compose pull app && docker compose up -d
+docker compose pull && docker compose up -d
 ```
 
-The server creates the database schema at its first start. The release's
+The first command downloads the images, the second starts them. The server
+creates the database schema at its first start. The release's
 commit is inside the image and is recorded with each deployment, so a study
 says which version coders saw. Then check:
 
@@ -159,9 +163,9 @@ says which version coders saw. Then check:
   `127.0.0.1`, since a published Docker port bypasses most firewalls.
 - `curl -s localhost:8787/api/health` prints the release and commit.
 
-To run a change that isn't released yet, build the image on the server
-instead: `ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build`
-(a few minutes, and memory the running app shares).
+To run a change that isn't released yet: [Building the image
+yourself](#building-the-image-yourself), or a test server with a branch's or
+commit's image ([Versions](#versions)).
 
 ### 5. The HTTPS proxy
 
@@ -192,11 +196,34 @@ What AnnoTinder needs from any proxy:
 
 Caddy sets the first three by itself; other proxies need them spelled out.
 
+#### Caddy in Docker
+
+On a server where nothing else uses ports 80 and 443, `compose.yml` can run
+Caddy too, so no proxy is installed on the host: the optional `caddy`
+service. Turn it on in `.env` and start as usual:
+
+```bash
+COMPOSE_PROFILES=caddy
+```
+
+It serves `ANNOTINDER_PUBLIC_URL` (the `caddyfile` in `compose.yml`), gets a
+Let's Encrypt certificate for that host by itself, and forwards to
+`127.0.0.1:8787`. Before the first start, DNS for the host must point to the
+server, and ports 80 and 443 (TCP, and 443/UDP for HTTP/3) must be open with
+nothing else listening on them. Caddy runs in the host's network
+(`network_mode: host`), so the app sees each visitor's own address (also over
+IPv6) and the firewall applies to it as to any program. Keep the
+`caddy-data` volume: without it Let's Encrypt may refuse new certificates for
+a while. Its log: `docker compose logs caddy`.
+
 ### 6. Smoke test
 
 ```bash
 scripts/smoke-test.sh https://annotinder.example.org
 ```
+
+The script is in the code (`scripts/smoke-test.sh`): run it from any machine
+with a checkout, or download it.
 
 Needs only bash and curl; exits with 1 if a check fails. It checks
 `/api/health`, the app with its security headers (and HSTS over HTTPS), that
@@ -257,15 +284,16 @@ lower it for accounts you don't know ([accounts](accounts.md) §3).
 ## Updating
 
 ```bash
-cd /srv/annotinder
+cd /opt/annotinder
 docker compose restart db-backup                     # a fresh dump first
-git fetch --tags && git checkout v0.9.1              # the new release
 sed -i 's/^ANNOTINDER_VERSION=.*/ANNOTINDER_VERSION=0.9.1/' .env
-docker compose pull app && docker compose up -d
+docker compose pull && docker compose up -d
 ```
 
 Read the release's entry in `CHANGELOG.md` first: a new minor version
-(0.10.0) can change what scripts or researchers see. Then run the smoke test
+(0.10.0) can change what scripts or researchers see. When it says
+`compose.yml` or `.env.example` changed, download the new `compose.yml`
+(step 1) and add new settings to `.env`. Then run the smoke test
 (it prints the new commit). The server is away for some seconds while its
 container is replaced: update at a quiet hour.
 
@@ -279,7 +307,8 @@ container is replaced: update at a quiet hour.
   start; an update never needs a reset, and exports from older releases open
   on newer ones. Released migrations are frozen (a test fails when one is
   edited).
-- **Going back** to an older release: the same steps with the old number.
+- **Going back** to an older release: the same steps with the old number
+  (and its `compose.yml`, if that changed).
   If the update changed the database, restore the dump made before it first
   ([Backups](#restoring)), since an older server may not fit a newer schema.
   Answers given in between are lost, so decide fast.
@@ -326,7 +355,7 @@ not backed up: the dumps are the backup.
   later; a dump reads the whole database, which is fine up to some GB.
 
 ```
-7 * * * * cd /srv/annotinder && f=backups/hourly-$(date -u +\%H).dump && docker compose exec -T db pg_dump -U annotinder --format=custom annotinder > $f.partial && mv $f.partial $f
+7 * * * * cd /opt/annotinder && f=backups/hourly-$(date -u +\%H).dump && docker compose exec -T db pg_dump -U annotinder --format=custom annotinder > $f.partial && mv $f.partial $f
 ```
 
 ### Layers 2 and 3
@@ -353,7 +382,7 @@ write `/root/restic.env` (`RESTIC_REPOSITORY=s3:https://<host>/<bucket>`,
 # /usr/local/bin/annotinder-offsite: copies the dumps and settings off the machine (docs/hosting.md, "Backups").
 set -eu
 . /root/restic.env
-restic backup --tag annotinder /srv/annotinder/backups /srv/annotinder/.env
+restic backup --tag annotinder /opt/annotinder/backups /opt/annotinder/.env
 restic forget --tag annotinder --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
 # Tell the backup check that this ran (Monitoring): only reached when both commands worked
 curl -fsS -m 10 --retry 3 "<the check's ping address>" > /dev/null
@@ -395,7 +424,7 @@ drops it. The app keeps running. This one was run. (Run as a user that can
 read `backups/`: root, so with `sudo`.)
 
 ```bash
-cd /srv/annotinder && dump=$(ls backups | grep '^annotinder-' | sort | tail -n 1) && echo "$dump"
+cd /opt/annotinder && dump=$(ls backups | grep '^annotinder-' | sort | tail -n 1) && echo "$dump"
 docker compose exec -T db createdb -U annotinder restore_test
 cat "backups/$dump" | docker compose exec -T db pg_restore -U annotinder -d restore_test --no-owner
 docker compose exec -T db psql -U annotinder -d restore_test -c "select count(*) as studies from studies"
@@ -416,7 +445,7 @@ are untested)**.
 3. Start **only the database** and load the dump before the app ever starts
    (the app would create its own empty tables first):
    `docker compose up -d db`, then the `pg_restore` line of "Restoring"
-   below with the dump from `/tmp/restore/srv/annotinder/backups`.
+   below with the dump from `/tmp/restore/opt/annotinder/backups`.
 4. `docker compose up -d`, then the smoke test against `http://localhost:8787`.
    For a full test, point a test hostname at the machine and log in: with
    another hostname, the login needs that hostname in `ANNOTINDER_PUBLIC_URL`
@@ -481,7 +510,7 @@ A small script for 2 and for the dump itself, hourly from root's crontab
 #!/bin/sh
 # /usr/local/bin/annotinder-check: disk space, the newest dump, the containers (docs/hosting.md, "Monitoring").
 set -eu
-cd /srv/annotinder
+cd /opt/annotinder
 used=$(df --output=pcent . | tail -n 1 | tr -dc '0-9')
 [ "$used" -lt 80 ] || { echo "disk at $used%"; exit 1; }
 [ -n "$(find backups -name 'annotinder-*.dump' -mmin -1560)" ] || { echo "no recent dump"; exit 1; }
@@ -885,12 +914,43 @@ schema is a development task: `packages/server/README.md`.
 
 Each deployment records the release and commit it ran on (the deploy history,
 and `design.json` in the results). The release is in the code; the commit
-comes from `ANNOTINDER_COMMIT` (a build argument; the published image has it,
-and it is "unknown" without, which the smoke test reports). A server run from
-a git checkout finds the commit itself. `GET /api/health` answers
-`{ ok: true, service, release, commit }` without asking the database;
-`GET /api/ready` asks it too and answers `{ ok, service, database }`, with
-status 503 when the database doesn't answer.
+comes from `ANNOTINDER_COMMIT`, which the image takes as a build argument
+("unknown" without it, which the smoke test reports). `GET /api/health`
+answers `{ ok: true, service, release, commit }` without asking the
+database; `GET /api/ready` asks it too and answers `{ ok, service, database }`,
+with status 503 when the database doesn't answer.
+
+CI (`.github/workflows/image.yml`) builds the image for amd64 and arm64,
+starts it against Postgres (it must answer `/api/ready`), and publishes it as
+`ghcr.io/ccs-amsterdam/annotinder`:
+
+- every push to a branch: tagged with the branch (`main`; a `/` in its name
+  becomes `-`) and the commit (8 characters, e.g. `1a2b3c4d`), so a branch
+  can be tried on a test server before it is merged;
+- a tag `v<release>` (e.g. `v0.9.0`): also `0.9.0`, `0.9` and `latest`. The
+  release is `RELEASE` in `packages/contracts/src/version.ts`; CI refuses a
+  tag that doesn't match it.
+
+A server picks one with `ANNOTINDER_VERSION` in `.env`: a release on a real
+server, never a branch, so it doesn't change under you on the next pull. The
+first time CI publishes the image, GitHub makes the package private: make it
+public once (the package's **Package settings**), so servers pull it without
+logging in.
+
+### Building the image yourself
+
+To run your own changes, or without the published image, build it from a
+checkout with `compose.build.yml` next to `compose.yml`:
+
+```bash
+ANNOTINDER_COMMIT=$(git rev-parse --short=8 HEAD) docker compose -f compose.yml -f compose.build.yml up -d --build
+```
+
+With `COMPOSE_FILE=compose.yml:compose.build.yml` in `.env`, plain `docker
+compose` commands use both files. `ANNOTINDER_VERSION` must still be set (any
+value: the build replaces the image). A checkout with uncommitted changes
+still records only the commit, so use the published image when a study's
+record matters.
 
 ## Capacity
 

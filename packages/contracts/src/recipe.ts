@@ -1,7 +1,7 @@
 import { WrittenDesignFormatSchema } from "./design/format.js";
 import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
-import { CoderKindSchema, PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
+import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
 import { StudyNameSchema } from "./study.js";
 import { RoleColumnSchema, SetNameSchema } from "./sets.js";
@@ -19,11 +19,6 @@ import { CoderEmailSchema, CoderIdSchema } from "./coder.js";
 export const RecipeSchema = z.object({
   /** The new study's name. */
   name: StudyNameSchema,
-  /**
-   * Who codes in the new study: expert coders or a crowd (`StudyWriteSchema.coderKind`).
-   * Left out: the kind the design's invitation is for (a crowd without one).
-   */
-  coderKind: CoderKindSchema.optional(),
   /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
   /** The expert coders, each with an email address or without: `coder_set` names only these. */

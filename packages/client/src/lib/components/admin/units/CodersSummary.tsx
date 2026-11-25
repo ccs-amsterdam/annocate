@@ -1,11 +1,11 @@
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { codersOfKind } from "../../../admin/codersTable";
-import { useCodersQuery, useStudyQuery } from "../../../admin/queries";
+import { useCodersQuery, useWhoCodes } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 
 /** The study's expert coders in a line, with the way to the Coders page (where they are added, changed and followed). */
 export function CodersSummary({ client, onOpenCoders }: { client: ResearcherApi; onOpenCoders: () => void }) {
-  const kind = useStudyQuery(client).data?.coderKind;
+  const kind = useWhoCodes(client)?.kind;
   const coders = useCodersQuery(client).data?.coders;
   if (kind !== "expert" || !coders) return null;
   const experts = codersOfKind(coders, "expert");

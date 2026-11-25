@@ -5,6 +5,7 @@ import { useRenewLinkSecretMutation, useRevokeLinkMutation, useReopenLinkMutatio
 import { formatWhen } from "../../../admin/format";
 import { IconButton } from "@/components/ui/icon-button";
 import { useCopied } from "./useCopied";
+import { usePage } from "../usePage";
 
 /** The links, a row each. */
 export function LinkTable({
@@ -16,26 +17,30 @@ export function LinkTable({
   links: LinkResponse[];
   linkOf: (link: LinkResponse) => string;
 }) {
+  const { rows: pageRows, pager } = usePage(links);
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-            <th className="p-2 font-medium">Label</th>
-            <th className="p-2 font-medium">For</th>
-            <th className="p-2 font-medium">Link</th>
-            <th className="p-2 font-medium">Uses</th>
-            <th className="p-2 font-medium">Status</th>
-            <th className="p-2 font-medium">Created</th>
-            <th className="p-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {links.map((link) => (
-            <LinkRow key={link.id} client={client} link={link} url={linkOf(link)} />
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+              <th className="p-2 font-medium">Label</th>
+              <th className="p-2 font-medium">For</th>
+              <th className="p-2 font-medium">Link</th>
+              <th className="p-2 font-medium">Uses</th>
+              <th className="p-2 font-medium">Status</th>
+              <th className="p-2 font-medium">Created</th>
+              <th className="p-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((link) => (
+              <LinkRow key={link.id} client={client} link={link} url={linkOf(link)} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pager}
     </div>
   );
 }

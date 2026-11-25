@@ -213,7 +213,7 @@ export function DesignManager({
     return <LoadError error={loadError} onOpenCurrent={toCurrent} />;
   }
 
-  // The study too: the editor starts a design for its kind of coders
+  // The study too: once its first deploy fixed who codes, the editor shows that kind only
   if (
     !study ||
     fromUrl ||

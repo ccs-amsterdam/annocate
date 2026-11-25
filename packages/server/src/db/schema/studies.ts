@@ -11,7 +11,8 @@ import { bigId, timestamptz } from "./columns.js";
 /**
  * A study. owner_id: who created it (counts against their plan); origin: an
  * example or recipe it came from; coder_kind: who codes, the researchers'
- * `expert` coders or a `crowd` (fixed by the first deploy); reopen_minutes: how long coders can go
+ * `expert` coders or a `crowd` (null until the first deploy, which records
+ * the deployed design's kind and fixes it); reopen_minutes: how long coders can go
  * back after finishing (null: always, the session stays open); redirect_urls: panel return links by
  * setting name; suspended_at: blocked by an admin.
  */
@@ -24,7 +25,7 @@ export const studies = pgTable(
     name: text().notNull(),
     ownerId: integer().references(() => users.id, { onDelete: "set null" }),
     origin: text(),
-    coderKind: text().$type<CoderKind>().notNull().default("crowd"),
+    coderKind: text().$type<CoderKind>(),
     archived: boolean().notNull().default(false),
     reopenMinutes: integer().default(DEFAULT_REOPEN_MINUTES),
     redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),

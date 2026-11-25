@@ -4,7 +4,6 @@ import {
   forEachItem,
   innerItems,
   sessionItem,
-  inviteOf,
   unitLoops,
   type AnyVariableType,
   type DesignItem,
@@ -15,6 +14,7 @@ import {
   type VariableValue,
   own,
 } from "@annotinder/contracts";
+import { runtimeInvite } from "./sessionValues.js";
 
 // Lookups on the design items.
 
@@ -28,7 +28,7 @@ export interface LoopInfo {
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
-  const crowd = inviteOf(sessionItem(items)).mode === "crowd";
+  const crowd = runtimeInvite(sessionItem(items)).mode === "crowd";
   return unitLoops(items).map(({ key, loop }, position, loops) => {
     const variables = new Map<string, AnyVariableType>();
     collectQuestions(loop.children as DesignItem[], variables);

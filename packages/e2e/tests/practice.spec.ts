@@ -14,7 +14,7 @@ test("a practice question gives feedback when wrong, answered again until right;
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
-  await createStudy(page, "Checked coders", "Expert coders");
+  await createStudy(page, "Checked coders");
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "Checked coders")!;
   await addCoders(request, study.id, ["s1"]);

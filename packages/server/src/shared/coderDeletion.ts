@@ -146,7 +146,7 @@ async function deleteSessions(db: Db, studyId: number, sessions: Selected[], del
  * link per coder): deleted, since its sessions are gone, so a coder made
  * again with the id gets a new link at the next deploy.
  */
-async function removeCoders(db: Db, studyId: number, ids: string[]): Promise<void> {
+export async function removeCoders(db: Db, studyId: number, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   await lockUnits(db, studyId, "write");
   await db

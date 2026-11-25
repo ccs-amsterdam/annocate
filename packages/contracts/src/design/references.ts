@@ -286,7 +286,18 @@ export interface TemplateFence {
   end: number;
 }
 
-const FENCE_LINE = /^ {0,3}(:{3,})[ \t]*(.*?)[ \t]*$/gm;
+// The rest of the line in one piece, trimmed in code: a pattern like `[ \t]*(.*?)[ \t]*$`
+// can split a run of tabs many ways, which some regex engines try one by one
+const FENCE_LINE = /^ {0,3}(:{3,})(.*)$/gm;
+
+/** Without spaces and tabs at either end (a loop: a regex for it can be slow on long runs). */
+function trimSpaceTab(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && (text[start] === " " || text[start] === "\t")) start++;
+  while (end > start && (text[end - 1] === " " || text[end - 1] === "\t")) end--;
+  return text.slice(start, end);
+}
 const FENCE_KEYWORD = /^(else\s+if|if|else|from|style|text|markdown|html|image)\b\s*/;
 
 /** The block fence lines of a template: lines starting with `:::` (outside code). */
@@ -299,7 +310,7 @@ export function templateFences(source: string): TemplateFence[] {
     if (code.some(([s, e]) => start >= s && start < e)) continue;
     let end = start + m[0].length;
     if (source[end] === "\n") end++;
-    const rest = m[2];
+    const rest = trimSpaceTab(m[2]);
     const afterColons = m[0].indexOf(m[1]) + m[1].length;
     const tail = m[0].slice(afterColons);
     const restStart = start + afterColons + (tail.length - tail.trimStart().length);

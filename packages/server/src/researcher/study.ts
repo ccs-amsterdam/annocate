@@ -42,7 +42,6 @@ export function studies(server: Server): Hono<Env> {
         .values({
           name: body.name,
           archived: body.archived ?? false,
-          coderKind: body.coderKind ?? "crowd",
           ownerId,
           ...(body.reopenMinutes !== undefined ? { reopenMinutes: body.reopenMinutes } : {}),
         })

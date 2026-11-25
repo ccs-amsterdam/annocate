@@ -9,7 +9,7 @@ import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { listCoderDeletions } from "./coderDeletion.js";
 import { deploymentVersions } from "./deployments.js";
 import { toDesignVersion } from "./designVersions.js";
-import { studyCoderKind } from "./studies.js";
+import { studyCoderKind } from "./coderKind.js";
 import type { FileStore } from "./files.js";
 import { deployedSession } from "./links.js";
 import { listCoderProgress } from "./progress.js";

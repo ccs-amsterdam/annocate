@@ -7,7 +7,7 @@ import type {
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { inviteKind, inviteOf, splitDesignItems, type CoderKind } from "@annotinder/contracts";
+import { CROWD_INVITE, inviteKind, splitDesignItems, type CoderKind, type Invite } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { eq } from "drizzle-orm";
 import { units } from "../db/schema/index.js";
@@ -36,6 +36,18 @@ export const CODER_LOGIN = { mfa: false, authTime: null, issuer: "https://idp.te
  */
 export async function setCoderKind(kind: CoderKind): Promise<void> {
   await query(db, "UPDATE studies SET coder_kind = $1 WHERE id = 1", [kind]);
+}
+
+/**
+ * Design items as a design to save (their Session item as its `session`),
+ * for study 1 made a study of the kind it invites (`setCoderKind`): a crowd
+ * with one open link unless the items say who codes.
+ */
+export async function designFor(items: object[]) {
+  const split = splitDesignItems(items);
+  const invite: Invite = split.session.invite ?? CROWD_INVITE;
+  await setCoderKind(inviteKind(invite));
+  return { ...split, session: { ...split.session, invite } };
 }
 
 export const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
@@ -238,8 +250,7 @@ export async function redeploy(
     ...loop,
   };
   // A Session item among them goes into `session` (docs/architecture.md §6)
-  const design = splitDesignItems(withDivide([...extraItems, mainLoop]));
-  await setCoderKind(inviteKind(inviteOf(design.session)));
+  const design = await designFor(withDivide([...extraItems, mainLoop]));
   const res = await server.request("/api/study/1/design", {
     method: "POST",
     headers: adminHeaders,

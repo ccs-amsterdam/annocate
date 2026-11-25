@@ -10,7 +10,6 @@
     "See how each coder did on the test units in Results › Coders."
   ],
   "name": "Practice and gold units",
-  "coderKind": "crowd",
   "deploy": true,
   "units": [
     {

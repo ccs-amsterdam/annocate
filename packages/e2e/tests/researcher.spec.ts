@@ -115,7 +115,7 @@ test("your first study, as the help describes it: units, a design, deploy, a lin
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
-  await createStudy(page, "News pilot", "Crowd");
+  await createStudy(page, "News pilot");
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "News pilot")!;
 

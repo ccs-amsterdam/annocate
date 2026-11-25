@@ -6,7 +6,6 @@ import { ScaleItemsEditor } from "../ScaleItemsEditor";
 import { LayoutSelect } from "./LayoutSelect";
 import { RelationRules, type SpanQuestion } from "./RelationRules";
 import { SpanFieldsPicker } from "./SpanFields";
-import { SpecialAnswersFields } from "./SpecialAnswersFields";
 
 // What the answer types without a file of their own need besides the
 // question text: scale, swipe, text, span and relation.
@@ -24,8 +23,9 @@ export function ScaleFields({ variable: v, onChange }: { variable: Variable<"sca
         level="ordinal"
         options={v.options}
         onChange={(options) => onChange({ ...v, options })}
+        specials={v.specials}
+        onSpecials={(specials) => onChange({ ...v, specials })}
       />
-      <SpecialAnswersFields specials={v.specials} onChange={(specials) => onChange({ ...v, specials })} />
       <LayoutSelect
         variable={v}
         layouts={SCALE_LAYOUTS}

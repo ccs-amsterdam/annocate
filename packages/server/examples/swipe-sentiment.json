@@ -8,7 +8,6 @@
     "See who codes what: the columns coder_set and test_set (overlap) on the Units page, and 'Specific coders' with a link per coder in the Study entry (Design page)."
   ],
   "name": "Sentiment by swiping",
-  "coderKind": "expert",
   "deploy": true,
   "units": [
     {

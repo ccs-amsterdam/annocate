@@ -10,8 +10,8 @@ for reliability.
 
 ## In five steps
 
-1. **A study with expert coders**: choose **Expert coders** when you
-   create the study (or under **Settings**, until its first deploy).
+1. **A design with expert coders**: in the design, **Who codes** →
+   **Expert coders** (until the study's first deploy, which fixes it).
 2. **Your coders**: on **Coders**, **Add coders**: a coder id per line
    (`anna`, `bob`), optionally with their email address (see
    [The Coders page](coders-and-progress.md#the-coders-page)).

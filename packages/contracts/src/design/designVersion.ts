@@ -45,11 +45,13 @@ export const DesignWriteSchema = z.object({
    */
   public: PublicInfoSchema.nullable().optional(),
   /**
-   * The session (docs/architecture.md §6): the invitation (how the
-   * study's coders get in) and the URL parameters. `POST`: absent, the
-   * defaults (a crowd's open link, no parameters: in a study with expert
-   * coders, give their invitation, or the version isn't valid). `PUT`:
-   * absent keeps it. Not an item: `items` can't hold it.
+   * The session (docs/architecture.md §6): the invitation (who codes:
+   * expert coders or a crowd, and how they get in) and the URL parameters.
+   * `POST`: absent, the defaults (who codes not chosen yet, no parameters:
+   * it can't be deployed until an invitation is chosen). After the study's
+   * first deploy the invitation is for the study's kind of coders, or the
+   * version isn't valid. `PUT`: absent keeps it. Not an item: `items` can't
+   * hold it.
    */
   session: SessionSpecSchema.optional(),
   /**

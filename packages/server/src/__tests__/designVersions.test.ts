@@ -53,13 +53,18 @@ describe("whether a design version is valid", () => {
     expect(validations.count).toBe(2);
   });
 
-  it("is found for the study's kind of coders: a crowd's invitation isn't valid in a study with expert coders", () => {
-    const crowd = row({ id: 7003 });
+  it("is found for the kind of coders the first deploy fixed: the other kind's invitation isn't valid", () => {
+    const crowd = row({ id: 7003, session: { invite: { mode: "crowd" } } });
+    const experts = row({ id: 7004, session: { invite: { mode: "coders", link: "per_coder" } } });
+    const none = row({ id: 7005 });
+    // Before the first deploy: any invitation, or none
+    for (const version of [crowd, experts, none]) expect(toDesignVersionMeta(version, null).valid).toBe(true);
     expect(toDesignVersionMeta(crowd, "crowd").valid).toBe(true);
     expect(toDesignVersionMeta(crowd, "expert").valid).toBe(false);
-    const experts = row({ id: 7004, session: { invite: { mode: "coders", link: "per_coder" } } });
     expect(toDesignVersionMeta(experts, "expert").valid).toBe(true);
     expect(toDesignVersionMeta(experts, "crowd").valid).toBe(false);
+    // Who codes not chosen: not the other kind's
+    expect(toDesignVersionMeta(none, "expert").valid).toBe(true);
   });
 
   it("is found again for the same id and revision in an emptied database", () => {

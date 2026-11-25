@@ -61,7 +61,8 @@ export function SessionItemForm({
       {tab === "display" ? (
         <DisplaySettings display={item.display} onChange={(display) => setDisplay(display)} />
       ) : tab === "invite" ? (
-        client ? (
+        // Who codes not chosen yet: the choice is never folded away
+        client && inviteOf(item) ? (
           <NoUnitsNotice client={client}>{inviteForm}</NoUnitsNotice>
         ) : (
           inviteForm

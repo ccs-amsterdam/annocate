@@ -1,5 +1,6 @@
 import type { QuestionAgreement, ResultCoder } from "@annotinder/contracts";
 import { cn } from "cn";
+import { usePage } from "../usePage";
 
 /** A coder whose median time per unit is under this share of the coders' typical median is marked as fast. */
 const FAST = 1 / 3;
@@ -10,7 +11,6 @@ const FAST = 1 / 3;
  * first: who to look at.
  */
 export function CodersView({ coders, agreement }: { coders: ResultCoder[]; agreement: QuestionAgreement[] }) {
-  if (coders.length === 0) return <p className="text-sm text-muted-foreground">No coder has answered a unit yet.</p>;
   // Kappa over all questions, weighing each question by the units the coder shares in it
   const kappa = new Map<number, { sum: number; weight: number }>();
   for (const question of agreement)
@@ -31,7 +31,9 @@ export function CodersView({ coders, agreement }: { coders: ResultCoder[]; agree
   const typical = medians.length > 0 ? medians[Math.floor(medians.length / 2)] : null;
   const fast = (c: ResultCoder) =>
     typical !== null && c.medianUnitSeconds !== null && c.units >= 3 && c.medianUnitSeconds < typical * FAST;
-  const rows = [...coders].sort((a, b) => (kappaOf(a.sessionId) ?? 2) - (kappaOf(b.sessionId) ?? 2));
+  const sorted = [...coders].sort((a, b) => (kappaOf(a.sessionId) ?? 2) - (kappaOf(b.sessionId) ?? 2));
+  const { rows, pager } = usePage(sorted);
+  if (coders.length === 0) return <p className="text-sm text-muted-foreground">No coder has answered a unit yet.</p>;
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
@@ -90,6 +92,7 @@ export function CodersView({ coders, agreement }: { coders: ResultCoder[]; agree
           </tbody>
         </table>
       </div>
+      {pager}
     </div>
   );
 }

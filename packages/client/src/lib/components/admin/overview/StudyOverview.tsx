@@ -7,7 +7,7 @@ import {
   useDeploymentQuery,
   useLinksQuery,
   useOverviewQuery,
-  useStudyQuery,
+  useWhoCodes,
 } from "../../../admin/queries";
 import { describeVersions } from "../../../design/versions";
 import { formatWhen } from "../../../admin/format";
@@ -40,7 +40,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
 
   const designVersions = designVersionsQuery.data ?? [];
   const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
-  const coderKind = useStudyQuery(client).data?.coderKind;
+  const who = useWhoCodes(client);
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
     (link) => !link.revokedAt && !link.retiredAt && (link.maxUses === undefined || link.uses < link.maxUses),
@@ -87,11 +87,13 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
             label="Who codes"
             onClick={() => onNavigate("Coders")}
             value={
-              coderKind === undefined
+              who === undefined
                 ? "…"
-                : coderKind === "expert"
-                  ? `${count(experts, "expert coder")} · ${overview ? overview.coders.started : "…"} started`
-                  : `${count(overview?.coders.started, "crowd coder")} started`
+                : who.kind === null
+                  ? "not chosen yet"
+                  : who.kind === "expert"
+                    ? `${count(experts, "expert coder")} · ${overview ? overview.coders.started : "…"} started`
+                    : `${count(overview?.coders.started, "crowd coder")} started`
             }
           />
           <Fact label="Units" value={count(overview?.units, "unit")} onClick={() => onNavigate("Units")} />

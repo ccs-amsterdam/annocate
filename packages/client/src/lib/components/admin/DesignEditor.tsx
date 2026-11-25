@@ -48,8 +48,8 @@ export type SaveFn = () => Promise<DesignVersion>;
 
 interface DesignEditorProps {
   client: ResearcherApi;
-  /** The study's kind of coders (expert coders or a crowd): the design's invitation is for it. */
-  coderKind: CoderKind;
+  /** The kind of coders the study's first deploy fixed (null before it): the design's invitation is for it. */
+  coderKind: CoderKind | null;
   /** The version's number as people see it (v1, v2, ...): in an exported design file. */
   versionNumber?: number | null;
   /** The version to edit; null/undefined for a new design version. Mount with a `key` per version. */

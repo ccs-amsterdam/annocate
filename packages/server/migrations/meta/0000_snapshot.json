@@ -1,5 +1,5 @@
 {
-  "id": "418fca31-7802-4569-a4d6-38e5f1f0efea",
+  "id": "999a6ddc-0c7c-4f72-8b78-ec9c81c0ed02",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1401,8 +1401,7 @@
           "name": "coder_kind",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'crowd'"
+          "notNull": false
         },
         "archived": {
           "name": "archived",

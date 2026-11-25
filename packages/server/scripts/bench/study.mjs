@@ -55,7 +55,7 @@ async function coderSecrets(api, studyId, mode, coders) {
  * study's id in the coder API; `secrets[n]`: the link of coder n).
  */
 export async function createStudy(api, { name, mode, units, coders }) {
-  const study = await api("POST", paths.studies, { name, coderKind: mode === "experts" ? "expert" : "crowd" });
+  const study = await api("POST", paths.studies, { name });
   const unitIds = await uploadUnits(api, study.id, units);
   if (mode === "experts") {
     await api("POST", paths.coders(study.id), expertCodersBody(coders));

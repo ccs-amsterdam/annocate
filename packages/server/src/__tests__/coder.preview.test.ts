@@ -60,6 +60,26 @@ describe("researcher preview", () => {
     expect(label((await (await call("/session")).json()) as SessionResponse)).toBe("draft 2");
   });
 
+  it("a design that hasn't chosen who codes previews as a crowd: units for anyone, though it can't be deployed", async () => {
+    await draft("no invitation");
+    const { versions } = (await (await server.request("/api/study/1/design", { headers: adminHeaders })).json()) as {
+      versions: { id: number }[];
+    };
+    const latest = versions.at(-1)!.id;
+    const saved = await server.request(`/api/study/1/design/${latest}`, { headers: adminHeaders });
+    expect(((await saved.json()) as { session: object }).session).toEqual({});
+    const { deploymentId, token } = await openPreview();
+    const call = previewer(deploymentId, token);
+    const next = (await (await call("/loop/loop_1/next")).json()) as { units: CoderUnitResponse[] };
+    expect(next.units.length).toBeGreaterThan(0);
+    const deploy = await server.request("/api/study/1/deployment", {
+      method: "PUT",
+      headers: adminHeaders,
+      body: JSON.stringify({ designVersionId: latest }),
+    });
+    expect(deploy.status).toBe(400);
+  });
+
   it("keeps the preview's coders and answers out of the database", async () => {
     await draft("draft");
     const coders = async () => (await query<{ n: number }>(db, "SELECT COUNT(*)::int AS n FROM coder_sessions"))[0].n;

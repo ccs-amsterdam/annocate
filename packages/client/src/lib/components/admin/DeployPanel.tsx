@@ -15,7 +15,8 @@ import { diffDesigns, summarizeChanges, valueChanges, type DesignChange } from "
 import { InfoTip } from "@/components/ui/info-tip";
 import { HelpButton } from "../../help/HelpButton";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useDeploymentQuery, usePendingChangesQuery } from "../../admin/queries";
+import { useCodersQuery, useDeploymentQuery, usePendingChangesQuery } from "../../admin/queries";
+import { deployDeletesText, unusedExperts } from "../../admin/whoCodes";
 import { DesignToDeploy } from "./deploy/DesignToDeploy";
 import { FirstDeploySettings } from "./deploy/FirstDeploySettings";
 import { NewUnitsMessage, UnitsToDeploy } from "./deploy/UnitsToDeploy";
@@ -51,7 +52,8 @@ interface DeployPanelProps {
  * with the live version, and a version note) and the draft units and sets,
  * each with a checkbox; what is left out stays a draft. The first deploy
  * also asks what happens when coders finish (by default: coder links stay
- * open, one link closes after a day). Deploying units asks what returning
+ * open, one link closes after a day), and says which expert coders a
+ * crowd's first deploy deletes. Deploying units asks what returning
  * coders who get new ones are told. The Deploy page's content; the page
  * says when it was deployed.
  *
@@ -78,8 +80,11 @@ export function DeployPanel({
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
   const deployUnits = firstDeploy || (unitsChanged && withUnits);
-  const crowd = version !== null && inviteOf(sessionItem(designItems(version))).mode === "crowd";
+  const crowd = version !== null && inviteOf(sessionItem(designItems(version)))?.mode === "crowd";
   const [reopenMinutes, setReopenMinutes] = useState(() => firstDeployReopenMinutes(studyReopenMinutes, crowd));
+  // A crowd's first deploy fixes who codes: expert coders made before go (the server deletes them)
+  const coders = useCodersQuery(client).data?.coders ?? [];
+  const deletes = deployDeletesText(firstDeploy && crowd ? unusedExperts(coders, "crowd") : []);
   const currentMessage = useDeploymentQuery(client).data?.newUnitsMessage;
   const [message, setMessage] = useState<string | null>(null);
   const newUnitsMessage = message ?? (firstDeploy ? DEFAULT_NEW_UNITS_MESSAGE : (currentMessage ?? ""));
@@ -163,6 +168,11 @@ export function DeployPanel({
           <HelpButton topic="changing-a-live-design" label="Help: changing a live design" />
         </div>
 
+        {deletes && (
+          <p role="status" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2.5">
+            {deletes}: this first deploy fixes who codes as a crowd, which has no expert coders.
+          </p>
+        )}
         {state.step === "error" && <p className="text-destructive">{state.message}</p>}
       </div>
 

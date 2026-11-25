@@ -22,8 +22,7 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 On the **Studies** page, click **Create new study** and choose:
 
-- **Empty study**: type a name, choose **who codes** (for this study:
-  **Crowd (one link)**; see step 5) and click **Create Study**. Follow the
+- **Empty study**: type a name and click **Create Study**. Follow the
   steps below.
 - **From an example**: a ready study to look around in.
 
@@ -82,8 +81,9 @@ coder's units. More: [Layout templates](layout-templates.md).
 
 ## 5. Who codes
 
-You chose who codes when you created the study (you can change it under
-**Settings** until the first deploy):
+A new design hasn't chosen who codes yet: the tree's **Start** row says
+so, and deploying needs the choice. Click **Who codes** above the tree and
+choose one of the two cards:
 
 - **Crowd (one link)**: one link for anyone. Without more settings,
   every coder codes all units. Optionally take a coder id from the URL
@@ -93,8 +93,9 @@ You chose who codes when you created the study (you can change it under
   them on **Coders**, and the units' coder set (`coder_set`) names them.
   They get a link each, pick their coder id from one link, or sign in.
 
-**Who codes** above the tree has the options of your study's kind: for
-this study, a crowd's link, which needs no settings. More:
+For this study, choose **Crowd (one link)**: its link needs no settings.
+You can change the choice until the study's first deploy, which fixes it.
+More:
 [Links](links.md#who-codes),
 [Giving each coder their own units](own-units.md).
 

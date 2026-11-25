@@ -54,7 +54,8 @@ async function exampleStudy(): Promise<number> {
   return StudyResponseSchema.parse(await res.json()).id;
 }
 
-describe("long transactions lift the statement time limit for themselves", () => {
+// Real exports and imports: slower than the default 5 s on a busy CI runner
+describe("long transactions lift the statement time limit for themselves", { timeout: 60_000 }, () => {
   it("exporting a study, and importing one", async () => {
     const study = await exampleStudy();
     const out = watched();

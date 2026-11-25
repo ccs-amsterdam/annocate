@@ -4,6 +4,7 @@ import type { CoderProgress } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { formatWhen } from "../../../admin/format";
 import { coderName } from "./coderName";
+import { usePage } from "../usePage";
 
 const SPECIAL_KINDS = ["overlap", "gold", "practice"] as const;
 type SpecialKind = (typeof SPECIAL_KINDS)[number];
@@ -16,7 +17,7 @@ function endedText(ended: CoderProgress["ended"]): string {
 }
 
 /**
- * The coder sessions: the link, when each started and was last active, its
+ * The coder sessions: when each started and was last active, its
  * answers, how it ended, the units finished per loop of the live design
  * version and of the special sets the study has, and per session resetting
  * its answers or deleting its data.
@@ -34,49 +35,52 @@ export function SessionsTable({
   const loops = (coders[0]?.finished ?? []).map(({ loop, title }) => ({ loop, title }));
   // The special sets the study has (overlap, gold, practice): units of them each coder finished
   const specials = SPECIAL_KINDS.filter((kind) => coders.some((c) => c.testUnits?.[kind]));
+  const { rows: pageRows, pager } = usePage(coders);
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-            <th className="p-2 font-medium">Coder</th>
-            <th className="p-2 font-medium">Link</th>
-            <th className="p-2 font-medium">Started</th>
-            <th className="p-2 font-medium">Last active</th>
-            <th className="p-2 text-right font-medium">Answers</th>
-            <th className="p-2 font-medium">Ended</th>
-            {loops.map(({ loop, title }) => (
-              <th key={loop} className="p-2 text-right font-medium" title={`Unit loop ${loop}`}>
-                Finished in <span className="font-mono">{title}</span>
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+              <th className="p-2 font-medium">Coder</th>
+                <th className="p-2 font-medium">Started</th>
+              <th className="p-2 font-medium">Last active</th>
+              <th className="p-2 text-right font-medium">Answers</th>
+              <th className="p-2 font-medium">Ended</th>
+              {loops.map(({ loop, title }) => (
+                <th key={loop} className="p-2 text-right font-medium" title={`Unit loop ${loop}`}>
+                  Finished in <span className="font-mono">{title}</span>
+                </th>
+              ))}
+              {specials.map((kind) => (
+                <th
+                  key={kind}
+                  className="p-2 text-right font-medium capitalize"
+                  title={`Units of the deployed _${kind} set this coder finished`}
+                >
+                  {kind}
+                </th>
+              ))}
+              <th className="p-2">
+                <span className="sr-only">Actions</span>
               </th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.map((coder) => (
+              <CoderSessionRow
+                key={coder.id}
+                coder={coder}
+                loops={loops}
+                specials={specials}
+                onReset={() => onReset(coder)}
+                onDelete={() => onDelete(coder)}
+              />
             ))}
-            {specials.map((kind) => (
-              <th
-                key={kind}
-                className="p-2 text-right font-medium capitalize"
-                title={`Units of the deployed _${kind} set this coder finished`}
-              >
-                {kind}
-              </th>
-            ))}
-            <th className="p-2">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {coders.map((coder) => (
-            <CoderSessionRow
-              key={coder.id}
-              coder={coder}
-              loops={loops}
-              specials={specials}
-              onReset={() => onReset(coder)}
-              onDelete={() => onDelete(coder)}
-            />
-          ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+      {pager}
     </div>
   );
 }
@@ -102,7 +106,6 @@ function CoderSessionRow({
   return (
     <tr className="border-b last:border-0">
       <td className="p-2">{named ? coderName(coder) : <span className="text-muted-foreground">#{coder.id}</span>}</td>
-      <td className="p-2 text-muted-foreground">{coder.linkLabel ?? "–"}</td>
       <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
       <td className="p-2 whitespace-nowrap">{formatWhen(coder.lastActive)}</td>
       <td className="p-2 text-right tabular-nums">{coder.answers}</td>

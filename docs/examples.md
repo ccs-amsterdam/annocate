@@ -1,13 +1,14 @@
 # Recipes and example studies
 
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
-with, in one document: who codes (`coderKind`: `expert` or `crowd`; left
-out, the kind the design's invitation is for), units, its expert coders (`coders`: ids, each with
+with, in one document: units, its expert coders (`coders`: ids, each with
 an email address or without), role columns (`sets`: `coder_set`,
 `condition_set`, `part_set`, `test_set`, by the units' ids; a `coder_set`
 names the recipe's coders only), the first
 design version (a draft, or deployed with `deploy`, with its declared unit
-fields). `POST /study/from-recipe` makes a study from one in a
+fields). Who codes is the design's: its invitation (`session.invite`). A
+deployed recipe needs one, and deploying records the study's kind of
+coders as any first deploy does; a draft's study has none yet. `POST /study/from-recipe` makes a study from one in a
 single transaction (`server/src/shared/recipes.ts`), with the same role,
 limits and ownership checks as creating a study. Afterwards it is an
 ordinary study: nothing records how it was made except `origin` for an
@@ -21,9 +22,8 @@ Two things make recipes:
 - **A design file** (`designs/v<n>.json` in the results download, or
   Export › Design file in the editor): **Create new study › From a file**
   makes a recipe of it in the browser (`client/src/lib/admin/designImport.ts`):
-  a study with that design, its declared unit fields, and no units. A
-  design file doesn't say who codes: the study's kind is the one its
-  invitation is for.
+  a study with that design, its declared unit fields, and no units. The
+  design's invitation says who codes, as in any design.
 
 ## Example studies
 
@@ -35,7 +35,7 @@ dismisses it.
 
 | Category | Example | Shows |
 | --- | --- | --- |
-| Simple annotation | Sentiment by swiping | a swipe question; a study with expert coders (`coderKind: "expert"`; the other examples have a crowd): 20 units divided over 3 expert coders (`coder_set`, a link each, `invite: { mode: "coders", link: "per_coder" }`) plus 5 overlap units (`test_set`); example answers that disagree on some overlap units |
+| Simple annotation | Sentiment by swiping | a swipe question; a design for expert coders (`session.invite` with `mode: "coders"`; the other examples invite a crowd): 20 units divided over 3 expert coders (`coder_set`, a link each, `invite: { mode: "coders", link: "per_coder" }`) plus 5 overlap units (`test_set`); example answers that disagree on some overlap units |
 | Simple annotation | Labeling actors in texts | span annotation |
 | Surveys and experiments | A simple survey | survey question types, labelled branches (one holding an end item that screens out) |
 | Surveys and experiments | A simple experiment | an experiment whose condition chooses one of two versions of a text |

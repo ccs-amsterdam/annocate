@@ -55,8 +55,8 @@ const BACKUP_DELAY_MS = 1000;
 
 interface UseDesignDraftOptions {
   client: ResearcherApi;
-  /** The study's kind of coders: a new design starts with its invitation, and the invitation must be for it. */
-  coderKind: CoderKind;
+  /** The kind of coders the study's first deploy fixed (null before it): the invitation must be for it. */
+  coderKind: CoderKind | null;
   /** The version being edited; null/undefined for a new design version. */
   version?: DesignVersion | null;
   readOnly: boolean;
@@ -92,7 +92,7 @@ export function useDesignDraft({
   loopProgress,
 }: UseDesignDraftOptions) {
   // The items, the items as last saved, the revision the edits are based on, undo steps (design/draft.ts)
-  const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore, coderKind)));
+  const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore)));
   const { items, saved, revision, history, conflict } = draft;
   const [selected, setSelected] = useState<string | null>(null);
 

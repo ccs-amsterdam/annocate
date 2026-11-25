@@ -60,7 +60,8 @@ or a hex code (`#22c55e`); the picker's colours are names.
 
 ### Special answers
 
-For answers outside the options, tick them under **Special answers**:
+For answers outside the options, choose **+ Add special option** next to
+**+ Add option**; the answer appears in a row under the options:
 
 | Special answer     | Keys    | For example                                     |
 | ------------------ | ------- | ----------------------------------------------- |

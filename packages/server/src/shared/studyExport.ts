@@ -12,8 +12,8 @@ import {
   STUDY_EXPORT_FORMAT_VERSION,
   StudyExportManifestSchema,
   StudyWriteSchema,
-  designErrors,
-  CoderKindSchema,
+  deployErrors,
+  type CoderKind,
   sessionItem,
   undeclaredFields,
   type StudyExportManifest,
@@ -541,7 +541,6 @@ function checkStudy(current: Rows, name: string | undefined): void {
   const study = found[0]!;
   const settings = StudyWriteSchema.safeParse({
     name: name ?? study.name,
-    coderKind: study.coder_kind,
     reopenMinutes: study.reopen_minutes,
     redirectUrls: study.redirect_urls,
   });
@@ -557,8 +556,8 @@ function checkStudy(current: Rows, name: string | undefined): void {
  * checked again: those need the units in the database.)
  */
 function checkDesigns(current: Rows): void {
-  // The study's kind of coders, which the deployed design invites (`checkStudy` checked it)
-  const coderKind = CoderKindSchema.parse(current.get("studies")![0]!.coder_kind);
+  // The kind of coders the study's first deploy fixed (null: not deployed yet; the table's check saw to its values)
+  const coderKind = current.get("studies")![0]!.coder_kind as CoderKind | null;
   const versions = current.get("design_versions") ?? [];
   for (const version of versions) {
     const saved = DesignWriteSchema.safeParse({
@@ -582,8 +581,10 @@ function checkDesigns(current: Rows): void {
       Pick<DesignVersionRow, "items" | "session" | "units" | "public"> | undefined;
     // A deployment without its design version: `checkReferences` refuses it
     if (!deployed) continue;
+    if (coderKind === null)
+      throw invalid("This study export is deployed without its kind of coders (coder_kind): it can't be imported");
     const items = designVersionItems(deployed);
-    const errors = designErrors(items, coderKind);
+    const errors = deployErrors(items, coderKind);
     const undeclared = undeclaredFields(items, designVersionUnits(deployed).fields);
     if (errors.length > 0 || !itemsValid(items, coderKind) || undeclared.length > 0)
       throw invalid("The deployed design in this study export has issues: it can't be imported", [

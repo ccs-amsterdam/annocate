@@ -149,7 +149,7 @@ CREATE TABLE "studies" (
 	"name" text NOT NULL,
 	"owner_id" integer,
 	"origin" text,
-	"coder_kind" text DEFAULT 'crowd' NOT NULL,
+	"coder_kind" text,
 	"archived" boolean DEFAULT false NOT NULL,
 	"reopen_minutes" integer DEFAULT 1440,
 	"redirect_urls" jsonb DEFAULT '{}'::jsonb NOT NULL,

@@ -11,18 +11,19 @@ decides which links there are.
 
 ## Who codes
 
-A study has **expert coders** or a **crowd**. You choose when you create
-the study, and can change it under **Settings** until the study's first
-deploy; after that it is fixed. (Changing it sets the design's **Who
-codes** to the new kind's defaults.)
+A study has **expert coders** or a **crowd**. You choose in the design:
+**Who codes**, above the item tree. A new design shows the two as cards;
+deploying needs the choice. You can change it until the study's first
+deploy, which fixes it: from then on **Who codes** says "fixed since the
+first deploy" and shows only that kind's options.
 
 | Who codes            | For                                                                              | Links                                                   |
 | -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | **Expert coders**    | coders you know, each with their own units (content analysis, trained coders)    | a link per coder, or one link to pick a name or sign in |
 | **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
 
-How those coders get in is part of the design: **Who codes** above the
-item tree, which shows the options for your study's kind of coders.
+How those coders get in is set there too, with the options of the kind
+you chose.
 
 **Expert coders**: you add your coders on **Coders**, and the units'
 **coder set** (`coder_set`) names the coder(s) of each unit; **Create

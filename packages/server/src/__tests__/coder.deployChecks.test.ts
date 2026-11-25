@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { inviteKind, inviteOf, splitDesignItems } from "@annotinder/contracts";
 
 import {
   adminHeaders,
@@ -12,7 +11,7 @@ import {
   sessionItem,
   crowd,
   codersInvite,
-  setCoderKind,
+  designFor,
 } from "./coderHarness.js";
 
 describe("deploy checks of the columns with a role", () => {
@@ -29,8 +28,7 @@ describe("deploy checks of the columns with a role", () => {
   });
   /** Deploys these items (no other loop); the warnings, or the error. */
   const deploy = async (items: object[]) => {
-    const split = splitDesignItems(items);
-    await setCoderKind(inviteKind(inviteOf(split.session)));
+    const split = await designFor(items);
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,

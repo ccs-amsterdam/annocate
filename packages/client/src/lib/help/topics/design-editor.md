@@ -19,9 +19,9 @@ summary: The item tree, the item form, the preview, errors and warnings, saving,
 
 - **Title shown to coders**: edit it in place. The study's own name stays
   private.
-- **Who codes**: how the study's coders get in: its expert coders or its
-  crowd, which you chose when you created the study (see
-  [Links](links.md#who-codes)).
+- **Who codes**: expert coders or a crowd, and how they get in. A new
+  design has two cards to choose from; the study's first deploy fixes the
+  choice (see [Links](links.md#who-codes)).
 - **URL parameters**: values a link carries (see
   [URL parameters](session-parameters.md)).
 - **Display**: fixed or responsive layouts, and light or dark (see

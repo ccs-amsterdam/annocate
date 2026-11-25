@@ -3,20 +3,18 @@ import { WHO_CODES } from "./whoCodes";
 import { cn } from "cn";
 
 /**
- * The choice of who codes in a study: a card per kind of coders, as radio
- * buttons. `long`: the longer explanation (making a study). `disabled`: the
- * choice is fixed (the study was deployed).
+ * The choice of who codes (the design's Who codes): a card per kind of
+ * coders, as radio buttons. `long`: the longer explanation (while nothing
+ * is chosen yet).
  */
 export function WhoCodesCards({
   value,
   long = false,
-  disabled = false,
   onChoose,
   learnMore,
 }: {
   value: CoderKind | null;
   long?: boolean;
-  disabled?: boolean;
   onChoose: (kind: CoderKind) => void;
   /** A "Learn more" link under the cards (the guide). */
   learnMore?: () => void;
@@ -37,12 +35,11 @@ export function WhoCodesCards({
               type="button"
               role="radio"
               aria-checked={active}
-              disabled={disabled}
               onClick={() => onChoose(kind)}
               className={cn(
-                "flex flex-col items-start gap-1 rounded-lg border text-left transition-colors disabled:opacity-60",
+                "flex flex-col items-start gap-1 rounded-lg border text-left transition-colors",
                 long ? "p-4" : "p-2.5",
-                active ? "border-primary bg-primary/5" : "border-border bg-card enabled:hover:border-primary/40",
+                active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
               )}
             >
               <span className={cn("flex items-center gap-1.5 font-semibold", long ? "text-base" : "text-sm")}>

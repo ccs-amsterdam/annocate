@@ -9,7 +9,7 @@ import { migrationsFolder } from "../db/index.js";
 // schema change is a new migration (`pnpm db:generate`), added below once
 // it is released.
 const RELEASED: Record<string, string> = {
-  "0000_init": "2babc862c1af455f0b0dec5d06698ed912a563b41b7b8a353af612fa08a4f668",
+  "0000_init": "0eaeffd84d6288f2f060ba02c7f082639bfa0dc3deeda1a56dc0b826e43e7fbb",
   "0001_seed": "e8b3b20543337d7b22efe01b9edca8497bd5a909d0b6989beb46da142f714f33",
 };
 
