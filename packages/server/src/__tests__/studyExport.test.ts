@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
@@ -14,7 +15,7 @@ import type { Db } from "../db/index.js";
 import * as schema from "../db/schema/index.js";
 import { createApp } from "../app.js";
 import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
-import { EXPORTED_TABLES, NOT_EXPORTED } from "../shared/studyExport.js";
+import { EXPORTED_TABLES, NOT_EXPORTED, exportStudy } from "../shared/studyExport.js";
 import { emptyDb, query } from "./testDb.js";
 
 // Study exports (shared/studyExport.ts): the whole study, coders and answers
@@ -57,6 +58,32 @@ async function imported(bytes: Buffer, query = ""): Promise<Response> {
     headers: { "content-type": "application/octet-stream" },
   });
 }
+
+type ExportRow = { table: string; row: Record<string, unknown> };
+
+/** An export file taken apart: its manifest and its rows. */
+function unpacked(bytes: Buffer): { manifest: Record<string, unknown>; rows: ExportRow[] } {
+  const [first, ...rest] = gunzipSync(bytes).toString("utf8").trim().split("\n");
+  return {
+    manifest: JSON.parse(first!) as Record<string, unknown>,
+    rows: rest.map((line) => JSON.parse(line) as ExportRow),
+  };
+}
+
+/** An export file put together again. */
+const packed = (manifest: object, rows: ExportRow[]) =>
+  gzipSync(Buffer.from([manifest, ...rows].map((line) => JSON.stringify(line)).join("\n") + "\n"));
+
+const rowsOf = (rows: ExportRow[], table: string) => rows.filter((r) => r.table === table).map((r) => r.row);
+
+/** How far the sequences of the tables an import fills have come. */
+const sequences = (database: Db) =>
+  query(
+    database,
+    `SELECT sequencename, last_value FROM pg_sequences
+     WHERE sequencename ~ '^(studies|units|unit_values|design_versions|links|coder_sessions|annotation_values)_id_seq$'
+     ORDER BY sequencename`,
+  );
 
 /** Everything a study holds, by what people see (external ids, positions), not by database ids. */
 async function contents(studyId: number) {
@@ -112,7 +139,7 @@ async function contents(studyId: number) {
 }
 
 // Each import starts an in-memory database (a second or two): more time than most tests
-describe("study exports", { timeout: 30_000 }, () => {
+describe("study exports", { timeout: 60_000 }, () => {
   it("an export imports as a new study: units, sets, design versions, deployment, links, coders and answers", async () => {
     const original = await exampleStudy();
     const bytes = await exported(original);
@@ -192,6 +219,154 @@ describe("study exports", { timeout: 30_000 }, () => {
       expect.stringContaining("doesn't know"),
     ]);
     expect((await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0]!.n).toBe(1);
+  });
+
+  it("refuses an export whose deployed design, design versions or settings wouldn't pass a save or a deploy", async () => {
+    const { manifest, rows } = unpacked(await exported(await exampleStudy()));
+    const deployedId = rowsOf(rows, "deployments")[0]!.design_version_id;
+    /** The export with one row changed. */
+    const changed = (table: string, pick: (row: Record<string, unknown>) => boolean, change: object) =>
+      packed(
+        manifest,
+        rows.map((r) => (r.table === table && pick(r.row) ? { table, row: { ...r.row, ...change } } : r)),
+      );
+    const refusal = async (body: Buffer) => {
+      const res = await imported(body);
+      return [res.status, await res.json()];
+    };
+    // The deployed design: what deploying checks
+    expect(
+      await refusal(
+        changed("design_versions", (v) => v.id === deployedId, { items: [{ type: "nonsense", name: "q" }] }),
+      ),
+    ).toEqual([400, expect.objectContaining({ code: "export_invalid", error: expect.stringContaining("deployed") })]);
+    expect(await refusal(changed("design_versions", (v) => v.id === deployedId, { units: { fields: [] } }))).toEqual([
+      400,
+      expect.objectContaining({ issues: [expect.objectContaining({ message: expect.stringContaining("declare") })] }),
+    ]);
+    // Any design version: what saving checks (here a URL parameter's pattern)
+    expect(
+      await refusal(changed("design_versions", () => true, { session: { urlParams: [{ name: "p", pattern: "(" }] } })),
+    ).toEqual([400, expect.objectContaining({ code: "export_invalid", error: expect.stringContaining("design") })]);
+    // The study's settings: a redirect URL is a web address
+    expect(await refusal(changed("studies", () => true, { redirect_urls: { panel: "javascript:alert(1)" } }))).toEqual([
+      400,
+      expect.objectContaining({ code: "export_invalid", error: expect.stringContaining("settings") }),
+    ]);
+    // A line that isn't a row, and a row that doesn't fit its table
+    const damaged = gzipSync(Buffer.from([JSON.stringify(manifest), '{"table":"units"}', ""].join("\n")));
+    expect(await refusal(damaged)).toEqual([400, expect.objectContaining({ code: "export_invalid" })]);
+    expect(await refusal(changed("units", () => true, { external_id: null }))).toEqual([
+      400,
+      expect.objectContaining({ code: "export_invalid", error: expect.stringContaining("units") }),
+    ]);
+    expect((await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0]!.n).toBe(1);
+  });
+
+  it("an import over a limit is refused before it takes ids: the sequences stay where they were", async () => {
+    const bytes = await exported(await exampleStudy());
+    const { rows } = unpacked(bytes);
+    const before = await sequences(db);
+    const refusedWith = async (limits: object) => {
+      await query(db, "UPDATE users SET limits = $1::jsonb WHERE email = 'r@uni.nl'", [JSON.stringify(limits)]);
+      const res = await imported(bytes);
+      return [res.status, ((await res.json()) as { code?: string }).code];
+    };
+    expect(await refusedWith({ unitsPerStudy: 1 })).toEqual([403, "limit_reached"]);
+    // The owner's units in all studies: those of the first study count
+    expect(await refusedWith({ units: rowsOf(rows, "units").length + 1 })).toEqual([403, "limit_reached"]);
+    expect(await refusedWith({ codersPerStudy: 0 })).toEqual([403, "limit_reached"]);
+    expect(await refusedWith({ answersPerStudy: 1 })).toEqual([403, "limit_reached"]);
+    expect(await sequences(db)).toEqual(before);
+    // A unit or an answer larger than this server takes
+    await query(db, "UPDATE users SET limits = '{}'::jsonb");
+    await query(db, "UPDATE server_settings SET answer_bytes = 1");
+    expect((await imported(bytes)).status).toBe(403);
+    await query(db, "UPDATE server_settings SET answer_bytes = 65536, unit_bytes = 1");
+    expect((await imported(bytes)).status).toBe(403);
+    expect(await sequences(db)).toEqual(before);
+  });
+
+  it("a loop that takes an earlier loop's units keeps its unit list: the ids in a session's JSON are renumbered", async () => {
+    const original = await exampleStudy();
+    const { manifest, rows } = unpacked(await exported(original));
+    const units = rowsOf(rows, "units");
+    const [first, second] = [units[1]!, units[0]!];
+    const session = rowsOf(rows, "coder_sessions")[0]!;
+    const withList = rows.map((r) =>
+      r.table === "coder_sessions" && r.row.id === session.id
+        ? {
+            table: r.table,
+            row: {
+              ...r.row,
+              assignments: { again: { at: 1, units: [first.id, second.id, 999_999] } },
+              ended: { reason: "quit", at: "2026-01-01T00:00:00.000Z", unit: { loop: "again", id: first.id } },
+            },
+          }
+        : r,
+    );
+    // Other units before it, so the copy's unit ids differ from the original's
+    await exampleStudy();
+    const res = await imported(packed(manifest, withList));
+    expect(res.status, await res.clone().text()).toBe(201);
+    const copy = StudyResponseSchema.parse(await res.json()).id;
+    const [moved] = await query<{ listed: string[]; ended: string; ids: number[] }>(
+      db,
+      `SELECT ARRAY(SELECT u.external_id FROM jsonb_array_elements_text(s.assignments->'again'->'units') WITH ORDINALITY AS l(id, n)
+                    JOIN units u ON u.id = l.id::bigint AND u.study_id = s.study_id ORDER BY l.n) AS listed,
+              (SELECT u.external_id FROM units u WHERE u.id = (s.ended->'unit'->>'id')::bigint AND u.study_id = s.study_id) AS ended,
+              ARRAY(SELECT jsonb_array_elements_text(s.assignments->'again'->'units')::int) AS ids
+       FROM coder_sessions s WHERE s.study_id = $1 AND s.assignments ? 'again'`,
+      [copy],
+    );
+    // The same units in the same order (the unit the export doesn't have is left out), under new ids
+    expect(moved!.listed).toEqual([first.external_id, second.external_id]);
+    expect(moved!.ended).toBe(first.external_id);
+    expect(moved!.ids).not.toEqual([first.id, second.id]);
+  });
+
+  it("an export read in small pages holds the same rows, each once", async () => {
+    const study = await exampleStudy();
+    const whole = unpacked((await exportStudy(db, study)).bytes);
+    const paged = unpacked((await exportStudy(db, study, 3)).bytes);
+    expect(paged.rows.length).toBeGreaterThan(30);
+    expect(paged.rows).toEqual(whole.rows);
+    const counted = whole.manifest.tables as { name: string; rows: number }[];
+    expect(paged.manifest.tables).toEqual(counted);
+    expect(counted.map((t) => t.rows)).toEqual(counted.map((t) => rowsOf(whole.rows, t.name).length));
+  });
+
+  it("at size: a study of 50,000 rows is imported and exported again in seconds", async () => {
+    const { manifest, rows } = unpacked(await exported(await exampleStudy()));
+    const studyId = rowsOf(rows, "studies")[0]!.id;
+    const fieldId = rowsOf(rows, "unit_field_names")[0]!.id;
+    const added: ExportRow[] = [];
+    const UNITS = 16_500;
+    for (let i = 0; i < UNITS; i++) {
+      const id = 1_000_000 + i;
+      const value = `A text of unit ${i} that is long enough to look like one`;
+      const hash = "\\x" + createHash("sha256").update(JSON.stringify(value)).digest("hex");
+      added.push({
+        table: "units",
+        row: { id, study_id: studyId, external_id: `big-${i}`, in_draft: true, coded: false },
+      });
+      added.push({ table: "unit_values", row: { id, study_id: studyId, hash, value } });
+      added.push({ table: "unit_draft", row: { unit_id: id, field_id: fieldId, value_id: id } });
+    }
+    const big = packed(manifest, [...rows, ...added]);
+    const started = Date.now();
+    const res = await imported(big);
+    const importTook = Date.now() - started;
+    expect(res.status, await res.clone().text()).toBe(201);
+    const copy = StudyResponseSchema.parse(await res.json()).id;
+    const exportStarted = Date.now();
+    const again = unpacked(await exported(copy));
+    const exportTook = Date.now() - exportStarted;
+    expect(again.rows.length).toBe(rows.length + added.length);
+    expect(rowsOf(again.rows, "unit_draft").length).toBe(rowsOf(rows, "unit_draft").length + UNITS);
+    // Linear in the rows: seconds, where a quadratic import took most of a minute at this size
+    expect(importTook).toBeLessThan(15_000);
+    expect(exportTook).toBeLessThan(10_000);
   });
 
   it("exporting is a study ADMIN's sensitive action: never with an API key", async () => {
