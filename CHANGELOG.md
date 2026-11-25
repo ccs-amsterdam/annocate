@@ -26,8 +26,16 @@ release can't be used with it: start with an empty database
   on. Coders' unsaved answers survive a new version.
 - Results as a download (CSV or .xlsx) with documented column names that
   can't collide, and a results view with agreement.
-- A study has expert coders or a crowd: chosen when you create it, and
-  changed in its Settings until its first deploy.
+- Who codes is a setting of the study: expert coders or a crowd, chosen when
+  you create it and changed in its Settings until its first deploy, then
+  locked. The editor offers only the invitation that fits.
+- A Coders page lists a study's coders with their units, what is done and
+  what remains; add coders (by id, or id and email), edit an email, copy a
+  link, move units or delete a coder. A coder's id is fixed, an email can be
+  changed (a coder with a new email signs in on a new device). Expert coders
+  are made by researchers; a crowd's coders appear with their first session.
+- In the download, `coders.csv` is the table of coders (also those who
+  haven't started) and `sessions.csv` has one row per coder session.
 - Coder links name a study by a random id. At most 5 sessions per coder id
   per study.
 - Moving a study between servers: export and import a whole study.
@@ -45,7 +53,8 @@ release can't be used with it: start with an empty database
 - Stop for now and continue later, on this device or another; quit; or quit
   and ask the researchers to delete your answers.
 - Logging in is your choice where a study offers it, unless the study
-  requires it (expert coders who sign in). The researchers don't see the
+  requires it (expert coders who sign in). A crowd is never required to
+  sign in. The researchers don't see the
   address you chose to log in with.
 
 ### For those who run a server
@@ -55,7 +64,8 @@ release can't be used with it: start with an empty database
 - Researcher login through an OpenID Connect provider, with a second factor
   for sensitive actions; registration by invitation, email domain or
   request; plans with limits per researcher, and whether a crowd's coders
-  can sign in in their studies (off by default).
+  can sign in in their studies (off by default, set per plan; never
+  required).
 - The server doesn't start on settings that only fit development: with a
   database it needs `ANNOTINDER_SECRET` and `ANNOTINDER_PUBLIC_URL`.
 - Rate limits, request size limits, a request log without query strings,

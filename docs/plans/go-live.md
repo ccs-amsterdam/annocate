@@ -100,7 +100,7 @@ university VM, with Caddy, without Cloudflare.
   researchers or put where they can find it: who runs the server, where it
   is, that it is a pilot, what is stored, who to contact. Take it from
   [`../legal/privacy-statement.md`](../legal/privacy-statement.md) §2, §4,
-  §5 and §8. The app has no page for this yet (release plan, P-A3).
+  §5 and §8. The server's own page for this is "About this server" (`/about`, release plan P-A3): fill in `ANNOTINDER_OPERATOR`, `ANNOTINDER_HOSTING`, `ANNOTINDER_CONTACT`, `ANNOTINDER_PRIVACY_URL` and `ANNOTINDER_TERMS_URL` (`hosting.md`) and send its link.
 - [ ] **Tell pilot researchers what a pilot means**: keep your own
   downloads; the server will be started again with an empty database at
   the first release (a database from before the release tag can't be
@@ -183,8 +183,11 @@ matters: the first block takes the longest and blocks the rest.
 - [ ] The privacy statement and the terms are published, and who runs the
   server, where each part of it is hosted (VM, database, backups, proxy)
   and the contact addresses are stated: on the server's own information
-  page (release plan, P-A3). Until that page exists: on a page you host
-  elsewhere, with the link sent to every new researcher.
+  page (`/about`, release plan P-A3; settings `ANNOTINDER_OPERATOR`,
+  `ANNOTINDER_HOSTING`, `ANNOTINDER_CONTACT`, `ANNOTINDER_PRIVACY_URL`,
+  `ANNOTINDER_TERMS_URL`). The privacy statement and the terms themselves
+  live where those two links point: on a page you host elsewhere if the
+  server doesn't serve them.
 - [ ] Nothing, anywhere, says "hosted in the EU" as a general fact. With
   the Cloudflare proxy on the Free plan it would not be true
   ([Cloudflare in front](../hosting.md#cloudflare-in-front)).
@@ -195,8 +198,8 @@ matters: the first block takes the longest and blocks the rest.
 
 **5. Code that should be in before opening to the public**
 
-Still open. From the release plan: P-A3 (server information page). From
-part D below: P-12 (accepting the terms). The others can follow.
+Still open. From part D below: P-12 (accepting the terms). The others can
+follow. P-A3 (the server information page, `/about`) is built (`e6128e8`).
 
 Built since the list was made (`972692e`, `d6d0eb9`, `4b408b6`): B2-04 (a
 login joins a coder session only where the study requires sign-in or the
@@ -345,7 +348,7 @@ cover some of them; those numbers are no longer used.
 
 | Was | Now | State at `9b26c2a` |
 | --- | --- | --- |
-| P-01 server info page | **P-A3** | Not built. No page, no settings, no endpoint. The help topic "Privacy and where data lives" tells researchers to ask whoever runs their server; change it to point at the page when it exists. Worth adding to P-A3: a hardening warning in *Server admin* while the page is empty, and the same contact in `/.well-known/security.txt` |
+| P-01 server info page | **P-A3** | **Built** (`e6128e8`). `/about` (linked from the start page and the coder home), `GET /api/info`, settings `ANNOTINDER_OPERATOR`, `ANNOTINDER_HOSTING`, `ANNOTINDER_CONTACT`, `ANNOTINDER_PRIVACY_URL`, `ANNOTINDER_TERMS_URL` (`../hosting.md`). The help topic "Privacy and where data lives" points at it. Not built: a hardening warning in *Server admin* while the page is empty, and the contact in `/.well-known/security.txt` |
 | P-03 deleting a researcher account | **P-A2** | **Built** (`65d6387`, `4f7b3f3`). `GET /me/deletion` and `DELETE /me` with `{ confirm: <email> }` and a fresh login; **Delete account** in the account menu. An admin deletes a registered user the same way (`DELETE /admin/users/:id`; the admin log keeps the address and the studies that went). Studies only the user has a role in go with the account; it is refused (409) while they own a study others have a role in, are a study's only ADMIN, or are the server's only admin: `../accounts.md` §5 |
 | P-04 typing the name to delete a study | **P-A1** | **Built** (`65d6387`, `4f7b3f3`). `DELETE /study/:studyId` needs the study's ADMIN, a fresh second factor and `{ confirm: <the study's name> }`; one dialog, from the studies page and from a study's settings, says what goes and asks to type the name. It does not say how many coders and answers go |
 | Web basics (robots.txt, page metadata) | **P-A4** | Done: `packages/client/public/robots.txt` (the welcome page may be visited; `/code`, `/research` and `/api/` not) and, in `packages/client/index.html`, a description, theme colours and neutral social tags. No web app manifest: AnnoTinder is not installed as an app. Open in P-A4: the privacy officer's confirmation that no cookie banner is needed (C13) |

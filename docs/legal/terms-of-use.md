@@ -192,10 +192,12 @@ data.
    law is unlikely to apply (researchers act professionally), but check.
    A university may have standard wording for services it offers to
    outsiders.
-3. **How researchers accept the terms.** Today the app doesn't ask, and
-   it has no place to show them: the server's information page that §5
-   refers to is planned, not built (release plan, P-A3). Until then the
-   terms are sent to each researcher who is let in. A recorded acceptance
+3. **How researchers accept the terms.** Today the app doesn't ask. The
+   server's information page that §5 refers to exists (`/about`, release
+   plan P-A3) and links the terms and the privacy statement where the
+   operator sets `ANNOTINDER_TERMS_URL` and `ANNOTINDER_PRIVACY_URL`, but
+   it records no acceptance. Until it does, the terms are sent to each
+   researcher who is let in. A recorded acceptance
    at the first login as a researcher, and again when the terms change,
    is better, and needed if the data processing terms are to be agreed
    this way (`docs/plans/go-live.md`, P-12).

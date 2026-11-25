@@ -100,6 +100,22 @@ Each checked against the code at `4b408b6`. What an item left open is said with 
 
 Also in these commits, without an item of their own: `link`, `transfer` and `login` can't be a URL parameter's key or `coderParam` (`RESERVED_URL_KEYS`); study names are trimmed; `rate_limited` is a coder error code; resetting answers writes `answers_reset` to the security log; coder-level answers named `toString` or `__proto__` store correctly.
 
+### Done since `66814dd` (`e6128e8`, `5f59508`, `698236f`, `c720da8`, `7044756`)
+
+Each checked against the code at `7044756`. What an item left open is said with it.
+
+- **P-A3** · done (`e6128e8`): `/about`, `GET /api/info`, settings `ANNOTINDER_OPERATOR`, `ANNOTINDER_HOSTING`, `ANNOTINDER_CONTACT`, `ANNOTINDER_PRIVACY_URL`, `ANNOTINDER_TERMS_URL`; linked from the start page and the coder home. Not built: the hardening warning in *Server admin* and the contact in `/.well-known/security.txt`.
+- **B7-02** · CI, partly (`e6128e8`): `.github/workflows/ci.yml` on push and pull request: lint, the contracts build, types and unit tests of the three packages, and a job with Postgres 18 running `pnpm test:pg`. **Open:** the bench `smoke` preset; e2e runs only when started by hand (`workflow_dispatch`), not nightly or on release tags.
+- **B7-03** · done (`e6128e8`): a gitleaks job over the whole history in CI. The first run's result is not recorded here.
+- **B7-06** · done (`e6128e8`): `LICENSE`, `"license": "MIT"` in every `package.json`, `CHANGELOG.md` (0.9.0, not yet released), `SECURITY.md`. **Open:** its report address is still to fill in.
+- **B3-09** · done (`5f59508`): `studyManager/` has `Position.ts`, `UnitHistory.ts`, `UnitQueue.ts`, `Operations.ts`, `practice.ts`, `stepRenderer.ts`, `endings.ts`, `navigationSnapshot.ts`, `sessionDesign.ts`, `instructionOpening.ts`, `snapshots.ts`; the class stays the facade (`StudyManager.ts`, 1,241 lines).
+- **B3-12** · partly (`5f59508`): done are `ItemForm` (`itemForm/QuestionForm`, `ExperimentForm`, and others), `OptionsEditor` (`optionsEditor/OptionRow`, `useSwapAnimation`), `RuleRowEditor` (`RuleArguments`), `TreeItemRow` (`useRowAddOptions`), `TemplateInsertMenu` (`templateInsert/sections.ts`). **Open:** `LayoutForm` (319 lines), `VariableTypeForm` (no `TextFields` or `SwipeFields` yet), `RandomConditionFields` (265 lines), `ItemPanel` and `ItemPreview` (320 and 256 lines), and the nested ternaries in `EditorToolbar` and `DesignManager`.
+- **B4-03** · done (`5f59508`): the free navigation of `StudyManager` (`allowFree`, `allowAhead`, `jumpToUnitQuestion`) and `totalUnitsInHistory` are gone. **Open, not checked off:** `SandboxFrame` is still exported from `SandboxedHtml.tsx`.
+- **B5-08, B5-10, B5-11** · partly (`5f59508`): opt-in DOM tests (`*.dom.test.*`, happy-dom and Testing Library): `KeyboardProvider`, the answer fields, `SwipeCard`, `SessionEnd`, `useDisplayLog`, `session/studies`; the editor (`editorForms`, `editorEdits`); `DeployPanel`, `UploadUnits`, `UnitTable`. These are DOM tests, not browser-level: B5-10's `editor-edits.spec.ts` in `packages/e2e` is not written. **Open:** the rest of each list (for B5-11: `buildDownload`, the coders dialog and the units page; for B5-08: `KeyController` priorities and the `useKeyTargets` mappings).
+- **The coders table and the Coders page** (`698236f`): a `coders` table per study (id, immutable and unique ignoring case; kind `expert` or `crowd`; email, editable); sessions refer to their coder; a coder set names existing expert coders only; the Coders page; the per-session list is `sessions.csv` in the download and `coders.csv` is the table.
+- **Who codes is a study setting** (`c720da8`, `7044756`): `studies.coder_kind` (`expert` or `crowd`), chosen when the study is created, changeable until the first deploy (then 409 `coder_kind_locked`); the design's invitation must match it, and units uploaded before any design start a design for the study's kind.
+- **Crowd sign-in by plan** (`c720da8`): a crowd is never required to sign in (the crowd invitation's `login` is gone); optional sign-in is the plan setting `crowdSignIn` (off by default); expert coders always may.
+
 ### Added by the owner (after the review)
 
 - **P-A1 · Deleting a study needs a fresh second factor and typing its name** (as GitHub does for a repository): today it is too easy. Server: the delete route requires step-up; client: a dialog asking for the study's name. `srv-data` + `cli-admin`.

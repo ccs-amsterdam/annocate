@@ -43,7 +43,7 @@ them as well.
 | **DPA with researchers' institutions** | Not for researchers of the own university (the same organisation can't be its own processor). Yes when researchers of other institutions put their study data on it | Yes, with every institution whose researchers use it. In practice: a standard DPA that is part of the terms, plus a signed one for institutions that ask |
 | **Agreements with suppliers** | The VM is the university's own. Check the backup store and the login provider | Hosting provider, Cloudflare, backup store, login provider: each needs a DPA (most offer a standard one online) |
 | **Entry in the register of processing** | Ask the privacy officer: universities keep a register, and a new system that holds research data usually has to be entered | The same, for whichever organisation runs it |
-| **Server info page** (who runs this, where, contact; planned, not built: release plan, P-A3) | Yes | Yes |
+| **Server info page** (who runs this, where, contact: the app's "About this server" page, `/about`, filled in through the `ANNOTINDER_*` settings in `docs/hosting.md`; release plan, P-A3) | Yes | Yes |
 
 ## What the owner must decide or get checked
 
@@ -77,7 +77,7 @@ Each of these is also in the checklists of
    against attacks (`../hosting.md`, "Cloudflare in front").
 4. **The hosting location.** The drafts, the docs and the app say nothing
    about where any server is hosted. Each server states its own provider
-   and location, on its info page (release plan, P-A3) and in its privacy
+   and location, on its "About this server" page (`ANNOTINDER_HOSTING`; release plan, P-A3) and in its privacy
    statement, and it must be true for the VM, the database, the backups
    and the proxy.
 5. **Retention.** How long accounts and studies are kept when nobody uses

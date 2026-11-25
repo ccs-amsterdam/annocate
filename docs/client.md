@@ -32,15 +32,33 @@ How the web client (`packages/client`) works and why. Server side:
 
 ## 2. StudyManager (coding runtime)
 
-`src/lib/studyManager/StudyManager.ts` is a framework-agnostic state machine;
+`src/lib/studyManager/StudyManager.ts` is a framework-agnostic state machine,
+split into the modules below;
 `useStudyManager` binds it to React with `useSyncExternalStore`. It talks only
 to the `CoderApi` interface (`api/httpCoderApi.ts`); tests use stubs.
 
-Its parts, in `studyManager/`: `outbox.ts` (background saving, and the
-finished units kept in the browser), `unitDraft.ts` (unfinished units'
-answers in the browser), `items.ts` (codebook lookups), `practice.ts`,
-`navigationLabels.ts`, `errors.ts` (which failures are tried again) and
-`types.ts` (the snapshot the screen reads).
+`StudyManager` is the facade: the screen talks to it, and it keeps the
+session together. What it works with is in the other files of
+`studyManager/`:
+
+| File | What it holds |
+| --- | --- |
+| `Position.ts` | Where the coder is: the top-level steps, the open loop and unit (`OpenUnit`), how far they got (Next stops there), and the saved position |
+| `UnitHistory.ts` | Per unit loop, the units seen in this session (and, after a resume, those finished earlier) with their answers |
+| `UnitQueue.ts` | Per unit loop, the units fetched ahead (in batches) and not shown yet |
+| `Operations.ts` | The operations that talk to the server (answering, navigating) run one at a time, in order; a failure puts the coder back and says what Retry repeats |
+| `practice.ts` | Checks of practice answers against their key, and tries per question |
+| `stepRenderer.ts` | Pure: renders a step's unit layout, question texts and practice feedback |
+| `endings.ts` | Renders the end item's message and redirect |
+| `navigationSnapshot.ts` | Pure: the navigation (loops, questions reached) the screen shows |
+| `sessionDesign.ts` | The design the session codes with (the coder codebook) and its lookups |
+| `instructionOpening.ts` | Which instructions open by themselves, for one visit |
+| `snapshots.ts` | The empty snapshots (`NO_STEP`, `INITIAL_SNAPSHOT`) |
+| `outbox.ts` | Background saving, and the finished units kept in the browser |
+| `unitDraft.ts` | Unfinished units' answers, kept in the browser |
+| `items.ts`, `navigationLabels.ts` | Codebook lookups; labels for the navigation |
+| `errors.ts` | Which failures are tried again |
+| `types.ts` | The snapshot the screen reads |
 
 **The screen** is `components/StudyRunner.tsx`: only the providers (the
 coder's settings, the keyboard) around `CoderSessionGate`. Its parts are in
@@ -450,7 +468,7 @@ shows the ending (`coder-identity.md` §9).
   text). A ? button by the question, or the ? key, opens the instruction in
   a dialog (`components/QuestionInstruction.tsx`), with a dot until opened
   once. With `instructionOpen` it opens by itself on the first unit with the
-  question, or on practice units (`StudyManager.opensInstruction`).
+  question, or on practice units (`InstructionOpening.opens`).
 
 ### Comments
 
