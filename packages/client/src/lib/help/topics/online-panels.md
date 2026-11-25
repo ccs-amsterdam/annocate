@@ -31,7 +31,9 @@ expect them back when done.
    before deploying) a bit above the number of places.
 
 The id shows on **Coders** and as `coder` in the results, and keeps
-sessions apart (see [Coder ids](links.md#coder-ids)).
+sessions apart (see [Coder ids](links.md#coder-ids)). One id can start at
+most 5 sessions in a study, so a participant can't fill your study by
+starting over and over.
 
 ## Values from the link
 

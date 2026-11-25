@@ -64,7 +64,7 @@ You don't need an account. Per study, the server stores:
 | How your screen looked | The style of keyboard shortcuts, whether the screen was narrow or wide, light or dark theme, and when these changed |
 | A participant id | If the researcher's link carries one (for example the id a panel company gave you), or a name you picked from the study's list |
 | Other link details | Only the ones the study is set up to keep (for example a condition, or a panel's session id) |
-| Your email address | Only if you log in. Some studies require that; in others it is your own choice (to continue on another device). It is also stored if you were already logged in on this server when you opened the study's link. The researcher sees it in the results only where the study requires login `[SEE REVIEWER NOTE 8]` |
+| Your email address | Only if you log in for the study. Some studies require that; in others it is your own choice (to continue on another device). Being logged in on this server for something else doesn't count: your address is stored with a study only when the study requires login or you chose "Log in" there. The researcher sees it in the results only where the study requires login `[SEE REVIEWER NOTE 8]` |
 | A request to delete | If you quit and ask for your answers to be deleted (§8) |
 
 If you log in, you also get an account like a researcher's (below), without
@@ -127,7 +127,7 @@ tracking and other non-essential storage, not for this.
 | Name | For | Set when | Kept |
 | --- | --- | --- | --- |
 | `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | A study accepts your link for the first time | 400 days |
-| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after the login; removed at logout |
+| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after the login, or for researchers 14 days after they last used the site; removed at logout |
 | `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | Until you come back from the login provider, at most 10 minutes |
 | `[ANY COOKIES OF THE PROXY, e.g. Cloudflare's "__cf_bm" or "cf_clearance": only if the features that set them are switched on]` | Security of the proxy | | |
 
@@ -172,7 +172,7 @@ it to another AnnoTinder server.
 | --- | --- |
 | Study data | As long as the researcher keeps the study. The researcher decides when to delete it. `[IF A LIMIT APPLIES: "Studies that nobody opened for N months are deleted after a warning to the owner."]` |
 | Researcher accounts | Until you ask us to delete it. `[OPTIONAL: "Accounts not used for N years are deleted after a warning."]` |
-| Login sessions | They stop working 14 days after their last use, and at logout. `[The record of an expired session (a hash, the provider, times) is not removed automatically today: SEE REVIEWER NOTE 5]` |
+| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times) is removed the next time anyone logs in on the server `[so not after a fixed period: on a server where nobody logs in for a while it stays that long. SEE REVIEWER NOTE 5]` |
 | Links to continue on another device | 15 minutes |
 | Security and admin logs | `[PERIOD; today they are kept until someone removes them: SEE REVIEWER NOTE 5]` |
 | Invitations nobody used | They stop working after 3 months; `[PERIOD UNTIL REMOVED]` |
@@ -253,9 +253,11 @@ email.
    cookies set by scripts, and the pages load nothing from other sites
    except what a researcher puts in a study. Check them again at each
    release: several items of the release plan change them (notes 5 and 8).
-   The session cookie lasts 14 days from the login: the server extends the
-   session with each use, but does not renew the cookie, so the browser
-   drops it after 14 days whatever the use.
+   The session cookie lasts 14 days from its last use: the researcher API
+   extends the session (at most once an hour) and sends the cookie again
+   when it does (`researcher/auth.ts`). Coder requests read the login
+   without sending the cookie again, so for someone who only codes the
+   browser drops it 14 days after the login.
 2. **No cookie banner: the reasoning.** The ePrivacy Directive (article
    5(3); in the Netherlands article 11.7a of the Telecommunicatiewet)
    requires consent for storing or reading information on a device,
@@ -279,26 +281,30 @@ email.
    (`docs/accounts.md` §5). The studies only that user has a role in are
    deleted with it; an account that owns a study others work in can't be
    deleted until the study is deleted or has another owner. §8 above can say
-   so. **Still by hand:** everything about retention in §7: the
-   server removes nothing by itself except rate limit counters and used or
-   expired links to continue on another device. Expired login sessions, the
-   security log and the admin log stay until someone removes them
+   so. **Still by hand:** most of retention in §7: the
+   server removes nothing by itself except rate limit counters, used or
+   expired links to continue on another device, and login sessions (a
+   login ends the session it replaces, and every login removes all expired
+   ones: `researcher/login.ts`, `deleteExpiredSessions`; no timer does it).
+   The security log and the admin log stay until someone removes them
    (`docs/plans/go-live.md`, P-11).
 6. **The lab's own server** can use a shortened version: §2, §4, §5, §7,
    §8, with the university's general privacy statement for the rest, if
    the privacy officer agrees.
 7. A Dutch translation may be needed, depending on the participants.
-8. **Three things in the code that this statement has to follow**, each
-   with an item in the release plan. (a) An email address is linked to a
-   coder session whenever a logged-in browser opens a study link, also when
-   the study doesn't ask for it (D15, B2-04: planned to happen only where
-   sign-in is required or the coder chooses it). (b) Where a study requires
-   login, the participant id is the email address, so the deletion record
-   keeps it; and the export of a whole study (for the study's admins)
-   holds the email address of every session that has one, also where the
-   results hide it (D18, B1-23). (c) The results download is kept as a
-   file on the server until the next download of that study is made; it is
-   not removed when a coder's data or the study is deleted
-   (`docs/plans/go-live.md`, P-15). On the standard installation the file
-   disappears at the next update of the server. Until these are changed,
-   say what is true.
+8. **Three things in the code that this statement had to follow**, each
+   with an item in the release plan; all three are built now, so check the
+   text above against them once more. (a) Built (D15, B2-04; `972692e`,
+   `d6d0eb9`): an email address is linked to a coder session only where the
+   study requires sign-in or the coder chose "Log in" on the coding screen
+   (or opened the study from their own list of studies on another device);
+   a browser that is merely logged in gets a session without an email
+   (`docs/coder-identity.md` §5). §4 above says so. (b) Built (D18, B1-23): where a study requires
+   login, the participant id is the email address; the deletion record
+   keeps it as a hash (`sha256:…`, `shared/coderDeletion.ts`), and the
+   export of a whole study (for the study's admins) holds sessions' email
+   addresses only where the deployed design requires sign-in
+   (`shared/studyExport.ts`). (c) Built (`docs/plans/go-live.md`, P-15):
+   the results download is kept as a file on the server until the next
+   download of that study is made, and is removed when a coder's data or
+   the study is deleted and when answers are reset.

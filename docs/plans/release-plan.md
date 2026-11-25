@@ -76,6 +76,30 @@ B1-26 still stand (the fix narrows B1-26 but makes B1-27 easier to reach).
 
 - Done before the run: B1-29 (`updateItem` replaces an item's settings; `itemShape` accepts layout items: `4c710ea`), B1-21 part (2) (import appends rows in place). Still open in B1-29: `itemJson.ts`/`carryKeys` with layout and else items, if the worker finds a gap.
 
+### Done: the server runtime (`972692e`, `d6d0eb9`, `4b408b6`)
+
+Each checked against the code at `4b408b6`. What an item left open is said with it.
+
+- **B1-22** · session caps and rate limits. At most 5 sessions per coder id per study (`MAX_SESSIONS_PER_CODER`, 403 `coder_session_limit`, counted under a lock). New sessions are counted per address where they are made: a device without a session in the study, whatever cookie it sends, and guessed links (`runtime/requestCoder.ts`). The researcher API's limits per address before authentication and per user after it were done earlier (`9dbc1be`).
+- **B1-24** · `Deployments.admit` looks up the link, device, transfer token or login before a study is loaded; one 404 body (`link_not_found`); at most 200 runtimes loaded, the least recently used dropped; a preview is re-read only for its token or a device of it. `status()` adds each share's units once (a test with 200 coders and two shares of 150,000 units). The coder home's subqueries name the study.
+- **B2-01** · a lock per device key around find-or-create (`DbStore.resolveCoder`); a new login deletes the session it replaces, and every login deletes the expired ones (`researcher/login.ts`).
+- **B2-02** · codings are rederived 5,000 rows per insert with `unnest` (`insertCodings`), in a transaction without the database's time limits.
+- **B2-03** · `putLeases` deletes the leases of ended sessions and those expired for more than a day.
+- **B2-04** · a login counts only where the design requires sign-in or the request has `x-use-login: 1`, and links an email only on this study's link. Client: "Log in" on the coding screen and the coder home's list of the login's studies carry the choice as `login=1`, read once and taken out of the URL.
+- **B3-01** · `runtime.ts` is the facade (277 lines); `deployed.ts`, `shares.ts`, `experiments.ts` (with `draws.ts`), `picking.ts`, `submit.ts`, `coderUnit.ts`, `sessionEnd.ts`, `sessionView.ts`, `status.ts`, `transfers.ts`; the long functions are split as listed.
+- **B3-02** · `store.ts` (the interface), `dbStore.ts`, `startSession.ts`, `db/locks.ts` (`advisoryLock`, `inTurn`, `lockUnits`, `MIGRATION_LOCK`), `shared/annotations.ts`, `runtime/requestCoder.ts` (`loadRuntime`, `versionGuard`, `resolveRequestCoder`), `linkState` for `/names`. No separate `createSession`: the insert stayed in `findOrCreateCoder`.
+- **B3-05** · `shared/results/` (`answerCounts`, `agreement`, `resultUnits`, `resultCoders`, `resultsCache`, `liveAnswers`); the queries of `coders.ts`, `units.fields.ts` and `sets.ts` are in `shared/`; `shared/deployChecks.ts` with `coderChecks`, `experimentChecks`, `partChecks`, `unassignedUnits`, `answerKeyWarnings`.
+- **B3-06** · `sha256Hex` and `randomToken` (`shared/crypto.ts`), `isSecure` (`shared/cookies.ts`), `deployedDesignItems`, `firstDuplicate` (`shared/lists.ts`), `loggedIn` in `coderAccount.ts`; `UnitPool.canSubmit` is gone. Left as they were: the device id and the transfer token are made with Web Crypto in `runtime/` (which doesn't import Node's `crypto`), and link secrets with `randomBytes(16)` (three places).
+- **B3-15** · `coderHarness.ts` and twelve `coder.*.test.ts` files.
+- **B4-01** · the dead code and the internal names listed are gone (`Deployments.bumpRevision`, test units for "special units"); `keys.ts` no longer says there is no researcher login. One stale comment was found afterwards: `shared/rateLimit.ts` says new sessions are counted in `runtime/store.ts` (it is `runtime/requestCoder.ts`).
+- **B5-01** · `pnpm test:pg` (refuses to run without `TEST_DATABASE_URL`) and `concurrency.pg.test.ts`: 20 first requests on a link for 5 coders, the first requests of one device, the most sessions of a coder id, 20 balanced draws, 20 coders on a shared queue, a long lock. **Open:** the case "20 parallel picks of one name → one winner" (`pick_name`) has no test.
+- **B5-03** · `coder.redeploy.test.ts`: a loop put before another, a unit version a deploy replaced or took out while a coder had it, codings that fail to rederive in the middle; 20,000 codings in `coder.designUpdates.test.ts`.
+- **B5-04** · `coder.sharedQueues.test.ts`: an abandoned unit goes to another coder; old leases and those of ended sessions go.
+- **B5-05** · the status at size (above), and `coderHome.pg.test.ts`: an `EXPLAIN` on Postgres shows the coder home's subqueries use `annotation_values_coder`.
+- **P-16** (`go-live.md`) · a missing file under `/assets/` answers 404 without the one-year cache header.
+
+Also in these commits, without an item of their own: `link`, `transfer` and `login` can't be a URL parameter's key or `coderParam` (`RESERVED_URL_KEYS`); study names are trimmed; `rate_limited` is a coder error code; resetting answers writes `answers_reset` to the security log; coder-level answers named `toString` or `__proto__` store correctly.
+
 ### Added by the owner (after the review)
 
 - **P-A1 · Deleting a study needs a fresh second factor and typing its name** (as GitHub does for a repository): today it is too easy. Server: the delete route requires step-up; client: a dialog asking for the study's name. `srv-data` + `cli-admin`.

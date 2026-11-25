@@ -125,7 +125,9 @@ Anything else comes back with `loginError=link_failed`.
 **The session.** A random key in an httpOnly, `SameSite=Lax` cookie
 (`Secure` over HTTPS); the database has only its hash. It lasts 14 days from
 its last use: the server extends it at most once an hour, and sends the
-cookie again when it does.
+cookie again when it does. A new login ends the session it replaces (the
+one of the cookie the browser had), and every login removes the sessions
+that have expired (`coder-identity.md` §7).
 
 **The security log** (`security_log`, per user) records:
 
@@ -135,6 +137,7 @@ cookie again when it does.
 | `identity_linked` | a login was linked to the account | the provider |
 | `api_key_created`, `api_key_revoked` | | the key's id and label |
 | `study_exported` | a study export was downloaded | the study |
+| `answers_reset` | answers were reset (`POST /study/:studyId/annotations/reset`) | the study, and how many answers were retired |
 | `study_deleted` | | the study's id and name |
 | `study_users_changed` | a study's users were changed | who went from which role to which, roles restored |
 
@@ -192,6 +195,21 @@ counted per address or per user, in windows of a fixed length
   address fits, and requests with made-up credentials are still counted.
 - **New sessions** are only a brake: a class or a university network shares
   one address, so the default is high. Lower it only if you know who codes.
+  Counted in `runtime/requestCoder.ts` (`countNewSession`), in two places:
+  - a request of a device that has no session in the study, before the
+    session is looked for or started (`beforeNewSession`). Whether a device
+    has a session is what the database says, not whether the request has a
+    device cookie: a made-up cookie counts like none. So does a request that
+    asks for a new session (`x-new-session`). Other requests of a device
+    that has a session never count;
+  - a request the server refuses before it loads the study, with 404
+    `link_not_found` or a preview's 401 (`loadRuntime`): a guessed link
+    secret, study id or preview token.
+- **Sessions per coder id.** A coder id has at most 5 sessions in a study
+  (`MAX_SESSIONS_PER_CODER`; 403 `coder_session_limit`,
+  `coder-identity.md` §4). Not a rate limit and not a setting: a new session
+  of a known coder id doesn't use up the link's `maxCoders`, so without it
+  one participant could fill a study with sessions.
 - Over a limit: 429 `rate_limited` with `Retry-After` (the seconds until the
   window ends); the coding client waits and retries.
 - Counts live in an `UNLOGGED` Postgres table shared by all processes, except
@@ -234,7 +252,15 @@ coders' answers; who can get them, and when they are removed:
 - **Sessions** are a device cookie (`coder-identity.md` §4): httpOnly, only a
   hash stored. A coder id is a label: a link with a known coder id on a new
   device doesn't continue that session.
-- **Logging in** on a link links the login's email to the session.
+- **Logging in** on a link links the login's email to the session, but
+  only where the study requires sign-in or the coder chose it
+  (`x-use-login`, `coder-identity.md` §5): a login that is just there in the
+  browser never ends up on a session.
+- **Requests that show nothing of a study** (no link, device, transfer token
+  or login of it) get one 404, the same whether the study exists, is
+  deployed or is suspended, and the study isn't loaded for them
+  (`api/coder.md`). A server process keeps at most 200 studies and
+  previews loaded (`architecture.md` §3).
 - **`::html`** content runs in a sandboxed frame with an opaque origin: no
   access to the app, cookies or network.
 - **CSRF**: every API request needs `x-annotinder: 1`; cookies are

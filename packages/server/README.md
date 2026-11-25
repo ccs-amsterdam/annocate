@@ -77,14 +77,22 @@ a key.
 - [`src/coder.ts`](src/coder.ts): the coder API.
 - [`src/runtime/`](src/runtime/): runs deployed studies: unit distribution
   (state in `unit_codings` and `unit_leases`, under database locks),
-  validation, sessions, previews (in memory). It reads and writes the
-  database through [`store.ts`](src/runtime/store.ts).
+  validation, sessions, previews (in memory).
+  [`runtime.ts`](src/runtime/runtime.ts) is the facade, with a module per
+  thing it does (starting a session, picking units, answers, experiments,
+  the status: the list is in [docs/architecture.md](../../docs/architecture.md)
+  §10); [`registry.ts`](src/runtime/registry.ts) loads a study's runtime
+  for requests that belong to it. It reads and writes the database through
+  the `Store` of [`store.ts`](src/runtime/store.ts), which
+  [`dbStore.ts`](src/runtime/dbStore.ts) implements.
 - [`src/shared/`](src/shared/): database queries used by both.
 - [`src/db/`](src/db/): the database, through [Drizzle](https://orm.drizzle.team):
   the tables per area in [`schema/`](src/db/schema/), opening a database and
   applying the migrations in [`index.ts`](src/db/index.ts), and SQL
   expressions used inside queries (role resolution, unit data) in
-  [`sql.ts`](src/db/sql.ts). Queries use Drizzle's query builder; a few
+  [`sql.ts`](src/db/sql.ts), and every lock (database advisory locks, and a
+  line per key within the process) in [`locks.ts`](src/db/locks.ts).
+  Queries use Drizzle's query builder; a few
   (distribution's locks, comparing draft and deployed units, bulk inserts)
   are `sql` templates.
 - [`migrations/`](migrations/): made by Drizzle from the schema, applied in
@@ -103,7 +111,35 @@ applied migration is never edited. For something the schema can't say,
 `pnpm --filter @annotinder/server exec drizzle-kit generate --custom --name <what>`
 makes an empty migration to write by hand.
 
-Tests run on PGlite (one instance per test file, emptied before each
-test). To run them against a Postgres server instead, point
-`TEST_DATABASE_URL` at a scratch server: each test worker gets its own
-database there (`annotinder_test_<n>`), and its tables are emptied.
+## Tests
+
+```sh
+pnpm --filter @annotinder/server test      # on PGlite
+TEST_DATABASE_URL=postgres://postgres:test@localhost:5433/postgres \
+  pnpm --filter @annotinder/server test:pg   # the same tests, and the *.pg.test.ts files, on Postgres
+```
+
+`pnpm test` runs on PGlite (one instance per test file, emptied before each
+test). The coder tests are the `coder.*.test.ts` files, with what they
+share in [`coderHarness.ts`](src/__tests__/coderHarness.ts).
+
+`pnpm test:pg` runs the whole suite against a Postgres server, and stops at
+once without `TEST_DATABASE_URL`. Use a scratch server (for example
+`docker run --rm -e POSTGRES_PASSWORD=test -p 5433:5432 postgres:18`), never
+one with data you keep: each test worker makes its own database there
+(`annotinder_test_<n>`) and empties its tables before every test, and the
+pool tests drop and make `annotinder_pool_test_<pid>`.
+
+Three files only run there (`*.pg.test.ts`; skipped under `pnpm test`):
+`concurrency.pg.test.ts` (locks and counters under parallel requests:
+PGlite has one connection, so nothing there runs at the same time),
+`coderHome.pg.test.ts` (the coder home's query uses its index) and
+`pool.pg.test.ts` (the connection pool and the time limits).
+
+The user in `TEST_DATABASE_URL` must be able to create databases, and
+some tests need a superuser (the `postgres` user of the Docker image is
+one): `coderHome.pg.test.ts` sets `session_replication_role` to insert
+answers without the rows they refer to, which Postgres allows a superuser
+only (unless that setting was granted to the user); `pool.pg.test.ts`
+drops its database with `FORCE` and ends its connections with
+`pg_terminate_backend`.

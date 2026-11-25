@@ -73,7 +73,9 @@ A **coder id** says who the coder is, in the **Coder** column and the
 a **Pattern** (e.g. `[0-9]{6}`), and whether it is **Required** (default:
 a link without it doesn't start). Copied links end in
 `PROLIFIC_PID=<coder id>`: fill it in, or let a panel do so (see
-[Online panels and crowd coding](online-panels.md)).
+[Online panels and crowd coding](online-panels.md)). The parameter can't
+be called `link`, `transfer`, `login` or `source`: every study link uses
+those itself.
 
 A coder id is a label, **never a key**: anyone could type it. Opening a
 link with an id that already has a session elsewhere shows _"You already
@@ -81,6 +83,12 @@ started on another device"_, with how to continue there. Only if they
 can't get back can they start a new, empty session; the results then have
 two `session_id`s with the same `coder`. Often? A personal link may have
 been shared.
+
+One coder id can have **at most 5 sessions** in a study. After that the
+coder sees _"You can't start another session"_ and has to continue where
+they started. If they really can't, delete one of their sessions (see
+[Coders and progress](coders-and-progress.md)); a deleted session no
+longer counts.
 
 ## Coming back to a session
 
@@ -115,10 +123,10 @@ widely; coders who started keep working.
 
 ## Login
 
-Coders sign in with the server's login. They can **always** sign in (via
-**Continue on another device**) to keep a session across devices.
-Whether they **must**, and whether you see their address, depends on the
-invitation:
+Coders sign in with the server's login. They can **always** sign in
+(**Continue on another device** → **Log in**) to keep a session with their
+account and continue it on other devices. Whether they **must**, and
+whether you see their address, depends on the invitation:
 
 - **Expert coders, sign in**: their address must be in the coder set
   (others see _"This email address has no access to this study"_);
@@ -127,3 +135,10 @@ invitation:
 
 Where sign-in is required, the address is stored (`email` in the
 results) and you can delete a coder's data by email.
+
+Being logged in on the server is not the same as signing in to your
+study. Where sign-in is optional, a coder's account is used only after
+they chose **Log in** in your study. Someone who opens your link while
+logged in for something else (another study, or you testing your own
+link as a researcher) codes without an account: no address is stored, and
+a second link in the same browser starts its own session.

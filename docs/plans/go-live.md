@@ -24,7 +24,10 @@ refuses to start without its secret and public address), B7-05 (the request
 log), P-02 (the real address behind Cloudflare), P-06 (`/api/ready`), the
 removal half of P-15 (results files go with the data) and P-17 (the session
 cookie is renewed). B1-23 too: the deletion log and the study export leave
-coders' email addresses out.
+coders' email addresses out. And at `4b408b6`: B2-04 (a login joins a coder
+session only when asked), B1-22 (at most 5 sessions per coder id per study;
+new sessions counted per address where they are made) and P-16 (a missing
+asset file answers 404).
 
 ## A. This week: the lab pilot (invite-only)
 
@@ -192,11 +195,13 @@ matters: the first block takes the longest and blocks the rest.
 
 **5. Code that should be in before opening to the public**
 
-Still open. From the release plan: P-A3 (server information page) and
-B2-04 (a login joins a coder session only when asked, so email addresses of
-coders are stored only where the docs say). From part D below: P-12
-(accepting the terms) and P-16 (missing asset files). The others can
-follow.
+Still open. From the release plan: P-A3 (server information page). From
+part D below: P-12 (accepting the terms). The others can follow.
+
+Built since the list was made (`972692e`, `d6d0eb9`, `4b408b6`): B2-04 (a
+login joins a coder session only where the study requires sign-in or the
+coder chose it, so email addresses of coders are stored only where the docs
+say: `../coder-identity.md` §5) and P-16 (a missing asset file answers 404).
 
 Built: P-A1 (typing the name to delete a study), P-A2 (deleting an
 account), B1-23 (no coder email addresses in the deletion log or the study
@@ -265,9 +270,10 @@ it is a feature to plan, with a mail provider as one more supplier.
 **C7. How long is data kept?**
 The app deletes almost nothing by itself: a study stays until its
 researcher deletes it, an account until someone removes it from the
-database, and the security log, the admin log and the records of expired
-login sessions stay too. (It does clear rate limit counters after ten
-minutes, and links to continue on another device after 15.) For a public
+database, and the security log and the admin log stay too. (It does clear
+rate limit counters after ten minutes, links to continue on another device
+after 15, and the records of expired login sessions whenever someone logs
+in.) For a public
 server that grows forever, and the law expects a limit. Decide: after how
 long without use is a study or account removed (after a warning), how
 long are logs kept, and how far back do backups go (which is how long
@@ -361,9 +367,9 @@ None is needed for the lab pilot.
 | **P-08** | **Previews in the database** (marked as preview data, deleted when they expire), instead of in one process's memory (`runtime/preview.ts`) | One of the two things that stop several app servers from working without session affinity; previews also end at every restart | With a second app server |
 | **P-09** | **`compose.yml` for an external database**: `DATABASE_URL` from `.env` when set, the `db` and `db-backup` services optional (a compose profile), TLS to the database documented and tested. And a `BACKUP_INTERVAL` for hourly dumps in `db-backup.sh` (it writes one file per day now) | A managed Postgres, and dumps more often than daily, now need hand edits | With a managed database; the interval before public |
 | **P-10** | **Upload size behind a proxy.** A setting for the largest upload that the client shows and checks before sending, or uploads split into parts by the client | Cloudflare's Free and Pro plans refuse requests over 100 MB; the server accepts 256 MB on `/api/study/*`. Today a larger upload fails with Cloudflare's error page | Before public (the setting), later (splitting) |
-| **P-11** | **Retention tooling.** In *Server admin*: when each account and study was last used, a filter for "not used for N months", and deleting from there. A scheduled clean-up of what nothing removes today: expired rows in `sessions`, `security_log` and `admin_log` older than a set period, shadow users whose invitation expired. Later: warnings by email. (The release plan defers "cleanup jobs for logs" to after the release; this is that, with the admin's view added) | The app deletes almost nothing by itself; the privacy statement must state a period | Soon after public |
+| **P-11** | **Retention tooling.** In *Server admin*: when each account and study was last used, a filter for "not used for N months", and deleting from there. A scheduled clean-up of what nothing removes today: `security_log` and `admin_log` older than a set period, shadow users whose invitation expired. (Expired rows in `sessions` are removed at every login since `4b408b6`; a schedule would also remove them on a server where nobody logs in.) Later: warnings by email. (The release plan defers "cleanup jobs for logs" to after the release; this is that, with the admin's view added) | The app deletes almost nothing by itself; the privacy statement must state a period | Soon after public |
 | **P-12** | **Accepting the terms.** At the first login as a researcher, and again when the terms' version changes: show the terms and the data processing terms, and record who accepted which version and when | A standard data processing agreement as part of the terms only works if acceptance is recorded | Before public |
 | **P-13** | **Slow actions behind a proxy.** Measure, on a large study through Cloudflare: making the results download (`POST …/results/export` answers when the whole zip is written), the study export (built in memory before the first byte is sent), the study import, and a deploy. Whatever doesn't start answering within about 100 seconds must stream its answer or run in the background | Cloudflare cuts off answers that take longer to start (error 524) | Before public (measuring) |
 | **P-15** | **Results files follow the data.** The results download of a study is kept as a file (`ANNOTINDER_FILES_DIR`, `shared/resultsExport.ts`) until the next download replaces it. **The removal is built** (`7e7c9d4`, `65d6387`): the file goes when the study is deleted (also with its owner's account), when a coder's data is deleted and when answers are reset, and a download link handed out before stops working. Open: a shared store (S3, `exports-and-files.md`) for several app servers, where a download link made on one server now fails on another | The privacy statement says deleting is immediate | The removal: built; the store: with a second app server |
-| **P-16** | **A missing file under `/assets/` answers 404.** Today it answers with the app's page, status 200 and `cache-control: public, max-age=31536000, immutable` (the fallback to `index.html` in `app.ts`; checked with a request) | A proxy that caches keeps that wrong answer for a year under the script's name. It bites after going back to an older version. Until fixed: purge the proxy's cache after a rollback | Before public |
+| **P-16** | **A missing file under `/assets/` answers 404.** **Built** (`4b408b6`): `GET /assets/<a name that isn't there>` answers 404 "Not found" without a `cache-control` header, instead of the app's page with the one-year header (`serveClient` in `app.ts`; a test in `app.test.ts`) | A proxy that caches kept that wrong answer for a year under the script's name, which bit after going back to an older version | Built |
 | **P-17** | **The session cookie follows the session.** **Built** (`65d6387`): the server extends a login session at use (14 days, sliding, at most once an hour) and sends the cookie again when it does (`researcher/auth.ts`, `setSessionCookie`), so a browser stays logged in until 14 days without use, as `coder-identity.md` §7 says | The docs, the privacy statement and the behaviour should say the same | Built |

@@ -244,7 +244,10 @@ development headers: all studies).
 `researcher` (403 `researcher_required`), within their `studies` limit (403
 `limit_reached`). The creator owns it and becomes its `ADMIN`. (With
 development headers the study has no study users, so any development role
-gets in.)
+gets in.) The `name` is stored without spaces around it (`StudyNameSchema`:
+1 to 256 characters after trimming; also in `updateStudy`,
+`createStudyFromExample` and a recipe), since deleting a study is
+confirmed by typing its name.
 
 ### listExamples
 
@@ -385,7 +388,8 @@ deploying and previewing require. Versions also have `updated`,
 A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
 session starts (the who codes `invite`, URL parameters `urlParams`,
-the normal end `end`; `{}` without), `units.fields` the declared unit
+the normal end `end`; `{}` without; a URL parameter's key and `coderParam`
+can't be `link`, `transfer`, `login` or `source`: not `valid`), `units.fields` the declared unit
 fields, `items` the top-level questions, experiments, branches and unit loops
 (branches and loops holding questions, end items and nested branches;
 branches also experiments). On `PUT`,
@@ -731,7 +735,9 @@ the deployment's `annotationEpoch`: runtimes re-read it and derive the
 finished codings again. Only answers to units are reset. The study's stored
 results downloads are removed (the next download is written again).
 Sensitive: a web session with a recent second factor (403
-`step_up_required`), never an API key (403 `not_with_api_key`).
+`step_up_required`), never an API key (403 `not_with_api_key`). Written to
+the researcher's security log as `answers_reset`, with the study and the
+number retired (`security.md` §1).
 
 ## Annotations
 

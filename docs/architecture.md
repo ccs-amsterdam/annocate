@@ -47,8 +47,9 @@ The APIs ([docs/api/](api/README.md)), all under `/api`:
 **The runtime** (`src/runtime/`) runs a deployed study. It resolves coder
 sessions, decides which units a coder gets next (following the coder
 invitation and the unit loops), validates answers and writes them. It reads
-and writes through a `Store` (`store.ts`): `DbStore` for the database,
-`PreviewStore` for previews.
+and writes through a `Store` (`store.ts`): `DbStore` (`dbStore.ts`) for the
+database, `PreviewStore` (`preview.ts`) for previews. `DeploymentRuntime`
+(`runtime.ts`) is the facade; what it does is in a module each (§10).
 
 **The client**: the researcher UI (`ResearcherApi`) calls the researcher
 API; the coding screen (`HttpCoderApi`, `StudyManager`) the coder API. Client
@@ -65,11 +66,31 @@ and server share an origin; in development Vite proxies `/api`.
    spec, re-read when the deployment's stamp changes (version, annotation
    epoch, `revision`, suspension; one small query per request). So any number
    of server processes can serve one study (§11 has what is left).
+
+   **Loaded runtimes are bounded** (`Deployments`, `runtime/registry.ts`). A
+   coder request loads a study's runtime only if it belongs there
+   (`Deployments.admit`): it shows a link of the study, a device with a
+   session in it, a transfer token of it, or a login whose email has a
+   session in it, each one indexed lookup. Anything else gets one 404
+   (`api/coder.md`) and loads nothing, so trying ids doesn't fill the
+   server's memory. A process keeps at most 200 runtimes
+   (`maxDeployments`; studies and previews): past that the one used longest
+   ago is dropped, as is any unused for 6 hours (`deploymentIdleMs`).
+   Dropping loses nothing: the next request that belongs loads it again
+   from the database.
 3. **Decisions that count other coders run under a lock.** Picking from a
    shared queue (and leasing the unit) and drawing a `balanced` value run in
    one transaction holding a database lock on that queue or variable
    (`Store.locked`, `pg_advisory_xact_lock`), so two coders never get the
-   same slot.
+   same slot. Starting a session does too: a lock per device key (of two
+   first requests of one device at once, the second finds the session the
+   first made), per coder id (the count for the most sessions of a coder
+   id, `coder-identity.md` §4) and per picked name. The locks are in one
+   file, `db/locks.ts`: `advisoryLock` (a database lock on a text key, until
+   the transaction ends), `lockUnits` (a study's unit writes and deploys
+   against answer writes), `inTurn` (a line per key within one process, so
+   requests waiting for a database lock don't hold the connection pool) and
+   the lock under which a starting server applies the migrations.
 4. **Finished codings are derived and kept in step.** A unit is finished in
    a loop when the coder answered every question of it (§8.2).
    `unit_codings` has a row per finished (loop, unit, coder session), with
@@ -77,7 +98,10 @@ and server share an origin; in development Vite proxies `/api`.
    When what finishes a loop changes (a redeploy with other loop positions or
    questions: `codingsSignature`) or answers are reset (`annotationEpoch`),
    they are derived from the answers again, once (`deployments.codings_basis`;
-   the first process to get the lock does it).
+   the first process to get the lock does it). They are written 5,000 rows
+   per insert, in a transaction without the database's time limits (a
+   statement or an idle transaction otherwise ends after 60 seconds): in a
+   large study this is long by nature.
 
 Previews are the exception: coders and answers live in one process's memory
 (`preview.ts`).
@@ -134,7 +158,10 @@ design version (checked on every request, so edits show at once) with the
 real units, but keeps coders and answers in memory: a preview stores nothing.
 
 **Status.** `GET /study/:studyId/deployment/status`: units complete, started
-and leased; codings and coders.
+and leased; codings and coders (`runtime/status.ts`). One row per loop and
+set. Coders with the same share have the same units, so a share's units are
+counted once, however many coders have it; a unit in several shares is
+listed in the first row that has it.
 
 ## 6. Distribution: the design describes the process
 
@@ -430,8 +457,13 @@ session:
 
 All are `$session.<name>`, stored on the session when it starts. Built in:
 `$session.source` (an optional `?source=` on any link) and
-`$session.coder`; `coder` and `source` are reserved. Experimental conditions come from
-experiments, never session values.
+`$session.coder`; `coder` and `source` are reserved names. Reserved as keys
+in the URL are `source` and the link's own query names `link`, `transfer`
+and `login` (contracts `RESERVED_URL_KEYS`): a URL parameter can't have one
+as its key (`param`, or its name without one), nor can `coderParam`. The
+coding page keeps those three for itself and never sends them to the server
+as URL parameters. Experimental conditions come from experiments, never
+session values.
 
 **Links** (on the server, never in the design) are made by deploying
 (contracts `linkCombinations`): one, or for `link: "per_coder"` one per
@@ -579,25 +611,47 @@ transaction.
 | `contracts/src/endpoints/` | the API registries ([docs/api](api/README.md)) |
 | `server/src/app.ts` | the Hono app: all APIs under `/api`, the error response, `/api/health` and `/api/ready`, plus the built client (`ANNOTINDER_CLIENT_DIR`) |
 | `server/src/config.ts`, `index.ts` | the settings, read and checked at start (the server doesn't start on settings that only fit development); the Node entry point |
-| `server/src/coder.ts` | coder API routes: session cookie, coder resolution, units, answers, transfers |
+| `server/src/coder.ts` | coder API routes: units, answers, transfers, the summary and names; each session route gets its runtime and coder from `runtime/requestCoder.ts` |
 | `server/src/researcher/` | researcher API, one file per path; `auth.ts`, `login.ts`; the admin API in `admin.ts` with a file per section (`admin.*.ts`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | researcher login, users and API keys, sessions |
 | `server/src/shared/` | queries shared by the APIs; `results/` (the results summaries), `deployChecks.ts` (a design against the role columns) |
 | `server/src/shared/request.ts`, `http.ts` | reading a request (`parseJson`, `parseQuery`, `idParam`) and the one error shape |
 | `server/src/shared/bodyLimit.ts`, `rateLimit.ts`, `clientAddress.ts`, `requestLog.ts` | body sizes per route, rate limits, whose address a request is from, the request log and request ids |
-| `server/src/db/` | `schema/`, `index.ts` (open and migrate), `sql.ts` |
-| `server/src/runtime/registry.ts` | `Deployments`: one runtime per deployment, loaded lazily; revisions, status, preview tokens |
-| `server/src/runtime/runtime.ts` | `DeploymentRuntime`: a coder's units, distribution under locks, experiments' conditions |
-| `server/src/runtime/store.ts` | `Store` and `DbStore` |
+| `server/src/db/` | `schema/`, `index.ts` (open and migrate), `sql.ts`, `locks.ts` (every lock: `advisoryLock`, `lockUnits`, `inTurn`, the migration lock) |
+| `server/src/shared/annotations.ts` | writing a unit's answers with the codings they finish (`putAnnotation`); `insertCodings` (codings in batches) |
+| `server/src/runtime/registry.ts` | `Deployments`: one runtime per deployment, loaded for requests that belong there (`admit`), at most 200 (the least recently used goes); revisions, status, preview tokens |
+| `server/src/runtime/requestCoder.ts` | a coder request, step by step: its runtime (`loadRuntime`, `proofOf`), the version guard, its coder (`resolveRequestCoder`); counts new sessions per address |
+| `server/src/runtime/session.ts` | the device cookie, device keys, the CSRF header, the one 404 (`nothingHere`) |
+| `server/src/runtime/runtime.ts` | `DeploymentRuntime`, the facade: loading and refreshing the deployment, keeping codings in step, and one-line methods for what the modules below do |
+| `server/src/runtime/deployed.ts` | `Deployed`: the deployment as read (the spec and what is looked up in it per request); `RuntimeOptions` |
+| `server/src/runtime/startSession.ts`, `sessionValues.ts` | a device's session, or a new one from its link (login, pick a name, the link's uses, at most 5 sessions per coder id); a new session's `$session` values |
+| `server/src/runtime/shares.ts` | which units are a coder's in a loop (`Share`, `Route`, `shareOf`): pure lookups in the sets |
+| `server/src/runtime/picking.ts` | a coder's next units; in a shared queue under its lock, for every request waiting |
+| `server/src/runtime/submit.ts` | answers coming in: validation, the unit version seen, gold checks; coder-level answers |
+| `server/src/runtime/coderUnit.ts` | a unit as a coder gets it (practice checks, `$unit.test_set`) |
+| `server/src/runtime/experiments.ts` | an experiment's condition: fixed, random, or balanced under a lock |
+| `server/src/runtime/sessionView.ts`, `sessionEnd.ts`, `transfers.ts` | the session as the client loads it (new units); ending, reopening and quitting; "continue on another device" tokens |
+| `server/src/runtime/status.ts` | a study's progress for its researchers |
+| `server/src/runtime/store.ts`, `dbStore.ts`, `types.ts` | `Store` (what the runtime reads and writes), `DbStore` (in the database), and the types they share |
 | `server/src/runtime/preview.ts` | previews: tokens, `PreviewStore` in memory |
 | `server/src/runtime/distribution.ts` | `UnitPool` (fixed or shared queue), `pickNext`, `Codings` |
 | `server/src/runtime/designItems.ts` | loop and variable lookup, answer validation, agreement keys |
 
 Tests (`server/src/__tests__/`) run through the app's fetch handler on
-PGlite (or Postgres with `TEST_DATABASE_URL`): `coder.test.ts` runs coders end
-to end, `app.test.ts` the researcher API, `researcherApi.test.ts` the API as a
-script uses it (checked against the contract schemas), `login.test.ts` login
-against a mock provider.
+PGlite (or Postgres with `TEST_DATABASE_URL`). The `coder.*.test.ts` files
+run coders end to end, a file per subject (`coder.flow`, `.sessions`,
+`.sharedQueues`, `.expertCoders`, `.experiments`, `.testUnits`,
+`.designUpdates`, `.redeploy`, `.unitVersions`, `.endItems`, `.preview`,
+`.deployChecks`); what they share is in `coderHarness.ts` (the app on the
+seeded demo study, coders as devices with cookies, deploying a design, a
+restart, a record of the `Store` calls). `app.test.ts` runs the researcher
+API, `researcherApi.test.ts` the API as a script uses it (checked against
+the contract schemas), `login.test.ts` login against a mock provider. The
+`*.pg.test.ts` files need a real Postgres and are skipped without
+`TEST_DATABASE_URL` (`pnpm test:pg`, `packages/server/README.md`):
+`concurrency.pg.test.ts` (locks and counters under parallel requests),
+`coderHome.pg.test.ts` (the coder home's query plan), `pool.pg.test.ts`
+(the connection pool).
 
 ## 11. Open questions and next steps
 

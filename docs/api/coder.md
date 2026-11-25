@@ -8,7 +8,10 @@ are relative to `/api/d/<deploymentId>` (the study's public id), e.g. `/api/d/k3
   [`contracts/src/endpoints/coder.ts`](../../packages/contracts/src/endpoints/coder.ts);
   schemas in `contracts/src/session.ts`, `unit.ts`, `variableValue.ts`.
 - Implementation: [`server/src/coder.ts`](../../packages/server/src/coder.ts)
-  (routes), [`runtime/runtime.ts`](../../packages/server/src/runtime/runtime.ts) (the work).
+  (routes), [`runtime/requestCoder.ts`](../../packages/server/src/runtime/requestCoder.ts)
+  (the runtime and the coder of a request),
+  [`runtime/runtime.ts`](../../packages/server/src/runtime/runtime.ts) and the
+  modules next to it (the work; `architecture.md` §10).
 - Caller: [`client/src/lib/api/httpCoderApi.ts`](../../packages/client/src/lib/api/httpCoderApi.ts).
 
 | Endpoint | | Request | Response |
@@ -40,17 +43,61 @@ Request headers:
 | Header | When | What |
 |---|---|---|
 | `x-annotinder: 1` | always | CSRF: cross-site forms can't send it |
-| `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found`; revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder left `coder_set`): 403 `link_inactive`. Started sessions go on |
+| `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found` ([below](#requests-that-dont-belong-to-the-study)); revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder left `coder_set`): 403 `link_inactive`. Started sessions go on |
 | `x-url-params` | the page's other query parameters | the declared URL parameters (`urlParams`), a crowd's coder id parameter (`coderParam`) and `source`, stored as `$session` values (at most 256 characters; missing or invalid: 400 `url_param_missing` / `url_param_invalid`). The crowd's coder id is part of the device key, so a device keeps a session per coder id |
-| `x-new-session: 1` | first request only | start another session for a coder id that already has one (after 409 `coder_has_session`) |
+| `x-new-session: 1` | first request only | start another session for a coder id that already has one (after 409 `coder_has_session`). A coder id has at most 5 sessions in a study (`MAX_SESSIONS_PER_CODER`, `runtime/startSession.ts`): asking for a sixth with this header gets 403 `coder_session_limit` (without it, 409 `coder_has_session` as before) |
+| `x-use-login: 1` | the coder chose to code with their account | the login cookie counts for this request ([below](#login)). Not needed where the invitation requires sign-in |
 | `x-coder-name` | `pick_name` links | the picked name, URL-encoded ([getNames](#getnames)) |
 | `x-annotinder-version` | after `GET /session` | the loaded session's `version` (below) |
 
-The login cookie (`annotinder_session`) is read only to link the session to
-its email once, or to find the email's session on a new device
-(`coder-identity.md` §5). Where the invitation requires sign-in, a new session
-without a login gets 401 `auth_required` (401 means nothing else), and an email
-that isn't one of the coders 403 `email_not_allowed`.
+### Login
+
+The login cookie (`annotinder_session`) counts only where the deployed
+design requires sign-in, or on a request with `x-use-login: 1`. Without
+either, the server leaves it out of the session: a browser that happens to
+be logged in (a researcher's, say) gets a session without an email, like any
+other. Where it counts, it is read only to link the session to its email
+once (on a request with this study's link, while the session has no email),
+or to find the email's session on a device without a session here
+(`coder-identity.md` §5). Never in previews. Where the invitation requires
+sign-in, a new session without a login gets 401 `auth_required` (401 means
+nothing else), and an email that isn't one of the coders 403
+`email_not_allowed`.
+
+The client sends `x-use-login: 1` after the coder clicked **Log in** on the
+coding screen, and for a study opened from the coder home's list of the
+login's sessions on other devices. Both come to the study's page with
+`?login=1`, which the page reads once and takes out of the address
+(`pages/CodePage.tsx`); it sends the header until the page is closed or
+loaded again. By then the session has its email and the device its session,
+so the header isn't needed any more.
+
+### Requests that don't belong to the study
+
+Before a study is loaded, a request must show that it belongs there
+(`Deployments.admit`, `runtime/registry.ts`). One of:
+
+- the secret of one of the study's links (`x-link-secret`);
+- a device cookie that has a session in the study;
+- a transfer token of the study ([redeemTransfer](#redeemtransfer));
+- a login whose email has a session in the study. This only loads the
+  study (e.g. after the server restarted): the session itself is found by
+  the login as described above (sign-in required, or `x-use-login: 1`).
+
+Anything else gets one answer, the same whether the study exists, is
+deployed or is suspended, and for a deployment id that isn't one. Status
+404, with the body:
+
+```json
+{ "error": "Nothing here: open the link you were given", "code": "link_not_found" }
+```
+
+A device without a session that comes without a link, or with an unknown
+one, gets the same answer from a study that is loaded. A preview
+(`<publicId>.preview`) answers 401 instead, to a request without a valid
+preview token that isn't from a device of that preview either (the token
+expired: open the preview again). The session routes count such a request
+as asking for a new session (the limit on new sessions per address, below).
 
 **New design versions.** `GET /session` returns the deployment's `version`,
 bumped on each deploy; the client sends it back on every request. Requests
@@ -64,9 +111,14 @@ Errors are `{ error, code?, issues? }` ([README](README.md#errors)), with
 
 **Limits.** A request body can be 2 MB (413 `request_too_large`); one
 answer as large as the server's setting allows (413 `answer_too_large`).
-Rate limits are per address (`security.md` §3): 429 `rate_limited` with a
-`Retry-After` header in seconds. The coding client tries again by itself
-after a 429, a 408, a 5xx or a network error (`docs/client.md` §2).
+Rate limits are per address (`security.md` §3): 429 `rate_limited` (one of
+the `CoderErrorCodeSchema` codes) with a `Retry-After` header in seconds.
+Besides the limit on all coder requests there is one on new sessions: a
+request of a device that has no session in the study counts, whether it
+starts one, is refused, or shows a link that doesn't exist. Requests of a
+device with a session don't count (unless they ask for a new one,
+`x-new-session`). The coding client tries again by itself after a 429, a
+408, a 5xx or a network error (`docs/client.md` §2).
 
 ## Endpoints
 
@@ -97,7 +149,7 @@ deployment, for the coder home (`/code`): the study's public title
 never the study's name, which is private), when it
 started and was last active, how it ended (`ended`: `complete`,
 `screenout`, `quit`; null while it goes on) and the units answered. 404
-without a session; never starts one. The device's key includes the
+`link_not_found` without a session; never starts one. The device's key includes the
 crowd's coder id from the URL, so `x-url-params` with it finds the session of a link
 that carries one. The server can't list a device's studies (its keys are
 per study, §4 of coder-identity.md): the browser remembers which it
@@ -108,8 +160,10 @@ opened (`client/src/lib/session/studies.ts`) and asks each.
 `GET /api/coder/sessions` → `CoderStudySchema[]` (contracts
 `coderAccountEndpoints`): a logged-in coder's studies, on any device: the
 sessions their login's email is linked to. 401 `auth_required` without a
-login. Continuing one on a new device logs in there (`coder-identity.md`
-§5).
+login. To continue one on a device that has no session in that study, the
+client opens the study's page with `?login=1` and so sends `x-use-login: 1`:
+the server adds the device to the email's session, without a link
+(`coder-identity.md` §5).
 
 ### getNextUnits
 
@@ -258,7 +312,10 @@ on the session with a timestamp when it differs from the last entry, at most
 
 No session needed, and none is started: on a link where coders pick their
 name (`link: "pick_name"`), the coders' names and whether each is `taken`
-(another device's, where a name stays on the first device). The coding
+(another device's, where a name stays on the first device). 404
+`link_not_found` without a link of this study, and for a link of a design
+without names to pick; 403 `link_revoked` / `link_inactive` for a link that
+takes no new coders. The coding
 screen shows them after `getSession` answered 409 `name_required` (or
 `name_taken`), and sends the picked name as `x-coder-name`
 (URL-encoded) from then on.

@@ -980,13 +980,12 @@ Make that explicit, so a later change can't undo it: one Cache Rule,
 that caches everything: a cached page or API answer would be shown to the
 wrong person.
 
-One thing to know: for a file under `/assets/` that doesn't exist (an old
-name after an update, asked for by a tab that was left open), the server
-answers with the app's page and the one-year cache header (checked with a
-request to the server; `plans/go-live.md`, P-16). Cloudflare then keeps that wrong answer
-for that name. It only matters if that name comes back, which happens when
-you go back to an older version: **after going back to an older version,
-purge the cache** (*Caching › Configuration › Purge Everything*).
+A file under `/assets/` that doesn't exist (an old name after an update,
+asked for by a tab that was left open) answers 404 "Not found", without
+the one-year cache header: the server sets that header only on a file it
+found (`serveClient` in `server/src/app.ts`; `plans/go-live.md`, P-16). So
+no cache keeps the app's page under a script's name, and going back to an
+older version needs no purge of the cache.
 
 #### 6. Settings to turn off
 

@@ -13,8 +13,8 @@ How the web client (`packages/client`) works and why. Server side:
 | `/research`                        | The researcher UI: the studies                                                                                                                        |
 | `/research/studies/<id>/<page>`    | A study's page (`overview`, `design`, `units`, `deploy`, `links`, `results`, `settings`, `preview`); `design` takes `?version=<n>`                    |
 | `/research/admin`                  | The server admin page                                                                                                                                 |
-| `/code`                            | The coder home: studies on this device (`pages/CodeHomePage.tsx`)                                                                                     |
-| `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`; `<deployment>` is the study's public id), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session |
+| `/code`                            | The coder home: studies on this device, and a logged-in coder's sessions on other devices (`pages/CodeHomePage.tsx`); those open with `?login=1` (`session/studies.ts`, `continueUrl`) |
+| `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`; `<deployment>` is the study's public id), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session. `?login=1`: the coder chose to code with their account; read once, then taken out of the URL, like `transfer` (`useLoginChoice`; the API then sends `x-use-login: 1`, `coder-identity.md` §5) |
 
 - A reload stays where it was. The researcher section is one `AdminApp`
   whose place comes from the URL (`AdminLocation`). Leaving the editor with

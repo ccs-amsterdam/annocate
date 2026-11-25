@@ -46,7 +46,9 @@ To try a real login locally, set `OIDC_HOST`, `OIDC_CLIENT_ID`,
 For the end-to-end tests, install a browser once with
 `pnpm --filter @annotinder/e2e exec playwright install chromium`, or point
 `PLAYWRIGHT_CHROMIUM_PATH` at an installed Chromium. Server tests run on
-PGlite; set `TEST_DATABASE_URL` to run them against a scratch Postgres.
+PGlite; `pnpm --filter @annotinder/server test:pg` runs them, and the tests
+that need a real Postgres, against the scratch server in `TEST_DATABASE_URL`
+([packages/server/README.md](packages/server/README.md#tests)).
 
 ### Running a server
 

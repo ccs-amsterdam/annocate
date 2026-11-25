@@ -24,7 +24,9 @@ On the AnnoTinder server you use:
 | **Response times**      | per question, measured in the browser; per unit, when the server handed it out. Always recorded: mention it to coders if it matters |
 
 Not stored: coders' names, email addresses (unless they
-[sign in](links.md#login); you see the address only where sign-in is
+[sign in](links.md#login) to your study: because it requires it, or
+because they chose **Log in** there. Being logged in on the server for
+something else stores nothing. You see the address only where sign-in is
 required), IP addresses, other device details, or URL parameters the
 design doesn't declare. The web server or proxy in front may keep access
 logs; ask whoever runs it.

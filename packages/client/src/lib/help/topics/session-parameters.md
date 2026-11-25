@@ -23,6 +23,14 @@ Click **URL parameters** above the item tree → **+ URL parameter**:
 | **Default**       | used when the link has none; without one it is required                                            |
 | **Description**   | a note for you and colleagues                                                                      |
 
+Four keys can't be used **In the URL as** (or as the name, when that is
+the key): `link`, `transfer` and `login`, which are part of every study
+link, and `source`, which every link accepts already (see
+[Built-in values](#built-in-values)). The editor says so, e.g. _"'login'
+is part of every study link (link, transfer, login): use another key"_.
+The same goes for the URL parameter of a
+[coder id](links.md#coder-ids).
+
 ## Required parameters
 
 Without a default, a link without the parameter (or with a value that

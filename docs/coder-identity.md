@@ -54,7 +54,8 @@ sessions (403 `link_used_up`; the link's `maxUses`).
 session (§4) starts another, as can anyone holding a link with that coder id.
 Each is its own session with the same `coder` (so panel redirects carry it
 either way); researchers handle duplicates in analysis. What is guarded is
-privacy: no session is opened by a label.
+privacy: no session is opened by a label. There is a most: a coder id has at
+most 5 sessions in a study (§4).
 
 ## 4. Sessions without login
 
@@ -109,13 +110,25 @@ privacy: no session is opened by a label.
   New sessions of a known coder don't count toward the link's maximum. This
   tells someone holding the link that the coder id was used before, nothing
   else.
+
+  **At most 5 sessions per coder id per study** (`MAX_SESSIONS_PER_CODER`,
+  `runtime/startSession.ts`): since they don't use up the link, one
+  participant could otherwise fill a study with sessions. When the coder id
+  has 5, a request for another (`x-new-session: 1`) gets 403
+  `coder_session_limit`; the coding screen says "You can't start another
+  session" and sends the coder back to the device where they started. The
+  count runs under a database lock per study and coder id, so requests at
+  the same time can't pass it together. Sessions without a coder id (an
+  anonymous link) have no such cap: they are bounded by the link's
+  `maxCoders` and the limit on new sessions per address (`security.md` §3).
 - **Anonymous links on a new device** simply start a new session.
 - **The coder home** (`/code`) lists this browser's studies: the browser
   remembers the studies it opened (deployment and URL parameters, never a
   link secret) and asks each (`GET /d/<id>/summary`), since the server can't
   list a device's sessions. A logged-in coder also sees sessions linked to
-  their email (`GET /coder/sessions`). It shows each study's public title,
-  never the (private) study name.
+  their email (`GET /coder/sessions`); one that isn't on this device opens
+  with `?login=1`, so the login counts there (§5). It shows each study's
+  public title, never the (private) study name.
 - **Not built:** offering a longer-lived "continue later" link at the start
   of long studies (no PINs or passwords: easily forgotten, little gain).
 
@@ -124,21 +137,47 @@ privacy: no session is opened by a label.
 The researcher login (§7), with the same login cookie (`annotinder_session`).
 A login doesn't replace the session: it **links an email to the session,
 once**. After that the device key is the session as for anyone, and logging
-out doesn't affect coding. Code: `coder.ts`, `DeploymentRuntime.resolveCoder`,
-`runtime/store.ts`.
+out doesn't affect coding. Code: `runtime/requestCoder.ts`,
+`DeploymentRuntime.resolveCoder`, `runtime/dbStore.ts` (`resolveCoder`),
+`runtime/startSession.ts`; client `pages/CodePage.tsx`,
+`session/coderSession.ts`.
 
 - **The invitation decides.** Coders can always log in. Sign-in is required
   for expert coders with `link: "login"` and a crowd with `login`; only
   there do researchers see coders' emails (Results › Coders, export).
-- **When a login is read**: only while the session has no email, or on a
-  device without a session in this study. Never while coding, never in
-  previews.
+- **When a login counts**: only where the deployed design requires sign-in,
+  or the coder chose to code with their account (the request has
+  `x-use-login: 1`). A login that is just there in the browser is left out:
+  a researcher who opens a coder link, or a coder who logged in for another
+  study, gets a session without an email, and a second link in that browser
+  (another panel id) starts its own session.
+- **How a coder chooses.** Two places send the browser to the study's page
+  with `login=1` in the address: **Log in** under "Continue on another
+  device" (the login's return address, `coderLoginUrl({ useLogin: true })`),
+  and a study of the login on another device in the coder home's list
+  (`continueUrl`). The page reads `login=1` once, takes it out of the
+  address (a copied link never carries the choice to someone else), and
+  sends `x-use-login: 1` while it stays open. After that the session has
+  its email and the device its session, so nothing needs the header.
+  `login` is one of the link's own query names, with `link` and `transfer`:
+  a design can't use them as the key of a URL parameter or as `coderParam`
+  (contracts `RESERVED_URL_KEYS`; "'login' is part of every study link
+  (link, transfer, login): use another key").
+- **When a login is read**, where it counts: only while the session has no
+  email and the request has a link of this study, or on a device without a
+  session in this study. Never while coding, never in previews. Another
+  study's link doesn't link a session here.
 - **Required**: without a login 401 `auth_required`; the client offers the
   login and comes back to the same page. Addresses not in the coder set get 403
   `email_not_allowed`.
-- **Optional**: `GET /session` says `canLogIn`; logging in links the email.
-- **Another device**: logging in on a device without a session in this study
-  finds the email's session and adds the device (also without the link).
+- **Optional**: `GET /session` says `canLogIn` (the server has a login, the
+  request has this study's link, and the session has no email); logging in
+  from there links the email.
+- **Another device**: on a device without a session in this study, a login
+  that counts finds the email's session and adds the device, also without
+  the link. A login whose email has a session in the study is also enough
+  for the server to load the study for the request (`Deployments.admit`,
+  `api/coder.md`), e.g. after a restart.
 - **One session per email per study**: a device that started its own session
   and then logs in continues the email's session instead.
 - **Accounts**: logging in creates a user with account role `user`
@@ -171,6 +210,13 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   cookie again, so a browser stays logged in until 14 days without use. Requests
   need `x-annotinder: 1` (CSRF). Provider tokens aren't kept. Logging out
   (`POST /auth/logout`) ends our session, not the provider's.
+- **A new login ends the one it replaces.** Coming back from the provider
+  (`/api/auth/callback`, also for a step-up login), the server deletes the
+  session of the login cookie the browser had, so it stops working at once
+  instead of after 14 days. At every login it also deletes all sessions
+  that have expired (`deleteExpiredSessions`, `shared/sessions.ts`):
+  nothing else removes them, so an expired session's row stays until the
+  next login of anyone on the server.
 - **Identity is the login, not the email** (`accounts.md` §1). A login
   without `email_verified: true` is refused. The user is `iss` + `sub`; the
   email is updated at each login. Roles given to an address before its owner
