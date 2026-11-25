@@ -21,20 +21,22 @@ The format is described in docs/client.md, section 7, "Guide".
 An AnnoTinder study is almost entirely defined in a single **design**. The [design editor](design-editor.md) helps you create and navigate it. It has two parts:
 
 1. **The tree**: the coder's journey from start (top) to end (bottom). Here coders start with survey questions (age, news use) and then code headlines (topic, tone).
-2. **The item editor**: select an item in the tree to edit its settings, next to a preview of the coder's view.
+2. **The item editor**: select an item in the tree to edit its settings. On a wide screen you also see a preview of how the item appears to a coder.
 
 ## The tree {#tree}
 <!-- show: design, focus: tree, select: topic; show me: Design / add-item / Add item: a question, a unit loop and more -->
-- The tree is the coder's path, from **Start** at the top to the end at the bottom.
-- Click an item to select it: the item editor opens it.
-- **+** adds an item: Start's + adds at the start, a row's + adds below that row.
-- The sample is read only, so it has no + buttons: **Show me** points at yours.
+The tree shows the study steps from start to end. In the example:
+
+- coders start with some survey questions (age, news use)
+- Then they start the **Headlines** annotation task, where each question is repeated for every coding unit.
+- The first item in this task (**Headline**) lets you edit how the unit is presented. Here it uses the "headline" and "lead" columns from the units data.
+- Coders then answer some questions about the headline (topic, tone), and there is an optional question asked only if the topic is "politics"
 
 ## The item editor {#item-editor}
 <!-- show: design, focus: item, select: news_use -->
-- The selected item's **form** (left) and a **preview** of what the coder sees (right).
-- On a wide screen they are side by side, so you can develop the right layout while seeing it.
-- On a smaller screen you switch between them: Form, Preview.
+- Each of the items in the tree can be edited by selecting it.
+- The item editor shows you the settings for that item, and optionally a preview of how the item appears to the coder
+- On a wide screen they are side by side, so you can develop the right layout while seeing it. On a smaller screen you switch between them: Form, Preview.
 
 ## Who codes {#modes}
 <!-- show: design, focus: form, select: session; show me: Design / who-codes / Who codes: expert coders or a crowd -->
