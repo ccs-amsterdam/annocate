@@ -926,7 +926,7 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   `variableType/`; `ItemForm.tsx`, with end items and loop-question fields in
   `itemForm/`): the options editor
   (`OptionsEditor.tsx`: label, value, colour, order; ordinal values renumber
-  unless "Custom values"), special answers (`variableType/SpecialAnswersFields.tsx`), `multiple`, a layout select whose `auto` entry
+  unless "Custom values"), special answers (a "+ Add special option" menu next to "+ Add option", rows under the options: `specialAnswers/`; `variableType/SpecialAnswersFields.tsx` where there are no options), `multiple`, a layout select whose `auto` entry
   names its choice, numeric range, step and labels. Switching nominal ↔
   ordinal keeps the options. A branch's or loop's condition
   ("Only show these items if…", always there for a branch; for a loop

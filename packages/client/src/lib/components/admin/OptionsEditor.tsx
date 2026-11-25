@@ -1,8 +1,10 @@
 import { useState } from "react";
-import type { Option, OptionsFrom } from "@annotinder/contracts";
+import type { Option, OptionsFrom, SpecialAnswer } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { useDeployedOptionValues } from "../../design/deployedValues";
 import { NumericCodesHelp } from "./optionsEditor/NumericCodesHelp";
+import { AddSpecialButton } from "./specialAnswers/AddSpecialButton";
+import { SpecialAnswerRows } from "./specialAnswers/SpecialAnswerRows";
 import { OptionRow } from "./optionsEditor/OptionRow";
 import { OptionsFromRow, OptionsFromSelect, type OptionSource } from "./optionsEditor/OptionsFromRow";
 import { isRising, isSequence, labelPatch, moveOption, newOptionValue, renumber } from "./optionsEditor/optionValues";
@@ -25,6 +27,11 @@ export interface OptionsEditorProps<T extends Option> {
   /** What options from data can come from. */
   sources?: OptionSource[];
   onFrom?: (from: OptionsFrom | undefined) => void;
+  /** The question's special answers: shown under the options, with a button to add one. */
+  specials?: SpecialAnswer[];
+  onSpecials?: (specials: SpecialAnswer[] | undefined) => void;
+  /** Special answers' codes are text (nominal questions). */
+  specialsText?: boolean;
 }
 
 /**
@@ -47,6 +54,9 @@ export function OptionsEditor<T extends Option>({
   from,
   sources = [],
   onFrom,
+  specials = [],
+  onSpecials,
+  specialsText,
 }: OptionsEditorProps<T>) {
   const ordinal = level === "ordinal";
   const [custom, setCustom] = useState(() => ordinal && !isSequence(options));
@@ -120,6 +130,7 @@ export function OptionsEditor<T extends Option>({
           </div>
         ))}
         {fromAt === options.length && fromRow}
+        {onSpecials && <SpecialAnswerRows specials={specials} onChange={onSpecials} text={specialsText} />}
       </div>
       {ordinal && !isRising(options) && (
         <p className="text-[11px] text-destructive">Ordinal values must rise in the order of the options.</p>
@@ -133,6 +144,7 @@ export function OptionsEditor<T extends Option>({
         {onFrom && !from && sources.length > 0 && (
           <OptionsFromSelect sources={sources} onPick={(source) => onFrom({ from: source })} />
         )}
+        {onSpecials && <AddSpecialButton specials={specials} onChange={onSpecials} />}
       </div>
     </div>
   );
