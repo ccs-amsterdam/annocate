@@ -1,61 +1,89 @@
-# The Docker image (docs/hosting.md). Every push builds it and starts it
-# against Postgres; a release tag (v1.2.3) also publishes it to
-# ghcr.io/ccs-amsterdam/annotinder as 1.2.3 and 1.2, which servers pull.
+# Builds the app image (Dockerfile) and publishes it as
+# ghcr.io/ccs-amsterdam/annotinder (docs/hosting.md, "Versions"), for amd64 and arm64:
+# - every push to a branch: tags the branch (main, or e.g. docker-image; a / in
+#   its name becomes -) and the commit (8 characters, e.g. 1a2b3c4d);
+# - a tag v<release> (e.g. v0.1.0): also tags 0.1.0, 0.1 and latest.
+# The image records the commit it is built from (ANNOTINDER_COMMIT). Before anything is
+# published, the image is started against Postgres and must answer /api/ready.
 name: Image
 
 on:
   push:
     branches: ["**"]
-    tags: ["v*.*.*"]
-  pull_request:
+    tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   image:
-    name: Build, start and (on a release tag) publish
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: write
-    env:
-      IMAGE: ghcr.io/${{ github.repository_owner }}/annotinder
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: docker/setup-buildx-action@v3.10.0
-      - name: Short commit
+      - uses: actions/checkout@v7
+
+      - name: A release tag matches the release in the code
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          release=$(sed -n 's/^export const RELEASE = "\(.*\)";/\1/p' packages/contracts/src/version.ts)
+          if [ "v$release" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME, but RELEASE in packages/contracts/src/version.ts is $release"
+            exit 1
+          fi
+
+      - name: The commit
         id: commit
-        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - name: Tags
-        id: meta
-        uses: docker/metadata-action@v5.7.0
+        run: echo "short=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
         with:
-          images: ${{ env.IMAGE }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_SHORT_SHA_LENGTH: 8
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/annotinder
+          flavor: latest=false
           tags: |
+            type=ref,event=branch
+            type=sha,prefix=,format=short
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-      - name: Build
-        uses: docker/build-push-action@v6.15.0
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      # First the image for this machine, started as in production (Postgres, a secret, a
+      # public URL) until it is ready: nothing is published from an image that doesn't start
+      - name: Build for the start check
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
-          tags: annotinder:test
-          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.sha }}
+          tags: annotinder:check
+          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # The image starts as in production (Postgres, a secret, a public URL) and is ready
+
       - name: Start against Postgres
         run: |
-          docker network create smoke
-          docker run -d --name db --network smoke -e POSTGRES_PASSWORD=smoke postgres:18.7-alpine
-          # Postgres first (compose.yml waits for its health check the same way)
+          docker network create check
+          docker run -d --name db --network check -e POSTGRES_PASSWORD=check postgres:18.7-alpine
           for i in $(seq 1 30); do docker exec db pg_isready -U postgres -q && break; sleep 1; done
-          docker run -d --name app --network smoke --restart on-failure:5 -p 8787:8787 \
-            -e DATABASE_URL=postgres://postgres:smoke@db:5432/postgres \
-            -e ANNOTINDER_SECRET=smoke-test-secret-not-for-any-real-server \
+          docker run -d --name app --network check --restart on-failure:5 -p 8787:8787 \
+            -e DATABASE_URL=postgres://postgres:check@db:5432/postgres \
+            -e ANNOTINDER_SECRET=check-secret-not-for-any-real-server \
             -e ANNOTINDER_PUBLIC_URL=http://localhost:8787 \
-            annotinder:test
+            annotinder:check
           for i in $(seq 1 60); do
             if curl -sf http://localhost:8787/api/ready >/dev/null; then
               curl -sf http://localhost:8787/api/info
@@ -65,20 +93,14 @@ jobs:
           done
           docker logs app
           exit 1
-      - name: Log in to ghcr.io
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/login-action@v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6.15.0
+
+      - uses: docker/build-push-action@v7
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.sha }}
+          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.short }}
           cache-from: type=gha
+          cache-to: type=gha,mode=max

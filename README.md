@@ -52,19 +52,25 @@ that need a real Postgres, against the scratch server in `TEST_DATABASE_URL`
 
 ### Running a server
 
+A server needs two files, `compose.yml` and `.env` (from `.env.example`), from
+the same release; no checkout and no build:
+
 ```bash
-git checkout v0.9.0       # a release
-cp .env.example .env      # fill in the required settings (ANNOTINDER_VERSION=0.9.0)
-docker compose pull app && docker compose up -d
-scripts/smoke-test.sh https://annotinder.example.org
+mkdir -p /opt/annotinder && cd /opt/annotinder
+curl -fsSLO https://raw.githubusercontent.com/ccs-amsterdam/annotinder/v0.9.0/compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/ccs-amsterdam/annotinder/v0.9.0/.env.example
+# fill in .env (ANNOTINDER_VERSION=0.9.0 and the required settings)
+docker compose pull && docker compose up -d
 ```
 
-`compose.yml` runs the published image with Postgres and daily database
-dumps, listening on `127.0.0.1:8787` for a reverse proxy that does HTTPS. The
-guide (the login provider, settings, the proxy, updates, backups, monitoring,
-the Cloudflare proxy, and capacity) is in [docs/hosting.md](docs/hosting.md).
-Who runs a server, and where, is for each server to say: the software and
-these docs make no statement about it.
+`compose.yml` runs the published image `ghcr.io/ccs-amsterdam/annotinder`
+with Postgres and daily database dumps, listening on `127.0.0.1:8787` for a
+reverse proxy that does HTTPS, and optionally runs Caddy for that
+(`COMPOSE_PROFILES=caddy`). `compose.build.yml` builds the image from a
+checkout instead. The guide (the login provider, settings, the proxy,
+updates, backups, monitoring, the Cloudflare proxy, and capacity) is in
+[docs/hosting.md](docs/hosting.md). Who runs a server, and where, is for each
+server to say: the software and these docs make no statement about it.
 
 ## Packages
 

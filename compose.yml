@@ -1,12 +1,13 @@
-# AnnoTinder with Postgres and daily database dumps (docs/hosting.md).
-# The repository is the app's folder: settings in `.env` (from `.env.example`),
-# dumps in `backups/`. The app listens on 127.0.0.1:8787 only, for a reverse
-# proxy on this machine that does HTTPS. The app is the published image of the
-# release in ANNOTINDER_VERSION (.env); check out that release's tag
-# (git checkout v<version>) so this file matches it. To update:
-#   docker compose pull app && docker compose up -d
-# Building the image here instead (a change not released yet):
-#   ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+# AnnoTinder with Postgres, daily database dumps and, optionally, Caddy for
+# HTTPS (docs/hosting.md). This file and `.env` (from `.env.example`) are all
+# a server needs: the app is the published image
+# ghcr.io/ccs-amsterdam/annotinder, at the version ANNOTINDER_VERSION in .env.
+# Dumps go to ./backups. Start, and update after changing the version:
+#   docker compose pull && docker compose up -d
+# The app listens on 127.0.0.1:8787 only, for a proxy on this machine that
+# does HTTPS. On a server with nothing else on ports 80 and 443, the `caddy`
+# profile runs that proxy here as well (COMPOSE_PROFILES=caddy in .env).
+# To build the image from a checkout instead: compose.build.yml.
 
 # Container logs (`docker compose logs`) are files that Docker never trims by
 # itself: each service keeps at most 3 files of 10 MB.
@@ -18,20 +19,18 @@ x-logging: &logging
 
 services:
   app:
-    build:
-      context: .
-      args:
-        # The commit, recorded with each deployment ("unknown" without it)
-        ANNOTINDER_COMMIT: ${ANNOTINDER_COMMIT:-unknown}
-    image: ghcr.io/ccs-amsterdam/annotinder:${ANNOTINDER_VERSION:?set ANNOTINDER_VERSION in .env (the release, e.g. 0.9.0)}
+    # ANNOTINDER_VERSION in .env: a release (e.g. 0.9.0), or for a test server
+    # a commit (e.g. 1a2b3c4d) or a branch (e.g. main). Required, so a server
+    # never runs whatever main is today by accident. The image only changes on
+    # `docker compose pull`.
+    image: ghcr.io/ccs-amsterdam/annotinder:${ANNOTINDER_VERSION:?set ANNOTINDER_VERSION in .env (a release, e.g. 0.9.0)}
     restart: unless-stopped
     logging: *logging
     env_file: .env
     environment:
       DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
       # Only reachable through the proxy on this machine (127.0.0.1 below): client addresses from
-      # X-Forwarded-For. Set ANNOTINDER_TRUST_PROXY=cloudflare in .env behind the Cloudflare proxy
-      # (docs/hosting.md, "Behind the Cloudflare proxy").
+      # X-Forwarded-For. Behind the Cloudflare proxy: ANNOTINDER_TRUST_PROXY=cloudflare in .env.
       ANNOTINDER_TRUST_PROXY: ${ANNOTINDER_TRUST_PROXY:-proxy}
     ports:
       - "127.0.0.1:8787:8787"
@@ -63,6 +62,9 @@ services:
       db:
         condition: service_healthy
     entrypoint: ["/bin/sh", "/db-backup.sh"]
+    configs:
+      - source: db-backup
+        target: /db-backup.sh
     environment:
       PGHOST: db
       PGUSER: annotinder
@@ -71,8 +73,77 @@ services:
       BACKUP_TIME: "02:00"
       KEEP_DAYS: 7
     volumes:
-      - ./scripts/db-backup.sh:/db-backup.sh:ro
       - ./backups:/backups
+
+  caddy:
+    # Optional (the `caddy` profile): HTTPS on ports 80 and 443 for
+    # ANNOTINDER_PUBLIC_URL, instead of a Caddy installed on the host. In the
+    # host's network, so the app sees the real client addresses (also over
+    # IPv6) and Caddy forwards to 127.0.0.1:8787 as on the host.
+    image: caddy:2.11.9-alpine
+    profiles: [caddy]
+    restart: unless-stopped
+    logging: *logging
+    network_mode: host
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      # The certificates and the ACME account: keep them, or Let's Encrypt's
+      # rate limits may refuse new ones after a few recreations
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+# The files the services read, kept in this file so a server needs no others.
+# Compose fills in ${...} from .env; $$ is a literal $.
+configs:
+  caddyfile:
+    # The site is ANNOTINDER_PUBLIC_URL (https://<host>): Caddy gets a Let's
+    # Encrypt certificate for that host by itself
+    content: |
+      ${ANNOTINDER_PUBLIC_URL:?set ANNOTINDER_PUBLIC_URL in .env} {
+      	reverse_proxy 127.0.0.1:8787
+      }
+  db-backup:
+    content: |
+      # The same script as the lab's Docker Compose standards (societal-analytics-lab-infra, install/compose.md).
+      # Database backup service: dumps the database once at the start, then every day at BACKUP_TIME (UTC),
+      # into /backups, and keeps the dumps of the last KEEP_DAYS days. Runs in the official postgres image.
+      # Settings: PGHOST, PGUSER, PGPASSWORD, PGDATABASE (the connection), BACKUP_TIME (default 02:00),
+      # KEEP_DAYS (default 7), DUMP_OPTIONS (extra pg_dump options).
+      set -eu
+      umask 077
+      time="$${BACKUP_TIME:-02:00}"
+      keep="$${KEEP_DAYS:-7}"
+      hours="$${time%%:*}"; minutes="$${time##*:}"
+      at=$$(( $${hours#0} * 3600 + $${minutes#0} * 60 ))   # "08" would be read as octal, so without the leading 0
+
+      dump() {
+      	file="/backups/$$PGDATABASE-$$(date -u +%Y%m%d).dump"
+      	# shellcheck disable=SC2086
+      	if pg_dump --format=custom $${DUMP_OPTIONS:-} > "$$file.partial"; then
+      		mv "$$file.partial" "$$file"
+      		echo "$$(date -u -Iseconds) dump written: $$file"
+      	else
+      		rm -f "$$file.partial"
+      		echo "$$(date -u -Iseconds) ERROR: pg_dump failed" >&2
+      	fi
+      	find /backups -name "$$PGDATABASE-*.dump" -type f -mtime +"$$((keep - 1))" -delete
+      }
+
+      until pg_isready -q; do sleep 5; done
+      dump
+      while true; do
+      	now=$$(date -u +%s)
+      	next=$$(( now - now % 86400 + at ))
+      	[ "$$next" -gt "$$now" ] || next=$$(( next + 86400 ))
+      	sleep $$(( next - now ))
+      	dump
+      done
 
 volumes:
   db-data:
+  caddy-data:
+  caddy-config:
