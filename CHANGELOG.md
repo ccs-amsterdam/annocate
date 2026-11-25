@@ -4,7 +4,7 @@ What changed for the people who use AnnoTinder: researchers, coders and
 those who run a server. Server, client and contracts are released together
 under one version.
 
-## 0.9.0 (not yet released)
+## 0.9.0 (2026-11-25)
 
 The first release: the version for the pilot. From this release on the
 design format, the API, the export files and the database migrations are

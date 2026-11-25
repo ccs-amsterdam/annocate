@@ -9,7 +9,7 @@ import { EMPTY_SESSION, PublicInfoSchema, SessionSpecSchema } from "./design/ses
  * together). Bumped for each release, with the packages' versions
  * (docs/release-checklist.md); a test checks they agree.
  */
-export const RELEASE = "0.1.0";
+export const RELEASE = "0.9.0";
 
 /**
  * The client a study ran on (docs/plans/design-viewer.md §1): the release,
