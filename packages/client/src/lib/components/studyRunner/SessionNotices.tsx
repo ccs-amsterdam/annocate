@@ -32,6 +32,7 @@ const ERROR_NOTICES: Record<string, ComponentType<SessionErrorProps>> = {
   auth_required: LoginNotice,
   email_not_allowed: EmailNotAllowedNotice,
   link_not_found: LinkNotice,
+  coder_session_limit: LinkNotice,
   link_revoked: LinkNotice,
   link_used_up: LinkNotice,
   link_inactive: LinkNotice,
@@ -139,6 +140,13 @@ const LINK_NOTICES = new Map<string, { title: string; text: string }>([
     {
       title: "This link is full",
       text: "As many people as the researchers planned have already started through this link. Thank you for your interest.",
+    },
+  ],
+  [
+    "coder_session_limit",
+    {
+      title: "You can't start another session",
+      text: "You have started this study as often as one participant can. Go back to the device or browser where you started it and continue there; if that isn't possible, contact the researchers.",
     },
   ],
   [

@@ -159,6 +159,8 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export const CoderErrorCodeSchema = z.enum([
   /** The coder id already has a session; retry with `x-new-session: 1` to start another. */
   "coder_has_session",
+  /** The coder id has as many sessions in the study as one coder can have (5): no new one, also with `x-new-session` (403). */
+  "coder_session_limit",
   /** A link where coders pick their name: pick one (`GET /names`), and send it as `x-coder-name` (409). */
   "name_required",
   /** The picked name is another device's (a name is the first device's that picks it): pick another (409). */

@@ -4,6 +4,7 @@ import {
   loginRequired,
   matchesUrlPattern,
   urlParamKey,
+  own,
   type Invite,
   type SessionItem,
 } from "@annotinder/contracts";
@@ -22,7 +23,7 @@ export const runtimeInvite = (item: SessionItem | null | undefined): Invite => i
 // their link, the name they picked, or their login's email), or a crowd's id
 // from a URL parameter (or the login's email). Fixed when the session starts.
 
-/** What the codebook asks of a new session, and the coders (`coder_set`'s values). */
+/** What the design asks of a new session, and the coders (`coder_set`'s values). */
 export interface SessionRules {
   item: SessionItem | null;
   coders: readonly string[];
@@ -54,7 +55,7 @@ export function sessionValues(
   email: string | null,
 ): { coder: string | null; session: Record<string, string> } {
   const read = (key: string) => {
-    const value = urlParams[key]?.trim();
+    const value = own(urlParams, key)?.trim();
     if (value && value.length > MAX_SESSION_VALUE)
       throw new HttpError(400, `The URL parameter "${key}" is too long`, "url_param_invalid");
     return value || undefined;
@@ -115,7 +116,7 @@ export function sessionValues(
  */
 export function previewSessionValues(rules: SessionRules, urlParams: Record<string, string>): Record<string, string> {
   const session: Record<string, string> = {};
-  const given = (key: string) => urlParams[key]?.trim().slice(0, MAX_SESSION_VALUE) || undefined;
+  const given = (key: string) => own(urlParams, key)?.trim().slice(0, MAX_SESSION_VALUE) || undefined;
   for (const p of rules.item?.urlParams ?? []) {
     const value = given(urlParamKey(p)) ?? p.default ?? p.values?.[0]?.value;
     if (value !== undefined) session[p.name] = value;

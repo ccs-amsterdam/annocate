@@ -165,6 +165,18 @@ export async function linkInfo(db: Db, secret: string): Promise<LinkInfo | null>
   return cached.info;
 }
 
+/** A link as starting from it checks it (not cached: it changes when the researchers revoke it); null for an unknown secret. */
+export async function linkState(
+  db: Db,
+  secret: string,
+): Promise<{ studyId: number; revokedAt: Date | null; retiredAt: Date | null } | null> {
+  const [link] = await db
+    .select({ studyId: linksTable.studyId, revokedAt: linksTable.revokedAt, retiredAt: linksTable.retiredAt })
+    .from(linksTable)
+    .where(eq(linksTable.secret, secret));
+  return link ?? null;
+}
+
 /** Forgets cached link info (after a link's settings or secret changed). */
 export function forgetLink(secret: string): void {
   linkCache.delete(secret);

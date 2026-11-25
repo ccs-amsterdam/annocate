@@ -23,7 +23,7 @@ export function annotationsReset(server: Server): Hono<Env> {
       const body = await parseJson(c, ResetAnnotationsSchema);
       const studyId = c.get("studyId");
       const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, body));
-      await server.deployments.refresh(studyId);
+      await server.deployments.bumpRevision(studyId);
       // A results export made before shows the reset answers as live
       await removeResultsExports(server.files, studyId);
       return c.json({ retired });

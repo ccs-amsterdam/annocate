@@ -1,4 +1,4 @@
-import { seededShuffle, sharedDefaults } from "@annotinder/contracts";
+import { own, seededShuffle, sharedDefaults } from "@annotinder/contracts";
 
 // Unit distribution: the rules, pure. The runtime loads the state they work
 // on from the store for each decision (finished codings, `unit_codings`, and
@@ -15,15 +15,15 @@ export type SharedRule = ReturnType<typeof sharedDefaults>;
  */
 export type AgreementKeys = Record<string, string | null>;
 
+/** A unit nobody finished (one map for all of them: picks and the status ask for every unit). */
+const NO_CODINGS: ReadonlyMap<number, AgreementKeys> = new Map();
+
 /** Finished codings: unitId -> sessionId -> agreement keys, plus each coder's finish order. Shared by all pools. */
 export class Codings {
   private byUnit = new Map<number, Map<number, AgreementKeys>>();
   private byCoder = new Map<number, number[]>();
-  /** sessionId -> when they last finished a unit (ms). */
-  private lastAt = new Map<number, number>();
 
-  /** `at`: when the coder finished it (ms). */
-  record(sessionId: number, unitId: number, keys: AgreementKeys, at = 0): void {
+  record(sessionId: number, unitId: number, keys: AgreementKeys): void {
     let unit = this.byUnit.get(unitId);
     if (!unit) this.byUnit.set(unitId, (unit = new Map()));
     if (!unit.has(sessionId)) {
@@ -32,27 +32,14 @@ export class Codings {
       else this.byCoder.set(sessionId, [unitId]);
     }
     unit.set(sessionId, keys);
-    if (at > (this.lastAt.get(sessionId) ?? 0)) this.lastAt.set(sessionId, at);
   }
 
-  /** When the coder last finished a unit here (ms), 0 if never. */
-  lastFinished(sessionId: number): number {
-    return this.lastAt.get(sessionId) ?? 0;
-  }
-
-  forUnit(unitId: number): Map<number, AgreementKeys> {
-    return this.byUnit.get(unitId) ?? new Map();
+  forUnit(unitId: number): ReadonlyMap<number, AgreementKeys> {
+    return this.byUnit.get(unitId) ?? NO_CODINGS;
   }
 
   has(sessionId: number, unitId: number): boolean {
     return this.byUnit.get(unitId)?.has(sessionId) ?? false;
-  }
-
-  /** Drops the coder's codings (rebuilt from their annotations when they return). */
-  forget(sessionId: number): void {
-    for (const unitId of this.doneBy(sessionId)) this.byUnit.get(unitId)?.delete(sessionId);
-    this.byCoder.delete(sessionId);
-    this.lastAt.delete(sessionId);
   }
 
   /** Unit ids the coder finished, in the order they finished them. */
@@ -62,17 +49,17 @@ export class Codings {
 }
 
 /**
- * One set of one unit loop, handed out either `fixed` (every routed coder
- * gets every unit: their own units, the overlap) or `dynamic` (a shared
- * queue with saturation rules: a crowd's `share` criteria, see contracts
- * unitLoop.ts).
+ * One set of units of one unit loop, handed out either whole (every coder
+ * routed to it gets every unit: their own units, the test units) or as a
+ * shared queue (`rule`: the coders divide the units, by the loop's
+ * `divide` criteria, see contracts unitLoop.ts).
  */
 export class UnitPool {
   private units: number[];
   private unitSet: Set<number>;
-  /** unitId -> sessionId -> lease expiry (ms). Dynamic only. */
+  /** unitId -> sessionId -> lease expiry (ms). Shared queues only. */
   private leases = new Map<number, Map<number, number>>();
-  /** sessionId -> the units leased to them, in the order handed out. Dynamic only; a coder holds up to a batch. */
+  /** sessionId -> the units leased to them, in the order handed out. Shared queues only; a coder holds up to a batch. */
   private coderLeases = new Map<number, number[]>();
 
   constructor(
@@ -206,15 +193,6 @@ export class UnitPool {
     else this.coderLeases.delete(sessionId);
   }
 
-  /** Whether the coder may submit an annotation for this unit (as far as this pool is concerned). */
-  canSubmit(sessionId: number, unitId: number): boolean {
-    if (!this.has(unitId)) return false;
-    if (!this.rule) return true;
-    // Own earlier coding (editing after going back), or leased to this coder.
-    // An expired lease is still honoured: worst case one coding too many.
-    return this.codings.has(sessionId, unitId) || (this.coderLeases.get(sessionId) ?? []).includes(unitId);
-  }
-
   isComplete(unitId: number): boolean {
     if (!this.rule) return false;
     const { maxCoders } = this.rule;
@@ -290,7 +268,7 @@ export class UnitPool {
     const counts = new Map<string, number>();
     let top = 0;
     for (const keys of this.codings.forUnit(unitId).values()) {
-      const key = keys[variable];
+      const key = own(keys, variable);
       if (key === null || key === undefined) continue;
       const n = (counts.get(key) ?? 0) + 1;
       counts.set(key, n);
@@ -321,13 +299,13 @@ export class UnitPool {
  */
 export type Reach = "slots" | "full" | "pastMax";
 
-/** Where a loop's special units (overlap, practice, gold) go among the coder's own units (contracts `ResolvedPlacement`). */
-export interface OverlapPlacement {
+/** Where a loop's test units (overlap, practice, gold) go among the coder's own units (contracts `ResolvedPlacement`). */
+export interface TestUnitPlacement {
   pool: UnitPool;
   placement: "before" | "after" | "spread" | "rate";
-  /** `rate`: about one special unit per `every` own units. */
+  /** `rate`: about one test unit per `every` own units. */
   every?: number;
-  /** `rate`: special units left when the own units run out: at the `end`, or `drop` them. */
+  /** `rate`: test units left when the own units run out: at the `end`, or `drop` them. */
   rest?: "end" | "drop";
 }
 
@@ -351,8 +329,8 @@ function hashString(text: string): number {
 }
 
 /**
- * At a rate: after how many own units the `index`-th special unit (0-based)
- * is due. After each own unit, the chance of a special one is 1/`every`;
+ * At a rate: after how many own units the `index`-th test unit (0-based)
+ * is due. After each own unit, the chance of a test unit is 1/`every`;
  * never more than 2 x `every` own units apart. Seeded per coder and pool,
  * so the schedule is the same on every request.
  */
@@ -369,20 +347,20 @@ function rateDue(index: number, every: number, seed: number): number {
 
 /**
  * Picks the next unit for a coder in one unit_loop, from their own pool
- * (`main`) and the special units mixed in (`extras`: practice, overlap,
+ * (`main`) and the test units mixed in (`extras`: practice, overlap,
  * gold, in that order of precedence). Returns null when the coder is done
  * with the loop. `maxUnits` caps the coder's own units (shared queues), not
- * the special ones. Without open slots, a coder gets any unit that isn't
+ * the test units. Without open slots, a coder gets any unit that isn't
  * full; below `minUnits`, also units past `maxCoders` (`Reach`).
  *
  * `before` extras come first; `after` ones once the own units are done;
  * `spread` ones evenly among the units the coder is expected to get
- * (`maxUnits`, else the size of their set). Special units left when the
+ * (`maxUnits`, else the size of their set). Test units left when the
  * own units run out come at the end.
  */
 export function pickNext(
   main: UnitPool,
-  extras: OverlapPlacement[],
+  extras: TestUnitPlacement[],
   sessionId: number,
   codings: Codings,
   options: { order: "sequential" | "random"; maxUnits?: number; minUnits?: number; seed: number; now: number },
@@ -419,7 +397,7 @@ export function pickNext(
         return { pool: extra.pool, unitId };
     }
     if (extra.placement === "spread") {
-      // The N own units are cut into M + 1 equal parts, and special unit j
+      // The N own units are cut into M + 1 equal parts, and test unit j
       // (0-based) follows part j, i.e. comes after round((j + 1) * N / (M + 1)) own units.
       const doneExtra = done.filter((id) => extra.pool.has(id)).length;
       const due = Math.round(((doneExtra + 1) * expected) / (extra.pool.size + 1));

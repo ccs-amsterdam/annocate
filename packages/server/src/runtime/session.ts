@@ -51,7 +51,35 @@ export function coderKey(deviceId: string, deploymentId: string, coder?: string 
   return sha256(`${deviceId}\n${deploymentId}\n${coder ?? ""}`);
 }
 
-async function sha256(text: string): Promise<string> {
+/**
+ * The keys a device may have a session under in a deployment, for a request
+ * whose design isn't read yet (`Deployments.admit`): the design names the
+ * URL parameter with the coder id, so one key without a coder id and one
+ * per URL parameter value (the first `MAX_KEY_PARAMS`).
+ */
+export async function possibleCoderKeys(
+  deviceId: string,
+  deploymentId: string,
+  urlParams: Record<string, string>,
+): Promise<string[]> {
+  const values = Object.values(urlParams)
+    .map((value) => value.trim())
+    .filter((value) => value !== "");
+  const coders = [undefined, ...new Set(values.slice(0, MAX_KEY_PARAMS))];
+  return Promise.all(coders.map((coder) => coderKey(deviceId, deploymentId, coder)));
+}
+
+const MAX_KEY_PARAMS = 20;
+
+/**
+ * The one answer to a coder request that shows no link, device or session
+ * of the study: it doesn't tell whether the study exists, is deployed or is
+ * suspended.
+ */
+export const nothingHere = () => new HttpError(404, "Nothing here: open the link you were given", "link_not_found");
+
+/** Hex SHA-256 of a text (Web Crypto: the runtime runs outside Node too). */
+export async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }

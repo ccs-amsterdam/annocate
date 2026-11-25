@@ -86,15 +86,19 @@ async function listFinishedCoders(
   const values = await coderValues(db, studyId, sessionId);
   const result: Finished[] = [];
   for (const coder of rows) {
-    const own = values.get(coder.id) ?? {};
-    if (!group.variables.every((v) => v in own)) continue;
+    const answers = values.get(coder.id) ?? {};
+    if (!group.variables.every((v) => Object.hasOwn(answers, v))) continue;
     result.push({
       loop: group.loop,
       unitId: null,
       sessionId: coder.id,
       created: coder.created,
       ...(group.values?.length
-        ? { values: Object.fromEntries(group.values.filter((v) => v in own).map((v) => [v, own[v]])) }
+        ? {
+            values: Object.fromEntries(
+              group.values.filter((v) => Object.hasOwn(answers, v)).map((v) => [v, answers[v]]),
+            ),
+          }
         : {}),
     });
   }

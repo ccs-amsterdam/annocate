@@ -1,4 +1,4 @@
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { isPreviewId } from "./runtime/registry.js";
 import {
   EndSessionSchema,
@@ -11,20 +11,22 @@ import {
 } from "@annotinder/contracts";
 import type { Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
-import { getCookie } from "hono/cookie";
-import { linkInfo } from "./shared/links.js";
-import { userForSession } from "./shared/sessions.js";
+import { linkState } from "./shared/links.js";
 import { deviceDetails } from "./shared/devices.js";
 import { coderStudies } from "./shared/coderStudies.js";
 import { and, eq } from "drizzle-orm";
-import { sessionDevices, coderSessions, links } from "./db/schema/index.js";
-import { SESSION_COOKIE } from "./researcher/login.js";
-import { coderKey, newDeviceId, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
+import { sessionDevices, coderSessions } from "./db/schema/index.js";
+import { coderKey, newDeviceId, nothingHere, readDevice, requireClientHeader, writeDevice } from "./runtime/session.js";
+import {
+  coderFromUrl,
+  loadRuntime,
+  proofOf,
+  resolveRequestCoder,
+  urlParamsOf,
+  versionGuard,
+} from "./runtime/requestCoder.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 import { idParam, parseJson } from "./shared/request.js";
-
-/** The deployment version the client's codebook belongs to (contracts SessionResponse.version). */
-const VERSION_HEADER = "x-annotinder-version";
 
 interface Env {
   /** `deviceId`: the device's row (`session_devices`; null in previews). `canLogIn`: the link offers a login the session hasn't used. */
@@ -49,7 +51,7 @@ export function coderApi(server: Server): Hono {
     requireClientHeader(c);
     const body = await parseJson(c, RedeemTransferSchema);
     const deploymentId = c.req.param("deployment")!;
-    const runtime = await server.deployments.get(deploymentId);
+    const runtime = await server.deployments.admit(deploymentId, { transferToken: body.token });
     // A suspended or deleted study (stamp changed in another process) takes no new devices.
     await runtime.refresh();
     const device = readDevice(c) ?? newDeviceId();
@@ -69,8 +71,8 @@ export function coderApi(server: Server): Hono {
     requireClientHeader(c);
     const deploymentId = c.req.param("deployment")!;
     const device = readDevice(c);
-    if (!device || isPreviewId(deploymentId)) throw new HttpError(404, "No session here");
-    const runtime = await server.deployments.get(deploymentId);
+    if (!device || isPreviewId(deploymentId)) throw nothingHere();
+    const runtime = await server.deployments.admit(deploymentId, await proofOf(c));
     const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParamsOf(c)));
     const [study] = await coderStudies(
       server.db,
@@ -85,85 +87,34 @@ export function coderApi(server: Server): Hono {
         ),
       ),
     );
-    if (!study) throw new HttpError(404, "No session here");
+    if (!study) throw nothingHere();
     return c.json(study);
   });
 
   // A pick-your-name link's names (docs/api/coder.md): never starts a session.
   app.get("/names", async (c) => {
     requireClientHeader(c);
-    const deploymentId = c.req.param("deployment")!;
     const secret = c.req.header("x-link-secret");
-    const link = secret && !isPreviewId(deploymentId) ? await linkInfo(server.db, secret) : null;
-    const runtime = link ? await server.deployments.get(deploymentId) : null;
-    if (!link || !runtime || link.studyId !== runtime.studyId)
-      throw new HttpError(404, "This link doesn't exist", "link_not_found");
+    const link = secret && !isPreviewId(c.req.param("deployment")!) ? await linkState(server.db, secret) : null;
+    if (!link) throw nothingHere();
+    const runtime = await loadRuntime(server, c, { linkSecret: secret });
+    if (link.studyId !== runtime.studyId) throw nothingHere();
     // Names only for a link that still takes new coders (as starting a session checks)
-    const [state] = await server.db
-      .select({ revokedAt: links.revokedAt, retiredAt: links.retiredAt })
-      .from(links)
-      .where(eq(links.secret, secret!));
-    if (state?.revokedAt) throw new HttpError(403, "This link has been revoked", "link_revoked");
-    if (state?.retiredAt) throw new HttpError(403, "This link is no longer active", "link_inactive");
-    await runtime.refresh();
+    if (link.revokedAt) throw new HttpError(403, "This link has been revoked", "link_revoked");
+    if (link.retiredAt) throw new HttpError(403, "This link is no longer active", "link_inactive");
     return c.json(await runtime.pickNames());
   });
 
   const session = new Hono<Env>();
   session.use("*", async (c, next) => {
     requireClientHeader(c);
-    const deploymentId = c.req.param("deployment")!;
-    const runtime = await server.deployments.get(deploymentId);
-    await runtime.refresh();
+    const runtime = await loadRuntime(server, c, await proofOf(c));
+    versionGuard(c, runtime);
+    const { coder, deviceId, canLogIn } = await resolveRequestCoder(server, c, runtime);
     c.set("runtime", runtime);
-    // The client works with the codebook of the version it loaded; after a
-    // deploy it must load the session again (the session and transfer
-    // links don't depend on the design).
-    const version = c.req.header(VERSION_HEADER);
-    const exempt = c.req.path.endsWith("/session") || c.req.path.endsWith("/transfer");
-    if (version !== undefined && version !== String(runtime.version) && !exempt) {
-      throw new HttpError(409, "A new version of the study was deployed", "design_changed");
-    }
-
-    // The device's session in this deployment (docs/coder-identity.md §4):
-    // its key is the hash of the device id, the deployment and the
-    // coder id the link carries (a device keeps a session per
-    // coder id). `x-new-session`: the coder asked for a new one (a
-    // coder id that already has a session elsewhere).
-    const linkSecret = c.req.header("x-link-secret");
-    const urlParams = urlParamsOf(c);
-    const newSession = c.req.header("x-new-session") === "1";
-    const link = linkSecret ? await linkInfo(server.db, linkSecret) : null;
-    const existingDevice = readDevice(c);
-    const device = existingDevice ?? newDeviceId();
-    const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParams));
-    // A login (the same as researchers', §5) is read only when it matters:
-    // to link a session to its email once, or to find the email's session on
-    // a new device. Never in previews.
-    const loginCookie = getCookie(c, SESSION_COOKIE);
-    const login =
-      loginCookie && !isPreviewId(deploymentId)
-        ? async () => {
-            const user = await userForSession(server.db, loginCookie);
-            return user ? { email: user.email } : null;
-          }
-        : undefined;
-    const { coder, deviceId } = await runtime.resolveCoder({
-      coderKey: key,
-      linkSecret,
-      urlParams,
-      newSession,
-      device: deviceDetails(c.req.header("user-agent")),
-      login,
-      // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
-      linkable: !!link,
-      pickedName: pickedName(c.req.header("x-coder-name")),
-    });
-    // Only once the coder was accepted (a link may be invalid or used up).
-    if (device !== existingDevice) writeDevice(c, device);
-    c.set("deviceId", deviceId);
-    c.set("canLogIn", !!server.login && !!link && coder.email === null);
     c.set("coder", coder);
+    c.set("deviceId", deviceId);
+    c.set("canLogIn", canLogIn);
     await next();
   });
 
@@ -226,25 +177,4 @@ export function coderApi(server: Server): Hono {
 
   app.route("/", session);
   return app;
-}
-
-/** The page's query parameters (`x-url-params`): the coder id and the design's URL parameters. */
-function urlParamsOf(c: Context): Record<string, string> {
-  return Object.fromEntries(new URLSearchParams(c.req.header("x-url-params") ?? ""));
-}
-
-/** The coder id a crowd's URL parameter carries (`coderParam`), if any. */
-function coderFromUrl(runtime: DeploymentRuntime, urlParams: Record<string, string>): string | undefined {
-  const param = runtime.coderParam;
-  return param ? urlParams[param]?.trim() || undefined : undefined;
-}
-
-/** The name a coder picked on a pick-your-name link (`x-coder-name`, URL-encoded), if any. */
-function pickedName(header: string | undefined): string | undefined {
-  if (!header) return undefined;
-  try {
-    return decodeURIComponent(header).trim().slice(0, 200) || undefined;
-  } catch {
-    return undefined;
-  }
 }

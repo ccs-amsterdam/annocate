@@ -14,6 +14,7 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.test.json",
     "test": "vitest run --passWithNoTests",
+    "test:pg": "node -e \"process.env.TEST_DATABASE_URL || (console.error('test:pg needs TEST_DATABASE_URL: a scratch Postgres server'), process.exit(1))\" && vitest run",
     "lint": "eslint .",
     "db:reset": "tsx src/reset.ts",
     "db:generate": "drizzle-kit generate",

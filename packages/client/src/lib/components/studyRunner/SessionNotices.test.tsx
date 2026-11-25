@@ -25,6 +25,13 @@ describe("SessionErrorScreen", () => {
     expect(html).not.toContain("Retry");
   });
 
+  it("tells a coder who started too many sessions to continue where they started", () => {
+    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="coder_session_limit" />);
+    expect(html).toContain("You can&#x27;t start another session");
+    expect(html).toContain("continue there");
+    expect(html).not.toContain("Retry");
+  });
+
   it("treats a code that is a property of every object as any unknown code", () => {
     for (const errorCode of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
       const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode={errorCode} />);

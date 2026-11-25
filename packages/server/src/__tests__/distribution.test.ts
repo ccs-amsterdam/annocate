@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Codings, UnitPool, pickNext, type OverlapPlacement, type SharedRule } from "../runtime/distribution.js";
+import { Codings, UnitPool, pickNext, type TestUnitPlacement, type SharedRule } from "../runtime/distribution.js";
 
 const answer = (code: string) => ({ v: code });
 /** A shared queue's rule, with the defaults of contracts `sharedDefaults`. */
@@ -21,7 +21,7 @@ function setup() {
     main: UnitPool,
     sessionId: number,
     opts: {
-      overlap?: OverlapPlacement;
+      overlap?: TestUnitPlacement;
       order?: "sequential" | "random";
       maxUnits?: number;
       minUnits?: number;
@@ -114,7 +114,7 @@ describe("overlap", () => {
     const a = run(1, "end");
     expect(a).toEqual(run(1, "end")); // deterministic per coder
     expect(a.filter((id) => id > 100)).toEqual(special); // all of them, in order
-    // Gaps of own units before each special unit: at least 1, at most 2 x every
+    // Gaps of own units before each test unit: at least 1, at most 2 x every
     let gap = 0;
     for (const id of a) {
       if (id > 100) {
@@ -200,8 +200,6 @@ describe("shared queues", () => {
     const first = pickNext(p, [], 1, codings, { order: "sequential", seed: 0, now: 0 })!;
     p.take(1, first.unitId, 0);
     expect(pickNext(p, [], 1, codings, { order: "sequential", seed: 0, now: 0 })?.unitId).toBe(first.unitId);
-    expect(p.canSubmit(1, first.unitId)).toBe(true);
-    expect(p.canSubmit(1, 2)).toBe(false);
   });
 
   it("keep coding until enough coders agree, up to maxCoders", () => {
@@ -278,15 +276,5 @@ describe("shared queues", () => {
     const overlap = { pool: pool([10], null, "overlap"), placement: "after" as const };
     expect(codeAll(main, 1, { overlap, maxUnits: 3 })).toEqual([1, 2, 3, 10]);
     expect(codeAll(main, 2, { overlap })).toEqual([4, 10]);
-  });
-});
-
-describe("codings", () => {
-  it("remember when a coder last finished a unit", () => {
-    const codings = new Codings();
-    codings.record(1, 1, {}, 100);
-    codings.record(1, 2, {}, 50);
-    expect(codings.lastFinished(1)).toBe(100);
-    expect(codings.lastFinished(2)).toBe(0);
   });
 });

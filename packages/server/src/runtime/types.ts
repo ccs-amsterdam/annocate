@@ -67,7 +67,7 @@ export interface Coder {
   assignments: CoderAssignments;
   /** Set once the coder reached an `end` item or quit: the session is over. */
   ended: SessionEnd | null;
-  /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`; not part of `CoderWrite`). */
+  /** Set once the coder asked for their answers to be deleted (`Store.requestDeletion`). */
   deletionRequest: DeletionRequest | null;
   /** `$session` values: `coder` (if any), `source`, the URL parameters and linked random conditions. Fixed once set. */
   session: Record<string, string>;
@@ -87,9 +87,9 @@ export interface ResolveCoderRequest {
   device?: DeviceDetails;
   /** Required the first time a coder key is seen, to create the coder from a link. */
   linkSecret?: string;
-  /** The page's URL parameters: the coder id and the codebook's URL parameters (`sessionValues`). */
+  /** The page's URL parameters: the coder id and the design's URL parameters (`sessionValues`). */
   urlParams?: Record<string, string>;
-  /** What the deployed codebook asks of a new session (its Study entry; set by the runtime). */
+  /** What the deployed design asks of a new session (its Study entry; set by the runtime). */
   sessionRules?: SessionRules;
   /**
    * The coder confirmed starting a new session although their coder id
@@ -99,15 +99,25 @@ export interface ResolveCoderRequest {
    */
   newSession?: boolean;
   /**
-   * Reads the verified email of the device's login, if any. Asked only when
-   * it matters, so coding needs no login lookups: to link a session to its
-   * email, once, where the link takes logins (`linkable`); and on a device
-   * without a session here, to find the email's session in this study
-   * (docs/coder-identity.md §5).
+   * Reads the verified email of the device's login, if any. Used only where
+   * the design requires sign-in or the coder asked for it (`useLogin`): a
+   * login in the browser alone (a researcher's, say) never ends up on a
+   * session. And asked only when it matters, so coding needs no login
+   * lookups: to link a session to its email, once (`linkable`); and on a
+   * device without a session here, to find the email's session in this
+   * study (docs/coder-identity.md §5).
    */
   login?: () => Promise<{ email: string } | null>;
-  /** The link takes logins: a session without an email gets linked to the login. */
+  /** The coder chose to sign in (`x-use-login`): their session is their account's. */
+  useLogin?: boolean;
+  /** The request has a link of this study: a session without an email gets linked to the login. */
   linkable?: boolean;
+  /**
+   * Called when the device has no session here, before one is looked for by
+   * the link or started (outside the transaction that does): the server's
+   * limit on new sessions per address (coder.ts). Throws to refuse.
+   */
+  beforeNewSession?: () => Promise<void>;
   /** The study is paused: sessions that exist go on, no new ones start (409 `study_paused`). */
   paused?: boolean;
   /** On a `pick_name` link: the name the coder picked (`x-coder-name`). */
@@ -142,7 +152,7 @@ export interface CoderValuesWrite {
   sessionId: number;
   values: Record<string, VariableValue>;
   assigned?: boolean;
-  /** The deployed codebook the value was given (or assigned) under. */
+  /** The deployed design the value was given (or assigned) under. */
   designVersionId: number;
   deviceId?: number | null;
   /**
@@ -165,7 +175,7 @@ export interface Coding {
   updated: Date;
 }
 
-/** A unit of a shared queue handed out to a coder (`unit_leases`): one per coder per queue. */
+/** A unit of a shared queue handed out to a coder (`unit_leases`): a coder holds up to a batch per queue. */
 export interface Lease {
   loop: string;
   set: string;
@@ -216,9 +226,9 @@ export interface AnnotationWrite {
   unitId: number;
   sessionId: number;
   variables: Record<string, VariableValue>;
-  /** The deployed codebook the coder answered under. */
+  /** The deployed design the coder answered under. */
   designVersionId: number;
-  /** The unit version the coder saw (`Store.unitVersion`). */
+  /** The unit version the coder saw (`Store.servedVersion`). */
   unitVersionId?: number;
   /** The device the answers were given on (`session_devices`). */
   deviceId?: number | null;

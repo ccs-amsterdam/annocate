@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, deployErrors, redirectSettings, undeclaredFields } from "@annotinder/contracts";
+import { DeploymentWriteSchema, deployErrors, own, redirectSettings, undeclaredFields } from "@annotinder/contracts";
 import { designVersionItems, designVersionUnits, itemsValid } from "../shared/designVersions.js";
 import { and, eq } from "drizzle-orm";
 import { deployments, designVersions, studies } from "../db/schema/index.js";
@@ -66,7 +66,7 @@ export function deployment(server: Server): Hono<Env> {
         .from(studies)
         .where(eq(studies.id, studyId));
       // Panel return links are deployment settings: say which ones are missing
-      const unset = redirectSettings(items).filter((name) => !study?.redirectUrls?.[name]);
+      const unset = redirectSettings(items).filter((name) => !own(study?.redirectUrls, name));
       const warnings = [
         ...(deployment.warnings ?? []),
         ...checks.warnings,
@@ -77,7 +77,7 @@ export function deployment(server: Server): Hono<Env> {
       ];
       return { ...deployment, links: await syncLinks(tx, studyId), ...(warnings.length > 0 ? { warnings } : {}) };
     });
-    await server.deployments.refresh(studyId);
+    await server.deployments.bumpRevision(studyId);
     return c.json(result);
   });
 

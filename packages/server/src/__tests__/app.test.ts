@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "../db/index.js";
 import { emptyDb, query } from "./testDb.js";
 import { createApp } from "../app.js";
-import { DbStore } from "../runtime/store.js";
+import { DbStore } from "../runtime/dbStore.js";
 import { HttpError } from "../shared/http.js";
 import { DESIGN_FORMAT_VERSION, splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
 

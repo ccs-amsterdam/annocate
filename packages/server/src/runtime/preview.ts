@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { DeletionRequest, SessionEnd, VariableValue } from "@annotinder/contracts";
+import { own, type DeletionRequest, type SessionEnd, type VariableValue } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
-import type { Store } from "./store.js";
+import { abandonedBefore, type Store } from "./store.js";
 import { previewSessionValues } from "./sessionValues.js";
 import type {
   Coder as StoredCoder,
@@ -19,7 +19,7 @@ import type {
 } from "./types.js";
 
 // Researcher previews (`<publicId>.preview`, contracts PreviewSessionSchema):
-// the latest codebook and the real units come from the database, but coders
+// the latest design and the real units come from the database, but coders
 // and answers stay here, in memory. Nothing a preview does is stored, and it
 // is gone when the server forgets the deployment.
 
@@ -28,7 +28,8 @@ export function previewToken(secret: string, studyId: number, expiresAt: number)
   return `preview.${studyId}.${expiresAt}.${sign(secret, studyId, expiresAt)}`;
 }
 
-function verifyPreviewToken(secret: string, studyId: number, token: string, now: number): boolean {
+/** Whether a preview token is this study's, signed by this server and not expired. */
+export function verifyPreviewToken(secret: string, studyId: number, token: string, now: number): boolean {
   const match = /^preview\.(\d+)\.(\d+)\.([0-9a-f]{64})$/.exec(token);
   if (!match || Number(match[1]) !== studyId || Number(match[2]) <= now) return false;
   return timingSafeEqual(Buffer.from(sign(secret, studyId, Number(match[2]))), Buffer.from(match[3]));
@@ -93,6 +94,16 @@ export class PreviewStore implements Store {
     return { coder: { ...coder }, deviceId: null };
   }
 
+  /** Whether a device key has a session in this preview. */
+  hasDevice(coderKey: string): boolean {
+    return this.devices.has(coderKey);
+  }
+
+  /** Whether a transfer link (its hash) was made in this preview and not used yet. */
+  hasTransfer(tokenHash: string): boolean {
+    return this.transfers.has(tokenHash);
+  }
+
   async addDevice(sessionId: number, coderKey: string): Promise<number | null> {
     this.devices.set(coderKey, sessionId);
     return null;
@@ -101,7 +112,7 @@ export class PreviewStore implements Store {
   /** Previews keep nothing: no limits. */
   async checkAnswers(): Promise<void> {}
 
-  /** Previews check the latest codebook on every request. */
+  /** Previews check the latest design on every request. */
   async deploymentStamp(): Promise<string | null> {
     return null;
   }
@@ -115,8 +126,8 @@ export class PreviewStore implements Store {
   async setSessionValue(sessionId: number, name: string, value: string): Promise<string> {
     const coder = this.coders.get(sessionId);
     if (!coder) return value;
-    if (coder.session[name] === undefined) coder.session = { ...coder.session, [name]: value };
-    return coder.session[name];
+    if (!Object.hasOwn(coder.session, name)) coder.session = { ...coder.session, [name]: value };
+    return coder.session[name]!;
   }
 
   async setEnded(sessionId: number, ended: SessionEnd | null): Promise<void> {
@@ -140,7 +151,7 @@ export class PreviewStore implements Store {
   async putCoderValues(write: CoderValuesWrite): Promise<void> {
     const values = this.coderAnswers(write.sessionId);
     for (const [name, value] of Object.entries(write.values)) {
-      if (values[name]?.assigned || values[name]?.frozen) continue;
+      if (own(values, name)?.assigned || own(values, name)?.frozen) continue;
       values[name] = { value, assigned: write.assigned ?? false, frozen: false };
     }
   }
@@ -151,7 +162,10 @@ export class PreviewStore implements Store {
 
   async freezeCoderValues(sessionId: number, names: string[]): Promise<void> {
     const values = this.coderAnswers(sessionId);
-    for (const name of names) if (values[name]) values[name] = { ...values[name], frozen: true };
+    for (const name of names) {
+      const value = own(values, name);
+      if (value) values[name] = { ...value, frozen: true };
+    }
   }
 
   private coderAnswers(sessionId: number): Record<string, CoderValue> {
@@ -211,7 +225,12 @@ export class PreviewStore implements Store {
     );
   }
 
-  async putLeases(leases: Lease[]): Promise<void> {
+  async putLeases(leases: Lease[], now: Date): Promise<void> {
+    if (leases.length === 0) return;
+    for (const [key, lease] of this.leases) {
+      const abandoned = lease.expires < abandonedBefore(now) || !!this.coders.get(lease.sessionId)?.ended;
+      if (abandoned) this.leases.delete(key);
+    }
     for (const lease of leases) this.leases.set(`${lease.loop}/${lease.set}/${lease.sessionId}/${lease.unitId}`, lease);
   }
 
@@ -219,10 +238,10 @@ export class PreviewStore implements Store {
     variables: string[],
   ): Promise<{ values: Record<string, VariableValue>; session: Record<string, string> }[]> {
     return [...this.values].flatMap(([sessionId, values]) =>
-      values[variables[0]]
+      own(values, variables[0]!)
         ? [
             {
-              values: Object.fromEntries(variables.flatMap((v) => (values[v] ? [[v, values[v].value]] : []))),
+              values: Object.fromEntries(variables.flatMap((v) => (own(values, v) ? [[v, values[v]!.value]] : []))),
               session: this.coders.get(sessionId)?.session ?? {},
             },
           ]
@@ -276,7 +295,11 @@ export class PreviewStore implements Store {
     for (const group of request.loops) {
       const pick = (variables: Record<string, VariableValue>) =>
         group.values?.length
-          ? { values: Object.fromEntries(group.values.filter((v) => v in variables).map((v) => [v, variables[v]])) }
+          ? {
+              values: Object.fromEntries(
+                group.values.filter((v) => Object.hasOwn(variables, v)).map((v) => [v, variables[v]]),
+              ),
+            }
           : {};
       if (group.level === "coder") {
         for (const c of this.coders.values()) {
@@ -284,7 +307,7 @@ export class PreviewStore implements Store {
           const variables = Object.fromEntries(
             Object.entries(this.values.get(c.sessionId) ?? {}).map(([k, v]) => [k, v.value]),
           );
-          if (group.variables.every((v) => v in variables)) {
+          if (group.variables.every((v) => Object.hasOwn(variables, v))) {
             rows.push({
               loop: group.loop,
               unitId: null,
@@ -298,7 +321,7 @@ export class PreviewStore implements Store {
       }
       for (const a of this.annotations.values()) {
         if (request.sessionId !== undefined && a.sessionId !== request.sessionId) continue;
-        if (group.variables.every((v) => v in a.variables)) {
+        if (group.variables.every((v) => Object.hasOwn(a.variables, v))) {
           rows.push({
             loop: group.loop,
             unitId: a.unitId,

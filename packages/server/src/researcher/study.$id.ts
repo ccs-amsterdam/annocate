@@ -37,7 +37,7 @@ export function study(server: Server): Hono<Env> {
       .where(eq(studies.id, c.get("studyId")))
       .returning();
     // The runtime reads whether sessions stay open and the redirect URLs with the deployment.
-    await server.deployments.refresh(c.get("studyId"));
+    await server.deployments.bumpRevision(c.get("studyId"));
     return c.json(toStudyResponse(row!));
   });
 

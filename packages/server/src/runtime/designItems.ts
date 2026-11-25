@@ -13,6 +13,7 @@ import {
   type TopLevelItem,
   type UnitLoopItem,
   type VariableValue,
+  own,
 } from "@annotinder/contracts";
 
 // Lookups on the design items.
@@ -43,25 +44,22 @@ export function loopAgreementVariables(info: LoopInfo): string[] {
   return on ? [on] : [];
 }
 
-/**
- * Whether distributing a loop's units depends on every coder's codings
- * (loaded for all coders, not only active ones): shared queues.
- */
+/** Whether handing out a loop's units counts every coder's codings: a shared queue. */
 function needsAllCodings(info: LoopInfo): boolean {
   return !!info.units.criteria;
 }
 
 /**
  * Loops in which these answers finish a unit: every question of the loop
- * (in the current codebook) has a value (docs/architecture.md §8.2).
+ * (in the current design) has a value (docs/architecture.md §8.2).
  */
 export function finishedLoops(variables: Record<string, VariableValue>, loops: Iterable<LoopInfo>): LoopInfo[] {
-  return [...loops].filter((info) => [...info.variables.keys()].every((name) => name in variables));
+  return [...loops].filter((info) => [...info.variables.keys()].every((name) => Object.hasOwn(variables, name)));
 }
 
 /**
  * What finished codings derived from annotations depend on: per loop, its
- * questions, whether it has dynamic sources, and their agreement variables.
+ * questions, whether it is a shared queue, and its agreement question.
  * If this doesn't change between design versions, codings can be kept.
  */
 export function codingsSignature(loops: Iterable<LoopInfo>): string {
@@ -109,7 +107,7 @@ export function singleValue(value: string): VariableValue {
 
 /** A canonical string of a variable's answer (its values, per item), used to test agreement between coders. */
 export function agreementKey(variables: Record<string, VariableValue>, variable: string): string | null {
-  const answer = variables[variable];
+  const answer = own(variables, variable);
   if (!answer || answer.skip || !answer.values?.length) return null;
   return answer.values
     .map((v) => `${v.item ?? ""}:${JSON.stringify(v.value)}`)
