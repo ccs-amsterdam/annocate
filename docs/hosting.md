@@ -68,7 +68,7 @@ The repository is the app folder: `compose.yml` at the top, `.env` and
 `backups/` next to it (git ignores both).
 
 ```bash
-git clone https://github.com/ccs-amsterdam/annocate.git /srv/annotinder
+git clone https://github.com/ccs-amsterdam/annotinder.git /srv/annotinder
 cd /srv/annotinder
 git checkout v0.9.0      # the release to run
 ```
