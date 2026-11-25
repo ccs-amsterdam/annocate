@@ -58,7 +58,7 @@ rely on it. Cloudflare's limits come from its documentation of November
 
 ## Setting up
 
-Replace `annotinder.example.org` with your hostname and `/srv/annotinder`
+Replace `annotinder.example.org` with your hostname and `/opt/annotinder`
 with your app folder. Run Docker commands with `sudo` if your user isn't
 allowed to use Docker.
 
@@ -68,8 +68,8 @@ The repository is the app folder: `compose.yml` at the top, `.env` and
 `backups/` next to it (git ignores both).
 
 ```bash
-git clone https://github.com/ccs-amsterdam/annotinder.git /srv/annotinder
-cd /srv/annotinder
+git clone https://github.com/ccs-amsterdam/annotinder.git /opt/annotinder
+cd /opt/annotinder
 git checkout v0.9.0      # the release to run
 ```
 
@@ -257,7 +257,7 @@ lower it for accounts you don't know ([accounts](accounts.md) §3).
 ## Updating
 
 ```bash
-cd /srv/annotinder
+cd /opt/annotinder
 docker compose restart db-backup                     # a fresh dump first
 git fetch --tags && git checkout v0.9.1              # the new release
 sed -i 's/^ANNOTINDER_VERSION=.*/ANNOTINDER_VERSION=0.9.1/' .env
@@ -326,7 +326,7 @@ not backed up: the dumps are the backup.
   later; a dump reads the whole database, which is fine up to some GB.
 
 ```
-7 * * * * cd /srv/annotinder && f=backups/hourly-$(date -u +\%H).dump && docker compose exec -T db pg_dump -U annotinder --format=custom annotinder > $f.partial && mv $f.partial $f
+7 * * * * cd /opt/annotinder && f=backups/hourly-$(date -u +\%H).dump && docker compose exec -T db pg_dump -U annotinder --format=custom annotinder > $f.partial && mv $f.partial $f
 ```
 
 ### Layers 2 and 3
@@ -353,7 +353,7 @@ write `/root/restic.env` (`RESTIC_REPOSITORY=s3:https://<host>/<bucket>`,
 # /usr/local/bin/annotinder-offsite: copies the dumps and settings off the machine (docs/hosting.md, "Backups").
 set -eu
 . /root/restic.env
-restic backup --tag annotinder /srv/annotinder/backups /srv/annotinder/.env
+restic backup --tag annotinder /opt/annotinder/backups /opt/annotinder/.env
 restic forget --tag annotinder --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
 # Tell the backup check that this ran (Monitoring): only reached when both commands worked
 curl -fsS -m 10 --retry 3 "<the check's ping address>" > /dev/null
@@ -395,7 +395,7 @@ drops it. The app keeps running. This one was run. (Run as a user that can
 read `backups/`: root, so with `sudo`.)
 
 ```bash
-cd /srv/annotinder && dump=$(ls backups | grep '^annotinder-' | sort | tail -n 1) && echo "$dump"
+cd /opt/annotinder && dump=$(ls backups | grep '^annotinder-' | sort | tail -n 1) && echo "$dump"
 docker compose exec -T db createdb -U annotinder restore_test
 cat "backups/$dump" | docker compose exec -T db pg_restore -U annotinder -d restore_test --no-owner
 docker compose exec -T db psql -U annotinder -d restore_test -c "select count(*) as studies from studies"
@@ -416,7 +416,7 @@ are untested)**.
 3. Start **only the database** and load the dump before the app ever starts
    (the app would create its own empty tables first):
    `docker compose up -d db`, then the `pg_restore` line of "Restoring"
-   below with the dump from `/tmp/restore/srv/annotinder/backups`.
+   below with the dump from `/tmp/restore/opt/annotinder/backups`.
 4. `docker compose up -d`, then the smoke test against `http://localhost:8787`.
    For a full test, point a test hostname at the machine and log in: with
    another hostname, the login needs that hostname in `ANNOTINDER_PUBLIC_URL`
@@ -481,7 +481,7 @@ A small script for 2 and for the dump itself, hourly from root's crontab
 #!/bin/sh
 # /usr/local/bin/annotinder-check: disk space, the newest dump, the containers (docs/hosting.md, "Monitoring").
 set -eu
-cd /srv/annotinder
+cd /opt/annotinder
 used=$(df --output=pcent . | tail -n 1 | tr -dc '0-9')
 [ "$used" -lt 80 ] || { echo "disk at $used%"; exit 1; }
 [ -n "$(find backups -name 'annotinder-*.dump' -mmin -1560)" ] || { echo "no recent dump"; exit 1; }
