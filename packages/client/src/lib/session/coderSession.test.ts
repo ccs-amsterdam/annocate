@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { codeLinkUrl, redeemTransfer } from "./coderSession";
+import { codeLinkUrl, logInWithAccount, redeemTransfer } from "./coderSession";
 
 describe("redeemTransfer", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -15,6 +15,19 @@ describe("redeemTransfer", () => {
     expect(url).toBe("/d/1/transfer/redeem");
     expect(init.headers).toMatchObject({ "x-annotinder": "1", "x-link-secret": "s1" });
     expect(init.credentials).toBe("same-origin");
+  });
+});
+
+describe("logInWithAccount", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("logs in and comes back to the page with the choice to code with the account", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("window", { location: { pathname: "/code/abc", search: "?link=s1&participant=P1", assign } });
+    logInWithAccount();
+    const [url] = assign.mock.calls[0] as [string];
+    expect(url.startsWith("/api/auth/login?returnTo=")).toBe(true);
+    expect(new URL(url, "http://x").searchParams.get("returnTo")).toBe("/code/abc?link=s1&participant=P1&login=1");
   });
 });
 

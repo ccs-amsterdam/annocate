@@ -74,6 +74,14 @@ export function coderLoginUrl({ useLogin = false }: { useLogin?: boolean } = {})
   return `/api/auth/login?returnTo=${encodeURIComponent(useLogin ? withLoginChoice(page) : page)}`;
 }
 
+/**
+ * The coder chose to code with their account: logs in and comes back to
+ * this page, which then continues the account's session in this study.
+ */
+export function logInWithAccount(): void {
+  window.location.assign(coderLoginUrl({ useLogin: true }));
+}
+
 /** Whether this server offers login at all. */
 export async function loginAvailable(): Promise<boolean> {
   try {

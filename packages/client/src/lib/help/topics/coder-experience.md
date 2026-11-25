@@ -80,15 +80,17 @@ are held for a coder for 15 minutes.)
 Another browser, a private window or cleared data means a new session,
 unless the coder moves it (below). When AnnoTinder knows who the coder is
 (a link of their own, a coder id, a picked name), it says **You already
-started on another device** and offers to continue there or **Start a new
-session** (empty). A coder can do that a few times only: with 5 sessions
+started on another device** and offers to continue there, to **Log in**
+(for a coder who logged in on that device) or to **Start a new session**
+(empty). A coder can do that a few times only: with 5 sessions
 under one coder id in a study, the next try says **You can't start another
 session** (see [Coder ids](links.md#coder-ids)).
 
 ## Continuing on another device
 
 - **Code** (`/code`) lists the studies started in this browser (by
-  their public title), to continue without the link.
+  their public title), to continue without the link. **Log in** there adds
+  the studies kept with the coder's account on other devices.
 - **Continue on another device** (top bar) shows a QR code and a link that
   moves the session; it works once, for 15 minutes. Coders shouldn't share
   it.
@@ -96,10 +98,16 @@ session** (see [Coder ids](links.md#coder-ids)).
   [sign-in](links.md#login), they open the link on the other device and
   sign in. Where signing in was their own choice (**Log in** under
   **Continue on another device**: _"your answers are then kept with your
-  account"_), they are logged in on the other device and open **Code**
-  (`/code`): the study is listed there as "on another device", and
-  **Continue** opens it with their account. Opening the study's link there
-  without that choice doesn't use the account.
+  account"_), they make the same choice on the other device: open the
+  study's link there and choose **Log in**, under **Continue on another
+  device** or on the notice **You already started on another device**. Or
+  they open **Code** (`/code`) and log in: the study is listed there as "on
+  another device", and **Continue** opens it with their account. Opening
+  the study's link without that choice doesn't use the account. The
+  session a device started before its coder logged in is removed if
+  nothing was answered in it, so it doesn't count as a coder of the link.
+- A login lasts until 14 days without use (opening **Code**, or logging
+  in to a study). Coding doesn't need it: the device continues its session.
 
 ## Keyboard shortcuts
 

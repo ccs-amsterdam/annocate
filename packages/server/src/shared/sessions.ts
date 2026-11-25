@@ -8,7 +8,7 @@ import { randomToken, sha256Hex } from "./crypto.js";
 // Researcher sessions (the `sessions` table): a random key in an
 // httpOnly cookie, its hash in the database. Sliding: each use pushes the
 // expiry out again, at most once an hour, and the cookie is then sent again
-// so the browser keeps it as long (researcher/auth.ts). A session remembers whether its
+// so the browser keeps it as long (researcher/auth.ts; coders: runtime/requestCoder.ts). A session remembers whether its
 // login used a second factor (`mfa`) and when the provider authenticated
 // the user (`authTime`): sensitive actions need that recent, and with a
 // second factor unless `AUTH_INSECURE_DISABLE_2FA` (step-up, researcher/auth.ts).
@@ -74,7 +74,19 @@ export async function deleteSession(db: Db, key: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.keyHash, sha256Hex(key)));
 }
 
-/** Removes the sessions that have expired (at each login: nothing else ends them). */
+/** Removes the sessions that have expired: at each login, and every hour (`sweepExpiredSessions`). */
 export async function deleteExpiredSessions(db: Db): Promise<void> {
   await db.delete(sessions).where(lte(sessions.expires, sql`now()`));
+}
+
+const SWEEP_EVERY_MS = 60 * 60_000;
+
+/**
+ * Removes expired sessions every hour, so their records don't wait for the
+ * next login. Returns how to stop.
+ */
+export function sweepExpiredSessions(db: Db, everyMs = SWEEP_EVERY_MS): () => void {
+  const sweep = () => void deleteExpiredSessions(db).catch((error) => console.error("Sweeping sessions failed", error));
+  const timer = setInterval(sweep, everyMs);
+  return () => clearInterval(timer);
 }

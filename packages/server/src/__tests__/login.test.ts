@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import type { MfaClaim } from "../oidc.js";
+import { sweepExpiredSessions } from "../shared/sessions.js";
 import { emptyDb, query } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
@@ -428,6 +429,21 @@ describe("researcher login", () => {
     const withFirst = { cookie: `annotinder_session=${first}`, "x-annotinder": "1" };
     expect((await app.request("/api/me", { headers: withFirst })).status).toBe(401);
     expect(await query(db, "SELECT count(*)::int AS n FROM sessions")).toEqual([{ n: 1 }]);
+  });
+
+  it("sweeps expired sessions on its own, until stopped", async () => {
+    const b = browser();
+    await b.logIn(verified);
+    const expire = () =>
+      query(db, "INSERT INTO sessions (user_id, key_hash, expires) VALUES (1, 'old', now() - interval '1 minute')");
+    const left = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM sessions"))[0]!.n;
+    await expire();
+    const stop = sweepExpiredSessions(db, 10);
+    await vi.waitFor(async () => expect(await left()).toBe(1));
+    stop();
+    await expire();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(await left()).toBe(2);
   });
 
   it("logs out: the session no longer works", async () => {

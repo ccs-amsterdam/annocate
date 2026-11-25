@@ -126,8 +126,8 @@ Anything else comes back with `loginError=link_failed`.
 (`Secure` over HTTPS); the database has only its hash. It lasts 14 days from
 its last use: the server extends it at most once an hour, and sends the
 cookie again when it does. A new login ends the session it replaces (the
-one of the cookie the browser had), and every login removes the sessions
-that have expired (`coder-identity.md` §7).
+one of the cookie the browser had); every login, and the server every
+hour, removes the sessions that have expired (`coder-identity.md` §7).
 
 **The security log** (`security_log`, per user) records:
 

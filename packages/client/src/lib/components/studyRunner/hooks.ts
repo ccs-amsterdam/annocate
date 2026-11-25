@@ -3,8 +3,18 @@ import type { DisplayEntry } from "@annotinder/contracts";
 import type { CoderApi } from "../../api/httpCoderApi";
 import { useCoderSettings } from "../../context/coderSettings";
 import type { DisplayState } from "../../display/context";
+import { loginAvailable } from "../../session/coderSession";
 import { useDisplayLog, useWidthClass, type WidthClass } from "../../display/hooks";
 import type { StudyManagerNavigation, StudyManagerSnapshot } from "../../studyManager/types";
+
+/** Whether this server offers a login; null until known. */
+export function useLoginAvailable(): boolean | null {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    void loginAvailable().then(setAvailable);
+  }, []);
+  return available;
+}
 
 export type NavDirection = "next" | "previous";
 

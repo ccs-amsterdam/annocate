@@ -5,6 +5,7 @@ import { describeDatabase, openDatabase } from "./database.js";
 import { studies } from "./db/schema/index.js";
 import { seed } from "./seed.js";
 import { DiskFileStore } from "./shared/files.js";
+import { sweepExpiredSessions } from "./shared/sessions.js";
 
 // Node entry point: the settings (config.ts), the database, the app.
 
@@ -24,7 +25,10 @@ const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {
   for (const warning of warnings) console.warn(`  WARNING: ${warning}`);
 });
 
+const stopSweeping = sweepExpiredSessions(db);
+
 const shutdown = () => {
+  stopSweeping();
   server.close(() => void db.close().finally(() => process.exit(0)));
   setTimeout(() => process.exit(0), 2000).unref();
 };

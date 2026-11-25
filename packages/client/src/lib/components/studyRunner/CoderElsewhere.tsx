@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { logInWithAccount } from "../../session/coderSession";
+import { useLoginAvailable } from "./hooks";
 import { SessionNotice } from "./SessionNotice";
 
 /**
  * A coder id that already has a session on another device or browser
- * (docs/coder-identity.md §4). Normally the coder continues there; a new
+ * (docs/coder-identity.md §4). Normally the coder continues there, or here
+ * with a transfer link or the account they logged in with there; a new
  * session is only for a coder who can't get back to the earlier one (a lost
  * device, cleared browser data), after confirming that.
  */
 export function CoderElsewhere({ onStartNewSession }: { onStartNewSession: () => void }) {
   const [cantReturn, setCantReturn] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const loginAvailable = useLoginAvailable();
   return (
     <SessionNotice title="You already started on another device">
       <p>
@@ -21,10 +25,17 @@ export function CoderElsewhere({ onStartNewSession }: { onStartNewSession: () =>
         <li>Open this link again on the device and browser where you started.</li>
         <li>
           To continue <em>here</em>: on that device, open &quot;Continue on another device&quot; (top right) and open
-          the link or scan the code it shows here. If the study lets you log in, you can also log in there, and then log
-          in here.
+          the link or scan the code it shows here.
         </li>
+        {loginAvailable !== false && (
+          <li>If you logged in on that device (also under &quot;Continue on another device&quot;), log in here too.</li>
+        )}
       </ul>
+      {loginAvailable !== false && (
+        <Button type="button" variant="outline" disabled={loginAvailable === null} onClick={logInWithAccount}>
+          Log in
+        </Button>
+      )}
       {!cantReturn ? (
         <Button type="button" variant="ghost" className="mt-2 self-start" onClick={() => setCantReturn(true)}>
           I can&apos;t get back to my earlier session…

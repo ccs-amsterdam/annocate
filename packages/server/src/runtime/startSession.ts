@@ -1,8 +1,8 @@
 import type { DeviceDetails } from "../shared/devices.js";
 import { linkMaxCoders, type CodersInvite } from "@annotinder/contracts";
-import { and, asc, eq, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, lt, sql } from "drizzle-orm";
 import { type Db } from "../db/index.js";
-import { sessionDevices, coderSessions, links } from "../db/schema/index.js";
+import { annotationValues, sessionDevices, coderSessions, links } from "../db/schema/index.js";
 import { type CoderRow } from "../shared/coders.js";
 import { HttpError } from "../shared/http.js";
 import { emailCoders, runtimeInvite, sessionValues } from "./sessionValues.js";
@@ -125,13 +125,44 @@ async function linkLogin(
   login: { email: string },
 ): Promise<Started> {
   const other = await sessionOfEmail(db, studyId, login.email);
-  if (other) return { row: other, deviceId: await addDevice(db, studyId, other.id, request.coderKey, request.device) };
+  if (other) {
+    const deviceId = await addDevice(db, studyId, other.id, request.coderKey, request.device);
+    await removeIfUnused(db, studyId, known.coder);
+    return { row: other, deviceId };
+  }
   const [linked] = await db
     .update(coderSessions)
     .set({ email: login.email.toLowerCase() })
     .where(eq(coderSessions.id, known.coder.id))
     .returning();
   return { row: linked!, deviceId: known.deviceId };
+}
+
+/**
+ * Removes a session its device just left for its email's session, if nobody
+ * can get back to it (no device, no email) and the coder answered nothing in
+ * it: the session a second device starts before the coder logs in. A session
+ * with answers stays, for the researcher.
+ */
+async function removeIfUnused(db: Db, studyId: number, left: CoderRow): Promise<void> {
+  const a = annotationValues;
+  const devices = await db.$count(sessionDevices, eq(sessionDevices.sessionId, left.id));
+  const answers = await db.$count(a, and(eq(a.studyId, studyId), eq(a.sessionId, left.id), eq(a.assigned, false)));
+  if (devices > 0 || answers > 0 || left.ended !== null) return;
+  await db.delete(coderSessions).where(eq(coderSessions.id, left.id));
+  await returnLinkUse(db, studyId, left);
+}
+
+/** Gives a removed session's place on its link back, unless it didn't take one (a known coder's further session). */
+async function returnLinkUse(db: Db, studyId: number, removed: CoderRow): Promise<void> {
+  const { linkId, coder } = removed;
+  const others = and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder ?? ""));
+  const knownCoder = coder !== null && (await db.$count(coderSessions, others)) > 0;
+  if (linkId === null || knownCoder) return;
+  await db
+    .update(links)
+    .set({ uses: sql`${links.uses} - 1` })
+    .where(and(eq(links.id, linkId), gt(links.uses, 0)));
 }
 
 /**

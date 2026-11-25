@@ -1,9 +1,7 @@
 import { Hono, type Context } from "hono";
-import { getCookie } from "hono/cookie";
 import type { Env, Server } from "./context.js";
 import { HttpError } from "./shared/http.js";
-import { userForSession } from "./shared/sessions.js";
-import { SESSION_COOKIE } from "./researcher/login.js";
+import { loginReader } from "./runtime/requestCoder.js";
 import { requireClientHeader } from "./runtime/session.js";
 import { coderStudies } from "./shared/coderStudies.js";
 import { eq, sql } from "drizzle-orm";
@@ -22,8 +20,7 @@ export function coderAccount(server: Server): Hono<Env> {
   /** The logged-in person; without a login, 401 with what logging in is `needed` for. */
   const loggedIn = async (c: Context<Env>, needed: string) => {
     requireClientHeader(c);
-    const cookie = getCookie(c, SESSION_COOKIE);
-    const user = cookie ? await userForSession(server.db, cookie) : null;
+    const user = (await loginReader(server, c)?.()) ?? null;
     if (!user) throw new HttpError(401, `Log in to ${needed}`, "auth_required");
     return user;
   };

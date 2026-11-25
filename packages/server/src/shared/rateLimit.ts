@@ -15,7 +15,7 @@ export interface RateLimits {
   /**
    * Devices without a session in a study asking for one (new sessions, and
    * guessed link secrets), per IP per 10 minutes: only a brake, since a whole
-   * class can share one address. Counted where sessions are made (runtime/store.ts).
+   * class can share one address. Counted where a request asks for one (runtime/requestCoder.ts).
    */
   newSessions: number;
   /** Redeeming "continue on another device" tokens (per IP). */

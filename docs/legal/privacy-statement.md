@@ -127,7 +127,7 @@ tracking and other non-essential storage, not for this.
 | Name | For | Set when | Kept |
 | --- | --- | --- | --- |
 | `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | A study accepts your link for the first time | 400 days |
-| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after the login, or for researchers 14 days after they last used the site; removed at logout |
+| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after your login was last used (the researcher pages, your list of studies under Code, or logging in to a study); removed at logout |
 | `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | Until you come back from the login provider, at most 10 minutes |
 | `[ANY COOKIES OF THE PROXY, e.g. Cloudflare's "__cf_bm" or "cf_clearance": only if the features that set them are switched on]` | Security of the proxy | | |
 
@@ -172,7 +172,7 @@ it to another AnnoTinder server.
 | --- | --- |
 | Study data | As long as the researcher keeps the study. The researcher decides when to delete it. `[IF A LIMIT APPLIES: "Studies that nobody opened for N months are deleted after a warning to the owner."]` |
 | Researcher accounts | Until you ask us to delete it. `[OPTIONAL: "Accounts not used for N years are deleted after a warning."]` |
-| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times) is removed the next time anyone logs in on the server `[so not after a fixed period: on a server where nobody logs in for a while it stays that long. SEE REVIEWER NOTE 5]` |
+| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times) is removed within an hour |
 | Links to continue on another device | 15 minutes |
 | Security and admin logs | `[PERIOD; today they are kept until someone removes them: SEE REVIEWER NOTE 5]` |
 | Invitations nobody used | They stop working after 3 months; `[PERIOD UNTIL REMOVED]` |
@@ -253,11 +253,11 @@ email.
    cookies set by scripts, and the pages load nothing from other sites
    except what a researcher puts in a study. Check them again at each
    release: several items of the release plan change them (notes 5 and 8).
-   The session cookie lasts 14 days from its last use: the researcher API
-   extends the session (at most once an hour) and sends the cookie again
-   when it does (`researcher/auth.ts`). Coder requests read the login
-   without sending the cookie again, so for someone who only codes the
-   browser drops it 14 days after the login.
+   The session cookie lasts 14 days from its last use: a request that
+   reads the login extends the session (at most once an hour) and sends
+   the cookie again when it does, for researchers (`researcher/auth.ts`)
+   and for coders (`runtime/requestCoder.ts`: the coder home, and a
+   study's requests where the login counts).
 2. **No cookie banner: the reasoning.** The ePrivacy Directive (article
    5(3); in the Netherlands article 11.7a of the Telecommunicatiewet)
    requires consent for storing or reading information on a device,
@@ -284,8 +284,9 @@ email.
    so. **Still by hand:** most of retention in §7: the
    server removes nothing by itself except rate limit counters, used or
    expired links to continue on another device, and login sessions (a
-   login ends the session it replaces, and every login removes all expired
-   ones: `researcher/login.ts`, `deleteExpiredSessions`; no timer does it).
+   login ends the session it replaces; every login and an hourly sweep
+   remove all expired ones: `deleteExpiredSessions` and
+   `sweepExpiredSessions`, `shared/sessions.ts`).
    The security log and the admin log stay until someone removes them
    (`docs/plans/go-live.md`, P-11).
 6. **The lab's own server** can use a shortened version: §2, §4, §5, §7,

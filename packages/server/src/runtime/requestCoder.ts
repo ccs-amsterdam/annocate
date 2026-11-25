@@ -2,8 +2,9 @@ import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { own } from "@annotinder/contracts";
 import type { Server } from "../context.js";
-import { SESSION_COOKIE } from "../researcher/login.js";
+import { SESSION_COOKIE, setSessionCookie } from "../researcher/login.js";
 import { deviceDetails } from "../shared/devices.js";
+import type { User } from "../shared/accounts.js";
 import { HttpError } from "../shared/http.js";
 import { linkInfo } from "../shared/links.js";
 import { userForSession } from "../shared/sessions.js";
@@ -54,11 +55,22 @@ export async function proofOf(server: Server, c: Context): Promise<Proof> {
 
 /** Reads the request's login (the same as researchers', docs/coder-identity.md §5) when asked. Never in previews. */
 function loginOf(server: Server, c: Context): (() => Promise<{ email: string } | null>) | undefined {
+  if (isPreviewId(c.req.param("deployment")!)) return undefined;
+  return loginReader(server, c);
+}
+
+/**
+ * Reads the login of a coder's request, if it has a login cookie. Reading
+ * extends the login session; the cookie is then sent again, so someone who
+ * only codes stays logged in as long as a researcher (researcher/auth.ts).
+ */
+export function loginReader(server: Server, c: Context): (() => Promise<User | null>) | undefined {
   const cookie = getCookie(c, SESSION_COOKIE);
-  if (!cookie || isPreviewId(c.req.param("deployment")!)) return undefined;
+  if (!cookie) return undefined;
   return async () => {
     const user = await userForSession(server.db, cookie);
-    return user ? { email: user.email } : null;
+    if (user?.extended) setSessionCookie(c, cookie);
+    return user;
   };
 }
 

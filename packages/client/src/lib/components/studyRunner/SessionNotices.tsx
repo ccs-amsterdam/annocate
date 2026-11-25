@@ -1,8 +1,9 @@
-import { useEffect, useState, type ComponentType } from "react";
+import type { ComponentType } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { coderLoginUrl, loginAvailable, logOut } from "../../session/coderSession";
+import { coderLoginUrl, logOut } from "../../session/coderSession";
 import { CoderElsewhere } from "./CoderElsewhere";
+import { useLoginAvailable } from "./hooks";
 import { PickName } from "./PickName";
 import { SessionNotice } from "./SessionNotice";
 
@@ -183,10 +184,7 @@ function IncompleteLinkNotice({ error }: SessionErrorProps) {
 
 /** A link that needs a login (docs/coder-identity.md §5). */
 function LoginNotice() {
-  const [available, setAvailable] = useState<boolean | null>(null);
-  useEffect(() => {
-    void loginAvailable().then(setAvailable);
-  }, []);
+  const available = useLoginAvailable();
   return (
     <SessionNotice title="This study asks you to sign in">
       <p>

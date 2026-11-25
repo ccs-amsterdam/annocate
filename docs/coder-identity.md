@@ -101,7 +101,9 @@ most 5 sessions in a study (§4).
   1. The server refuses to create a second session silently:
      `409 { code: "coder_has_session" }`.
   2. The client says: continue on the original device, or make a transfer
-     link there.
+     link there. A coder who logged in there can **Log in** here: the
+     notice has the button (where the server has a login), and the page
+     they come back to continues the account's session (§5).
   3. Only for a coder who can't get back (lost device, cleared browser):
      **I can't get back to my earlier session…** asks to confirm, then **Start
      a new session** retries with `x-new-session: 1` (first request only). The
@@ -121,14 +123,18 @@ most 5 sessions in a study (§4).
   the same time can't pass it together. Sessions without a coder id (an
   anonymous link) have no such cap: they are bounded by the link's
   `maxCoders` and the limit on new sessions per address (`security.md` §3).
-- **Anonymous links on a new device** simply start a new session.
+- **Anonymous links on a new device** simply start a new session. A coder
+  who then logs in to continue their account's session leaves it; unused,
+  it is removed (§5).
 - **The coder home** (`/code`) lists this browser's studies: the browser
   remembers the studies it opened (deployment and URL parameters, never a
   link secret) and asks each (`GET /d/<id>/summary`), since the server can't
   list a device's sessions. A logged-in coder also sees sessions linked to
   their email (`GET /coder/sessions`); one that isn't on this device opens
-  with `?login=1`, so the login counts there (§5). It shows each study's
-  public title, never the (private) study name.
+  with `?login=1`, so the login counts there (§5). Without a login, the
+  home offers one (**Log in**, where the server has a login) and comes
+  back to the home. It shows each study's public title, never the
+  (private) study name.
 - **Not built:** offering a longer-lived "continue later" link at the start
   of long studies (no PINs or passwords: easily forgotten, little gain).
 
@@ -151,11 +157,12 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   a researcher who opens a coder link, or a coder who logged in for another
   study, gets a session without an email, and a second link in that browser
   (another panel id) starts its own session.
-- **How a coder chooses.** Two places send the browser to the study's page
-  with `login=1` in the address: **Log in** under "Continue on another
-  device" (the login's return address, `coderLoginUrl({ useLogin: true })`),
-  and a study of the login on another device in the coder home's list
-  (`continueUrl`). The page reads `login=1` once, takes it out of the
+- **How a coder chooses.** Three places send the browser to the study's
+  page with `login=1` in the address: **Log in** under "Continue on another
+  device" and on the notice "You already started on another device" (the
+  login's return address, `logInWithAccount`: `coderLoginUrl({ useLogin:
+  true })`), and a study of the login on another device in the coder
+  home's list (`continueUrl`). The page reads `login=1` once, takes it out of the
   address (a copied link never carries the choice to someone else), and
   sends `x-use-login: 1` while it stays open. After that the session has
   its email and the device its session, so nothing needs the header.
@@ -179,7 +186,15 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   for the server to load the study for the request (`Deployments.admit`,
   `api/coder.md`), e.g. after a restart.
 - **One session per email per study**: a device that started its own session
-  and then logs in continues the email's session instead.
+  and then logs in continues the email's session instead. Nobody can get
+  back to the session it left (no device, no email). If the coder answered
+  nothing in it (what a second device starts on an anonymous link, before
+  the coder can log in) it is removed, and its link gets its place back
+  (`maxCoders`); with answers it stays, for the researcher
+  (`removeIfUnused`, `runtime/startSession.ts`).
+- **The login cookie** is sent again when a coder's request extended the
+  login session (§7; `loginReader`, `runtime/requestCoder.ts`): on the
+  coder home, and on a study's routes where the login is read.
 - **Accounts**: logging in creates a user with account role `user`
   (`accounts.md`).
 
@@ -207,16 +222,16 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   the browser; it checks the ID token and starts its own session: a random key
   in an httpOnly cookie, its hash in `sessions`, 14 days, sliding: a request
   extends the session (at most once an hour), and the server then sends the
-  cookie again, so a browser stays logged in until 14 days without use. Requests
+  cookie again (coder routes too, §5), so a browser stays logged in until 14 days without use. Requests
   need `x-annotinder: 1` (CSRF). Provider tokens aren't kept. Logging out
   (`POST /auth/logout`) ends our session, not the provider's.
 - **A new login ends the one it replaces.** Coming back from the provider
   (`/api/auth/callback`, also for a step-up login), the server deletes the
   session of the login cookie the browser had, so it stops working at once
   instead of after 14 days. At every login it also deletes all sessions
-  that have expired (`deleteExpiredSessions`, `shared/sessions.ts`):
-  nothing else removes them, so an expired session's row stays until the
-  next login of anyone on the server.
+  that have expired (`deleteExpiredSessions`, `shared/sessions.ts`), and
+  the server does so every hour (`sweepExpiredSessions`, started in
+  `index.ts`), so an expired session's row stays an hour at most.
 - **Identity is the login, not the email** (`accounts.md` §1). A login
   without `email_verified: true` is refused. The user is `iss` + `sub`; the
   email is updated at each login. Roles given to an address before its owner

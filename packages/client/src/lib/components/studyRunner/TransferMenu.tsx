@@ -4,13 +4,14 @@ import { Check, Copy, Loader2, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CoderApi } from "../../api/httpCoderApi";
-import { coderLoginUrl } from "../../session/coderSession";
+import { logInWithAccount } from "../../session/coderSession";
 import { useMenuKeys } from "../../keyboard/hooks";
 
 /**
  * "Continue on another device": a one-time link + QR code for this session.
  * A coder whose session is linked to their email can also log in on the
- * other device. Where the link offers a login, it is offered here too.
+ * other device (there: **Log in** on the "already started" notice, or in
+ * this menu). Where the link offers a login, it is offered here too.
  */
 export function TransferMenu({
   coderApi,
@@ -94,21 +95,18 @@ export function TransferMenu({
         )}
         {login && (
           <p className="border-t pt-2.5 text-[11px] text-muted-foreground">
-            Or open this study&apos;s link on the other device and log in there as <strong>{login}</strong>.
+            Or open this study&apos;s link on the other device and choose <strong>Log in</strong> there (on the notice
+            that you already started, or under &quot;Continue on another device&quot;): log in as{" "}
+            <strong>{login}</strong>.
           </p>
         )}
         {canLogIn && (
           <div className="space-y-1.5 border-t pt-2.5">
             <p className="text-[11px] text-muted-foreground">
-              Or log in: your answers are then kept with your account, and you can continue on any device by logging in.
+              Or log in: your answers are then kept with your account, and you continue on another device by opening
+              this study&apos;s link and logging in there too.
             </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => window.location.assign(coderLoginUrl({ useLogin: true }))}
-            >
+            <Button type="button" size="sm" variant="outline" className="w-full" onClick={logInWithAccount}>
               Log in
             </Button>
           </div>

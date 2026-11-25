@@ -32,6 +32,13 @@ describe("SessionErrorScreen", () => {
     expect(html).not.toContain("Retry");
   });
 
+  it("offers a coder who started on another device to log in, besides starting again", () => {
+    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="coder_has_session" />);
+    expect(html).toContain("You already started on another device");
+    expect(html).toContain("log in here too");
+    expect(html).toMatch(/<button[^>]*>Log in<\/button>/);
+  });
+
   it("treats a code that is a property of every object as any unknown code", () => {
     for (const errorCode of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
       const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode={errorCode} />);

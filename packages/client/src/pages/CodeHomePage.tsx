@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, CircleCheck, Link2, Loader2, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { coderLoginUrl } from "../lib/session/coderSession";
 import { continueUrl, loadStudies, type StudyEntry } from "../lib/session/studies";
 
 const ENDED: Record<string, string> = { complete: "Finished", screenout: "Ended", quit: "Quit" };
@@ -15,10 +17,20 @@ function when(date: Date): string {
 
 /**
  * The coder section's home (`/code`): the studies this browser (or the
- * logged-in coder, on any device) takes part in, to continue them; and how
- * to start one: from the link a researcher gives you.
+ * logged-in coder, on any device) takes part in, to continue them; how
+ * to start one: from the link a researcher gives you; and logging in, for
+ * the studies of the account on other devices.
  */
-export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: boolean }) {
+export function CodeHomePage({
+  apiUrl,
+  dev = false,
+  canLogIn = false,
+}: {
+  apiUrl: string;
+  dev?: boolean;
+  /** The server has a login and nobody is logged in. */
+  canLogIn?: boolean;
+}) {
   const [studies, setStudies] = useState<StudyEntry[] | null>(null);
   useEffect(() => {
     let live = true;
@@ -57,6 +69,7 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
           started in this browser show up here.
         </p>
       </div>
+      {canLogIn && <LogInCard />}
       {dev && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Development server:{" "}
@@ -72,6 +85,20 @@ export function CodeHomePage({ apiUrl, dev = false }: { apiUrl: string; dev?: bo
         </p>
       )}
     </main>
+  );
+}
+
+/** For a coder who logged in on another device: logs in and comes back here, where the account's studies are listed. */
+function LogInCard() {
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+      <p className="text-sm text-muted-foreground">
+        Started on another device and logged in there? Log in to continue the studies kept with your account.
+      </p>
+      <Button type="button" variant="outline" onClick={() => window.location.assign(coderLoginUrl())}>
+        Log in
+      </Button>
+    </div>
   );
 }
 

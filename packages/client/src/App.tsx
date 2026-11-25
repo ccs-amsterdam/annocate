@@ -331,9 +331,10 @@ const codeHomeRoute = createRoute({
   getParentRoute: () => researcherPagesRoute,
   path: "/code",
   component: function CodeHome() {
+    const { state, dev } = useResearcher();
     return (
       <WithHeader>
-        <CodeHomePage apiUrl={API_URL} dev={useResearcher().dev} />
+        <CodeHomePage apiUrl={API_URL} dev={dev} canLogIn={!!state?.options.login && !state.me} />
       </WithHeader>
     );
   },

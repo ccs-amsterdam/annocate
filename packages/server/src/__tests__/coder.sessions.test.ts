@@ -168,11 +168,50 @@ describe("coder login", () => {
     const phoneUser = await ensureUser(db, "c@example.org");
     devices.get("phone")!.cookies.set("annotinder_session", await createSession(db, phoneUser.id, CODER_LOGIN));
     expect((await session("phone", secret, SIGN_IN)).body.sessionId).toBe(before.body.sessionId);
+    // The session the phone started is gone (nobody can get back to it), and the link has its place back
+    expect(await query(db, "SELECT id FROM coder_sessions WHERE id = $1", [own.body.sessionId])).toEqual([]);
+    expect(await query(db, "SELECT uses FROM links WHERE secret = $1", [secret])).toEqual([{ uses: 1 }]);
 
     // The researcher sees no email where the invitation doesn't require sign-in
     const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders.find((c) => c.id === before.body.sessionId)).toMatchObject({ id: before.body.sessionId });
     expect(coders.find((c) => c.id === before.body.sessionId)!.email).toBeUndefined();
+  });
+
+  it("keeps a session with answers when its device logs in and moves to the email's session", async () => {
+    const secret = "demo-secret";
+    const first = await session("laptop", secret);
+    const user = await ensureUser(db, "d@example.org");
+    const logIn = async (device: string) =>
+      devices.get(device)!.cookies.set(SESSION_COOKIE, await createSession(db, user.id, CODER_LOGIN));
+    await logIn("laptop");
+    await session("laptop", secret, SIGN_IN);
+
+    const phone = coder("phone", secret);
+    const own = await phone.session();
+    expect((await phone.submit((await phone.next())!.id, demo("positive"))).status).toBe(200);
+    await logIn("phone");
+    expect((await session("phone", secret, SIGN_IN)).body.sessionId).toBe(first.body.sessionId);
+    expect(await query(db, "SELECT id FROM coder_sessions WHERE id = $1", [own.sessionId])).toHaveLength(1);
+    expect(await query(db, "SELECT uses FROM links WHERE secret = $1", [secret])).toEqual([{ uses: 2 }]);
+  });
+
+  it("sends the login cookie again when a coder's request extended the login session", async () => {
+    const user = await ensureUser(db, "e@example.org");
+    const cookie = await createSession(db, user.id, CODER_LOGIN);
+    const home = () =>
+      server.request("/api/coder/sessions", {
+        headers: { "x-annotinder": "1", cookie: `${SESSION_COOKIE}=${cookie}` },
+      });
+    const renewed = (res: Response) => res.headers.getSetCookie().some((c) => c.startsWith(`${SESSION_COOKIE}=`));
+    // Just logged in: nothing to extend
+    expect(renewed(await home())).toBe(false);
+    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
+    expect(renewed(await home())).toBe(true);
+    // On a study's routes too, where the login counts
+    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
+    devices.set("tablet", { cookies: new Map([[SESSION_COOKIE, cookie]]), linkSecret: null });
+    expect(renewed(await send("tablet", "/session", {}, { "x-link-secret": "demo-secret", ...SIGN_IN }))).toBe(true);
   });
 });
 
