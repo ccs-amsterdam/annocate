@@ -30,6 +30,7 @@ import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
 import { anyUnitChanges, deployDraftUnits, unitChanges } from "./units.js";
+import { studyCoderKind } from "./studies.js";
 
 /** A study's deployment row, if it is deployed. */
 async function deploymentRow(db: Db, studyId: number) {
@@ -266,7 +267,7 @@ export async function getDeploymentSpec(db: Db, studyId: number): Promise<Deploy
 export async function getPreviewSpec(db: Db, studyId: number): Promise<DeploymentSpec | null> {
   const versionRow = await designVersion(db, studyId);
   if (!versionRow) return null;
-  if (!itemsValid(designVersionItems(versionRow)))
+  if (!itemsValid(designVersionItems(versionRow), await studyCoderKind(db, studyId)))
     throw new HttpError(409, "The latest design version has issues: fix them to preview it", "design_invalid");
   // The drafts: the latest design version with the draft units and sets.
   const spec = await buildSpec(db, studyId, versionRow, {
@@ -288,7 +289,7 @@ async function buildSpec(
   meta: Pick<DeploymentSpec, "version" | "active" | "annotationEpoch" | "liveUnits" | "newUnitsMessage">,
 ): Promise<DeploymentSpec> {
   const [study] = await db
-    .select({ reopenMinutes: studies.reopenMinutes, redirectUrls: studies.redirectUrls })
+    .select({ reopenMinutes: studies.reopenMinutes, redirectUrls: studies.redirectUrls, coderKind: studies.coderKind })
     .from(studies)
     .where(eq(studies.id, studyId));
   return {
@@ -297,7 +298,7 @@ async function buildSpec(
     reopenMinutes: study ? study.reopenMinutes : DEFAULT_REOPEN_MINUTES,
     redirectUrls: study?.redirectUrls ?? {},
     // The runtime works on the items with the session first
-    design: { ...toDesignVersion(versionRow), items: designVersionItems(versionRow) },
+    design: { ...toDesignVersion(versionRow, study?.coderKind ?? "crowd"), items: designVersionItems(versionRow) },
     sets: await runtimeSets(db, studyId, meta.liveUnits),
   };
 }

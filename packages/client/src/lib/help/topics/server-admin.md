@@ -57,6 +57,16 @@ A plan sets: studies owned, units per study, units in total, coders per
 study, answers per study (empty: no limit). One plan is the **default**.
 The largest unit and answer hold for everyone.
 
+**Crowd coders can sign in** is a plan's setting too, off unless ticked
+(also on the default plan of a new server): in the studies of researchers
+on the plan, a crowd's coders may then choose **Log in** to continue on
+other devices (the researchers don't see their address). Expert coders can
+always sign in. It follows the study's **owner**: their own plan, else
+their email domain's (on in any of them), else the default; under
+**Users**, a user's own limits can set it to **Yes** or **No** whatever
+their plan says. A change applies at once, also to studies that are
+running.
+
 ## Studies
 
 **Suspend** a misused study: coders are refused and researchers can't

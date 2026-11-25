@@ -5,8 +5,8 @@ order: 4
 summary: The coding screen, moving back and forward, saving and resuming, continuing on another device, keyboard shortcuts, phones, and light or dark mode.
 ---
 
-Coders open a link and start right away, without an account (unless the
-invitation asks them to [sign in](links.md#login)). To see it yourself,
+Coders open a link and start right away, without an account (unless they
+are expert coders who [sign in](links.md#login)). To see it yourself,
 use **Preview** (see
 [Preview, save and deploy](previewing-and-publishing.md#previewing)).
 
@@ -81,7 +81,8 @@ Another browser, a private window or cleared data means a new session,
 unless the coder moves it (below). When AnnoTinder knows who the coder is
 (a link of their own, a coder id, a picked name), it says **You already
 started on another device** and offers to continue there, to **Log in**
-(for a coder who logged in on that device) or to **Start a new session**
+(for a coder who logged in on that device; only where they
+[may sign in](links.md#login)) or to **Start a new session**
 (empty). A coder can do that a few times only: with 5 sessions
 under one coder id in a study, the next try says **You can't start another
 session** (see [Coder ids](links.md#coder-ids)).
@@ -93,12 +94,17 @@ session** (see [Coder ids](links.md#coder-ids)).
   the studies kept with the coder's account on other devices.
 - **Continue on another device** (top bar) shows a QR code and a link that
   moves the session; it works once, for 15 minutes. Coders shouldn't share
-  it.
+  it. A device that joined this way, in a browser that isn't logged in,
+  shows one line where signing in is possible: _"Sign in here too to use
+  your saved settings"_ (their theme and keys), with **Log in**.
 - Coders with an account: where the study requires
   [sign-in](links.md#login), they open the link on the other device and
-  sign in. Where signing in was their own choice (**Log in** under
-  **Continue on another device**: _"your answers are then kept with your
-  account"_), they make the same choice on the other device: open the
+  sign in (the menu says so, with their address). Where signing in was
+  their own choice (**Log in** under **Continue on another device**: _"Sign
+  in to continue from any device. The researchers don't see your email
+  address."_; expert coders always have it, a crowd's coders only where
+  your plan on the server allows), they make the same choice on the other
+  device: open the
   study's link there and choose **Log in**, under **Continue on another
   device** or on the notice **You already started on another device**. Or
   they open **Code** (`/code`) and log in: the study is listed there as "on

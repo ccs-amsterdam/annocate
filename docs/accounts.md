@@ -107,7 +107,8 @@ them.
 ## 3. Limits
 
 Per researcher, from a **plan** (`plans`: `studies`, `unitsPerStudy`, `units`,
-`codersPerStudy`, `answersPerStudy`; null is no limit):
+`codersPerStudy`, `answersPerStudy`; null is no limit; and `crowdSignIn`,
+below):
 
 1. their own plan (`users.plan_id`), else
 2. the most generous plan of their email domains (`domain_plans`), else
@@ -115,6 +116,20 @@ Per researcher, from a **plan** (`plans`: `studies`, `unitsPerStudy`, `units`,
 
 then their personal overrides (`users.limits`). A study counts against its
 owner's limits (`studies.owner_id`).
+
+**Crowd sign-in** (`crowdSignIn`, a yes or no with the limits): whether a
+crowd's coders may choose to sign in in the researcher's studies, to
+continue on other devices (`coder-identity.md` §5). Off unless a plan has
+it on: a plan without it, and no plan at all, mean off, and the default
+plan a fresh server is made with has it off. It is resolved like the
+limits: the researcher's own plan, else their email domains' plans (on in
+any of them is on: the most generous), else the default plan; and their own
+setting, on or off, goes over any plan's. It is read from the **study's
+owner**, each time a session asks, so changing a plan applies to running
+studies at once (and never removes an email a session already has). Expert
+coders can always sign in. Admins set it with the limits: a checkbox per
+plan (*Server admin › Plans*), and "the plan's / yes / no" in a user's own
+limits (*Users*).
 
 Checked when something is added (`shared/limits.ts`): a study, new units, a
 new coder (`study_full`; existing coders go on), answers (counted at most once

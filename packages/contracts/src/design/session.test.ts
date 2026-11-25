@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  CrowdInviteSchema,
+  coderKindProblem,
   designItems,
+  firstInvite,
+  inviteKind,
+  inviteOf,
   linkCombinations,
   linkMaxCoders,
   loginRequired,
@@ -50,7 +55,43 @@ describe("who codes and links", () => {
     expect(linkMaxCoders(item({ invite: { mode: "coders", link: "per_coder" } }))).toBeUndefined();
     expect(loginRequired(item({ invite: { mode: "coders", link: "per_coder" } }))).toBe(false);
     expect(loginRequired(item({ invite: { mode: "coders", link: "login" } }))).toBe(true);
-    expect(loginRequired(item({ invite: { mode: "crowd", login: true } }))).toBe(true);
+    expect(loginRequired(item({ invite: { mode: "crowd" } }))).toBe(false);
     expect(loginRequired(item({}))).toBe(false);
+  });
+
+  it("a crowd can't be required to sign in", () => {
+    expect(CrowdInviteSchema.safeParse({ mode: "crowd", login: true }).success).toBe(false);
+  });
+
+  it("a design without an invitation invites a crowd with one open link", () => {
+    expect(inviteOf(item({}))).toEqual({ mode: "crowd" });
+    expect(inviteOf(null)).toEqual({ mode: "crowd" });
+  });
+});
+
+describe("the study's kind of coders and the invitation", () => {
+  const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });
+  const experts = item({ invite: { mode: "coders", link: "login" } });
+  const crowd = item({ invite: { mode: "crowd", maxCoders: 5 } });
+
+  it("an invitation is for one kind, and each kind has a first invitation", () => {
+    expect(inviteKind(inviteOf(experts))).toBe("expert");
+    expect(inviteKind(inviteOf(crowd))).toBe("crowd");
+    expect(firstInvite("expert")).toEqual({ mode: "coders", link: "per_coder" });
+    expect(firstInvite("crowd")).toEqual({ mode: "crowd" });
+    expect(inviteKind(firstInvite("expert"))).toBe("expert");
+  });
+
+  it("an invitation for the study's kind is fine", () => {
+    expect(coderKindProblem(experts, "expert")).toBeNull();
+    expect(coderKindProblem(crowd, "crowd")).toBeNull();
+    expect(coderKindProblem(item({}), "crowd")).toBeNull();
+  });
+
+  it("an invitation for the other kind is a problem, also when the design has none", () => {
+    expect(coderKindProblem(crowd, "expert")).toContain("This study has expert coders");
+    expect(coderKindProblem(item({}), "expert")).toContain("This study has expert coders");
+    expect(coderKindProblem(null, "expert")).toContain("This study has expert coders");
+    expect(coderKindProblem(experts, "crowd")).toContain("This study has a crowd");
   });
 });

@@ -1,6 +1,7 @@
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text } from "drizzle-orm/pg-core";
 import { newPublicId } from "../publicId.js";
-import { DEFAULT_REOPEN_MINUTES, type DeploymentChanges } from "@annotinder/contracts";
+import { DEFAULT_REOPEN_MINUTES, type CoderKind, type DeploymentChanges } from "@annotinder/contracts";
 import { users } from "./accounts.js";
 import { bigId, timestamptz } from "./columns.js";
 
@@ -9,23 +10,29 @@ import { bigId, timestamptz } from "./columns.js";
 
 /**
  * A study. owner_id: who created it (counts against their plan); origin: an
- * example or recipe it came from; reopen_minutes: how long coders can go
+ * example or recipe it came from; coder_kind: who codes, the researchers'
+ * `expert` coders or a `crowd` (fixed by the first deploy); reopen_minutes: how long coders can go
  * back after finishing (null: always, the session stays open); redirect_urls: panel return links by
  * setting name; suspended_at: blocked by an admin.
  */
-export const studies = pgTable("studies", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  /** What coder links and the coder API name the study by (random, never changed): not the sequential id. */
-  publicId: text().notNull().unique("studies_public_id_key").$defaultFn(newPublicId),
-  name: text().notNull(),
-  ownerId: integer().references(() => users.id, { onDelete: "set null" }),
-  origin: text(),
-  archived: boolean().notNull().default(false),
-  reopenMinutes: integer().default(DEFAULT_REOPEN_MINUTES),
-  redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),
-  created: timestamptz().notNull().defaultNow(),
-  suspendedAt: timestamptz(),
-});
+export const studies = pgTable(
+  "studies",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    /** What coder links and the coder API name the study by (random, never changed): not the sequential id. */
+    publicId: text().notNull().unique("studies_public_id_key").$defaultFn(newPublicId),
+    name: text().notNull(),
+    ownerId: integer().references(() => users.id, { onDelete: "set null" }),
+    origin: text(),
+    coderKind: text().$type<CoderKind>().notNull().default("crowd"),
+    archived: boolean().notNull().default(false),
+    reopenMinutes: integer().default(DEFAULT_REOPEN_MINUTES),
+    redirectUrls: jsonb().$type<Record<string, string>>().notNull().default({}),
+    created: timestamptz().notNull().defaultNow(),
+    suspendedAt: timestamptz(),
+  },
+  (t) => [check("studies_coder_kind_check", sql`${t.coderKind} IN ('expert', 'crowd')`)],
+);
 
 /**
  * Design versions: the questions and their order (items), the session

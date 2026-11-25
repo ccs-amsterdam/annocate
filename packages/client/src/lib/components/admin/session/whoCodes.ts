@@ -1,9 +1,9 @@
 import { Globe, Users, type LucideIcon } from "lucide-react";
-import type { Invite } from "@annotinder/contracts";
+import type { CoderKind } from "@annotinder/contracts";
 
-/** The two ways coders come to a study, as the cards and the Who codes form name them. */
-export const WHO_CODES: Record<Invite["mode"], { icon: LucideIcon; title: string; short: string; long: string }> = {
-  coders: {
+/** The two kinds of coders a study can have, as the cards and the Who codes form name them. */
+export const WHO_CODES: Record<CoderKind, { icon: LucideIcon; title: string; short: string; long: string }> = {
+  expert: {
     icon: Users,
     title: "Expert coders",
     short: "Coders you know, each with their own units",
@@ -16,7 +16,3 @@ export const WHO_CODES: Record<Invite["mode"], { icon: LucideIcon; title: string
     long: "Best for many one-time coders: annotation at scale, or an experiment. Everyone starts from a single link, which a panel company can hand out, for example.",
   },
 };
-
-/** What choosing a mode starts with (contracts `Invite`). */
-export const firstInvite = (mode: Invite["mode"]): Invite =>
-  mode === "coders" ? { mode: "coders", link: "per_coder" } : { mode: "crowd" };

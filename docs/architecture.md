@@ -199,8 +199,23 @@ coders, with some overlap" is then one setting and two columns
 ### 6.1 A session's units
 
 Decided per session, for the whole study (contracts `design/session.ts`,
-`shareOf` in the runtime). The who codes (`session.invite`) says who
-codes:
+`shareOf` in the runtime).
+
+**Who codes is the study's setting**: expert coders or a crowd
+(`studies.coder_kind`, the study's `coderKind`: `expert` or `crowd`). It is
+chosen when the study is made (`POST /study`, the Create study dialog, a
+recipe; left out: a crowd) and can be changed in the study's Settings until
+its first deploy; after that `PUT /study/:id` with another kind answers 409
+`coder_kind_locked`. Changing it gives the study's designs the new kind's
+first invitation (contracts `firstInvite`: a crowd's open link, or a link
+per expert coder). Both kinds stay in the data model (`coders.kind`): only
+the change after a deploy is refused.
+
+How those coders get in is the design's **invitation** (`session.invite`),
+which must be for the study's kind: one for the other kind is a validation
+error (contracts `coderKindProblem`: the version is not `valid`, and can't
+be deployed or previewed), also in a design written through the API. A
+design without an invitation invites a crowd with one open link.
 
 ```yaml
 session:
@@ -212,7 +227,6 @@ session:
   invite:
     mode: crowd                                   # "One link"; the default: { mode: crowd }
     coderParam: { param: PROLIFIC_PID, pattern: "[0-9a-f]{24}" }   # optional: the coder id
-    login: true                                   # optional: coders must sign in
     maxCoders: 200                                # optional: the link's sample size
 ```
 
@@ -235,16 +249,13 @@ link for everyone.
   `url_param_missing` / `url_param_invalid`) unless `optional: true`. A new
   id becomes a coder of the study (kind `crowd`); an id of one of the
   study's expert coders is refused (409 `coder_is_expert`).
-- `login`: coders must sign in (401 `auth_required`); without a `coderParam`
-  value the email is the coder id.
 - `maxCoders`: the link starts at most this many sessions (contracts
   `linkMaxCoders`).
 - Whether units are divided among the coders is each loop's (`divide`,
   §6.2). Without it every coder codes all their units.
 
-**Who the coder is** (`$session.coder`): the expert coder's id, the
-`coderParam` value, else the login's email where a crowd must sign in. A
-session with a coder id is of one of the study's coders (`coders`). A new
+**Who the coder is** (`$session.coder`): the expert coder's id, or a
+crowd's `coderParam` value (without one: nobody). A session with a coder id is of one of the study's coders (`coders`). A new
 device for a coder who already has a session is asked first (409
 `coder_has_session`, `coder-identity.md` §4).
 
@@ -261,9 +272,11 @@ coders) and its condition in `condition_set` (an experiment that selects
 units), plus the test units: test units are everyone's, not selected by
 `coder_set` or `condition_set`. Without either: all units.
 
-Coders can always sign in (to keep their session across devices);
-researchers see emails only where the invitation requires sign-in
-(contracts `loginRequired`).
+Only expert coders with `link: "login"` must sign in (contracts
+`loginRequired`); only there do researchers see the email. Expert coders
+can always choose to sign in, to keep their session across devices; a
+crowd's coders only where the study's owner's plan has it on (`crowdSignIn`,
+`accounts.md` §3; `coder-identity.md` §5).
 
 ### 6.2 Unit loops
 
@@ -480,16 +493,20 @@ session values.
 (contracts `linkCombinations`): one, or for `link: "per_coder"` one per
 coder of `coder_set` (`params: { coder }`; above 500 deploying needs
 `confirmLinks`, at most 2000), keyed by their values so a link keeps its
-secret across versions. Changes to `coder_set` sync them. Deleting a coder revokes their link (`coder-identity.md` §8). A link no longer made is **retired** (403
-`link_inactive` for new coders; started coders go on), never deleted. A
+secret across versions. Changes to `coder_set` sync them. Deleting a coder
+deletes their own link with their sessions (`coder-identity.md` §8): a coder
+made again with the id gets a new one at the next deploy. A link no longer
+made is **retired** (403 `link_inactive` for new coders; started coders go
+on), not deleted. A
 revoked link stays revoked through a redeploy until reopened. A link has no
 settings of its own: its label is its values (or "Open link"), its
 `maxUses` the deployed design's crowd limit. The researcher can only revoke,
 reopen or renew its secret.
 
-**Sign-in** is required for expert coders with `link: "login"` and a crowd
-with `login: true`; elsewhere it is optional and researchers don't see the
-email. Details: `coder-identity.md`.
+**Sign-in** is required only for expert coders with `link: "login"`. Elsewhere
+it is the coder's choice, where their study's coders may (expert coders
+always; a crowd by the owner's plan), and researchers don't see the email.
+Details: `coder-identity.md` §5.
 
 ## 8. Resuming, and design updates
 

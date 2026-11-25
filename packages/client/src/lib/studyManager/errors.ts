@@ -16,7 +16,15 @@ export function errorCodeOf(err: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-/** An error as the snapshot shows it: its message and code. */
-export function errorFields(err: unknown): { error: string; errorCode: string | null } {
-  return { error: err instanceof Error ? err.message : String(err), errorCode: errorCodeOf(err) };
+/**
+ * An error as the snapshot shows it: its message and code, and where the
+ * server said so with it, whether the coder is offered to log in.
+ */
+export function errorFields(err: unknown): { error: string; errorCode: string | null; canLogIn?: boolean } {
+  const canLogIn = (err as { canLogIn?: unknown } | null)?.canLogIn;
+  return {
+    error: err instanceof Error ? err.message : String(err),
+    errorCode: errorCodeOf(err),
+    ...(typeof canLogIn === "boolean" ? { canLogIn } : {}),
+  };
 }

@@ -130,9 +130,13 @@ export function useUpdateStudyMutation(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }) => client.updateStudy(id, body),
-    onSuccess: (study) => {
+    onSuccess: (study, { body }) => {
       queryClient.setQueryData(keys.study(study.id), study);
       void queryClient.invalidateQueries({ queryKey: keys.studies });
+      // Another kind of coders gave the study's designs that kind's invitation
+      if (body.coderKind === undefined) return;
+      void queryClient.invalidateQueries({ queryKey: keys.designVersions(study.id) });
+      void queryClient.invalidateQueries({ queryKey: [...keys.study(study.id), "designVersion"] });
     },
   });
 }

@@ -101,6 +101,17 @@ describe("a failed coder API request", () => {
     expect(err.code).toBe("design_changed");
   });
 
+  it("says whether a coder who started elsewhere is offered to log in, where the server says so", async () => {
+    const elsewhere = (extra: object) => () =>
+      Response.json({ error: "Started elsewhere", code: "coder_has_session", ...extra }, { status: 409 });
+    server(elsewhere({ canLogIn: true }));
+    expect((await failure(api().getSession())).canLogIn).toBe(true);
+    server(elsewhere({ canLogIn: false }));
+    expect((await failure(api().getSession())).canLogIn).toBe(false);
+    server(elsewhere({}));
+    expect((await failure(api().getSession())).canLogIn).toBeUndefined();
+  });
+
   it("has no code when the server gives none, or one that is no text", async () => {
     server(() => Response.json({ error: "Not found", code: 7 }, { status: 404 }));
     const err = await failure(api().getSession());

@@ -46,15 +46,18 @@ Request headers:
 | `x-link-secret` | from the URL (`/code/<deployment>?link=<secret>`) | starts a session on first use. Without a link or with an unknown one: 404 `link_not_found` ([below](#requests-that-dont-belong-to-the-study)); revoked: 403 `link_revoked`; at its maximum: 403 `link_used_up`; retired (its coder left `coder_set`): 403 `link_inactive`. Started sessions go on |
 | `x-url-params` | the page's other query parameters | the declared URL parameters (`urlParams`), a crowd's coder id parameter (`coderParam`) and `source`, stored as `$session` values (at most 256 characters; missing or invalid: 400 `url_param_missing` / `url_param_invalid`). The crowd's coder id is part of the device key, so a device keeps a session per coder id |
 | `x-new-session: 1` | first request only | start another session for a coder id that already has one (after 409 `coder_has_session`). A coder id has at most 5 sessions in a study (`MAX_SESSIONS_PER_CODER`, `runtime/startSession.ts`): asking for a sixth with this header gets 403 `coder_session_limit` (without it, 409 `coder_has_session` as before) |
-| `x-use-login: 1` | the coder chose to code with their account | the login cookie counts for this request ([below](#login)). Not needed where the invitation requires sign-in |
+| `x-use-login: 1` | the coder chose to code with their account | the login cookie counts for this request ([below](#login)). Not needed where the invitation requires sign-in. Ignored in a crowd's study whose owner's plan doesn't have crowd sign-in on |
 | `x-coder-name` | `pick_name` links | the picked name, URL-encoded ([getNames](#getnames)) |
 | `x-annotinder-version` | after `GET /session` | the loaded session's `version` (below) |
 
 ### Login
 
 The login cookie (`annotinder_session`) counts only where the deployed
-design requires sign-in, or on a request with `x-use-login: 1`. Without
-either, the server leaves it out of the session: a browser that happens to
+design requires sign-in (expert coders with `link: "login"`), or on a
+request with `x-use-login: 1` where the study's coders may choose to sign
+in: expert coders always, a crowd's coders only where the study's owner's
+limits have `crowdSignIn` on (`docs/accounts.md` §3; off unless set).
+Otherwise the server leaves it out of the session: a browser that happens to
 be logged in (a researcher's, say) gets a session without an email, like any
 other. Where it counts, it is read only to link the session to its email
 once (on a request with this study's link, while the session has no email),
@@ -66,9 +69,13 @@ whose email address the login has (`coder-identity.md` §2, §5); a login
 that isn't the address of a coder in the coder set gets 403
 `email_not_allowed`.
 
-A crowd's coder id (`coderParam`, or the login's email where a crowd signs
-in) that is new makes a coder of the study; one that is an expert coder of
-the study gets 409 `coder_is_expert`.
+A crowd's coder id (`coderParam`) that is new makes a coder of the study;
+one that is an expert coder of the study gets 409 `coder_is_expert`.
+
+A coder id that already has a session on another device gets 409
+`coder_has_session` (`{ error, code, canLogIn }`): `canLogIn` says whether
+logging in is offered here, as in [getSession](#getsession) (the server has
+a login, and the study's coders may sign in).
 
 The client sends `x-use-login: 1` after the coder clicked **Log in** on the
 coding screen, and for a study opened from the coder home's list of the
@@ -86,9 +93,11 @@ Before a study is loaded, a request must show that it belongs there
 - the secret of one of the study's links (`x-link-secret`);
 - a device cookie that has a session in the study;
 - a transfer token of the study ([redeemTransfer](#redeemtransfer));
-- a login whose email has a session in the study. This only loads the
-  study (e.g. after the server restarted): the session itself is found by
-  the login as described above (sign-in required, or `x-use-login: 1`).
+- a login whose email has a session in the study, or is now the address of
+  an expert coder who has one (the researchers changed the coder's address
+  since). This only loads the study (e.g. after the server restarted): the
+  session itself is found by the login as described above (sign-in
+  required, or `x-use-login: 1`).
 
 Anything else gets one answer, the same whether the study exists, is
 deployed or is suspended, and for a deployment id that isn't one. Status
@@ -142,8 +151,14 @@ checks); no Study entry, no researcher notes, and experiments only with
 their options (an invisible step: the client asks `assignCondition`). Creates
 the session on first use, with its `$session` values: the coder
 (`coder`: who the coder is, `coder-identity.md` §2), the URL parameters and `source`.
-`login`: the email of the login the session belongs to, or null;
-`canLogIn`: the link offers a login the coder hasn't used. `frozen`: the
+`login`: the email of the login the session belongs to, or null.
+`signIn`: how signing in stands in the study: `required` (expert coders who
+sign in), `optional` (the server has a login and the study's coders may
+choose to sign in: expert coders always, a crowd's by the owner's plan), or
+`none` (also in previews). `canLogIn`: optional, and this session can still
+be linked to a login: the request has the study's link and the session has
+no email (a device that joined by a transfer link has no link: `false`).
+The client offers **Log in** with `canLogIn`. `frozen`: the
 coder-level answers that can't change any more, because the coder coded
 units in a loop that depends on them (contracts `loopDependencies`).
 

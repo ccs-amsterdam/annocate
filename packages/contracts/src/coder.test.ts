@@ -106,10 +106,9 @@ describe("what the invitation asks of the assigned coders", () => {
     expect(coderInviteChecks({ mode: "coders", link: "pick_name" }, [anna, bob]).warnings).toEqual([]);
   });
 
-  it("a link each, a crowd, or no choice yet: nothing", () => {
+  it("a link each, or a crowd: nothing", () => {
     const nothing = { errors: [], warnings: [] };
     expect(coderInviteChecks({ mode: "coders", link: "per_coder" }, [bob, carl])).toEqual(nothing);
-    expect(coderInviteChecks({ mode: "crowd", login: true }, [bob, carl])).toEqual(nothing);
-    expect(coderInviteChecks(null, [bob])).toEqual(nothing);
+    expect(coderInviteChecks({ mode: "crowd" }, [bob, carl])).toEqual(nothing);
   });
 });

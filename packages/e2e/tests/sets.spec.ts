@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { StudyResponse, SetGroupResponse } from "@annotinder/contracts";
-import { addCoders, answers, api, list, question } from "./helpers";
+import { addCoders, answers, api, createStudy, list, question } from "./helpers";
 
 // Sets and links (docs/architecture.md §6, docs/plans/unit-sets.md): columns
 // of the CSV named like a role column (coder_set, test_set) are that
@@ -19,8 +19,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
-  await page.getByPlaceholder(/Sentiment Analysis/).fill("Expert coders");
-  await page.getByRole("button", { name: "Create Study" }).click();
+  await createStudy(page, "Expert coders", "Expert coders");
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "Expert coders")!;
   // The coders the file's coder_set column names

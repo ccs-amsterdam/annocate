@@ -49,7 +49,10 @@ describe("researcher preview", () => {
     expect(deploymentId).toBe(`${DEMO_PUBLIC_ID}.preview`);
     const call = previewer(deploymentId, token);
     const label = (session: SessionResponse) => (session.codebook.items[0] as { label?: string }).label;
-    expect(label((await (await call("/session")).json()) as SessionResponse)).toBe("draft 1");
+    const previewed = (await (await call("/session")).json()) as SessionResponse;
+    expect(label(previewed)).toBe("draft 1");
+    // There is no signing in in a preview
+    expect(previewed).toMatchObject({ signIn: "none", canLogIn: false });
     // the real deployment is untouched
     expect(label(await coder("real").session())).not.toBe("draft 1");
 

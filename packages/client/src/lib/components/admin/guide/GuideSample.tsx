@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DesignEditor } from "../DesignEditor";
 import { UnitsPage } from "../units/UnitsPage";
 import { sampleClient, sampleDesign } from "./sampleStudy";
+import type { CoderKind } from "@annotinder/contracts";
 import type { GuideSample as Sample } from "./guideSteps";
 
 /** The size the sample is drawn at (a wide window), before it is scaled to fit. */
@@ -14,9 +15,12 @@ const HEIGHTS: Record<Sample["page"], number> = { design: 760, units: 360 };
  */
 const VIEWS = { full: [0, WIDTH], tree: [0, 487], form: [473, 554] } as const;
 
-// The sample's own data: its queries never mix with the researcher's study
-const queries = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-const client = sampleClient();
+/** The sample study as one with a crowd, and as one with expert coders: each its own data, never mixed with the researcher's study. */
+const sampleOf = (coderKind: CoderKind) => ({
+  queries: new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } }),
+  client: sampleClient(coderKind),
+});
+const SAMPLES = { crowd: sampleOf("crowd"), expert: sampleOf("expert") };
 
 /**
  * A step's picture: the sample study drawn with the real page (the design
@@ -40,6 +44,8 @@ export function GuideSample({ sample }: { sample: Sample }) {
   const height = HEIGHTS[sample.page];
   const [x, width] = sample.page === "design" ? VIEWS[sample.view ?? "full"] : VIEWS.full;
   const scale = room ? Math.min(1, room.w / width, room.h / height) : 0;
+  const coderKind = (sample.page === "design" && sample.coders) || "crowd";
+  const { queries, client } = SAMPLES[coderKind];
 
   return (
     <div ref={box} className="flex h-full w-full items-start justify-center overflow-hidden">
@@ -64,9 +70,10 @@ export function GuideSample({ sample }: { sample: Sample }) {
             {sample.page === "design" ? (
               <DesignEditor
                 // A fresh editor per sample: its selection is the step's
-                key={`${sample.invite ?? "crowd"}:${sample.select ?? "none"}`}
+                key={`${coderKind}:${sample.select ?? "none"}`}
                 client={client}
-                version={sampleDesign(sample.invite)}
+                coderKind={coderKind}
+                version={sampleDesign(coderKind)}
                 mode="history"
                 wideLayout
                 initialSelect={sample.select}

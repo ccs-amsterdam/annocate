@@ -23,7 +23,7 @@ sessions (§9) and response times (§10). Complements `architecture.md`.
 | **Device id** | A random secret the server gives a browser once, for all studies, in the httpOnly cookie `annotinder_device`. Never stored by the server | the browser |
 | **Device key** | SHA-256 of device id, deployment and the crowd's coder id from the URL (if any): the device's key to its session in one study. Only this is stored, so a device's sessions in different studies can't be linked. One per device of a session | `session_devices` |
 | **Coder** | Someone who codes in a study, known by their coder id: an **expert coder** (made by the researchers, with their own units) or a **crowd's** coder (made when they start) | `coders` |
-| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Per study, never changed, and one coder whatever its case. Expert coders: the id the researchers gave them (the values of the units' `coder_set`). A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coders.coder`, `coder_sessions.coder` |
+| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Per study, never changed, and one coder whatever its case. Expert coders: the id the researchers gave them (the values of the units' `coder_set`). A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`); without one a crowd's session has no coder. A label, never a credential | `coders.coder`, `coder_sessions.coder` |
 | **Coder's email address** | The address an expert coder signs in with, where the study has them sign in. Given by the researchers, who can change it; not the coder id | `coders.email` |
 | **Linked email** | A verified address from a login (§5), linked to the session once, to continue on other devices | `coder_sessions.email` |
 | **Transfer link** | A one-time link (15 minutes) that adds another device to the session | `transfers` (token hash only) |
@@ -32,6 +32,10 @@ The system never merges sessions. Researchers who want to merge sessions of
 one person group them by coder id or email in analysis.
 
 ### The study's coders
+
+A study has expert coders or a crowd: its `coderKind` (`studies.coder_kind`),
+chosen when it is made and fixed by its first deploy (`architecture.md`
+§6.1). The Coders page shows the coders of that kind.
 
 A study's coders are rows of `coders`: the coder id (key: study and coder
 id; unique ignoring case), `kind` (`expert` or `crowd`), `email` (an expert
@@ -53,12 +57,14 @@ the researcher UI on the Coders page (`client.md` §7).
   refused, listing the unknown ids (400 `unknown_coders`): add the coders
   first. Nothing makes them on the way.
 - **A crowd's coders are made when they start**: a session with a coder id
-  that isn't a coder yet (`coderParam`, or the login's email where a crowd
-  signs in) makes one, kind `crowd`. An id that differs only in case from a
-  coder's is that coder (the session's `coder` is the id as first written).
-  A crowd's id that is one of the study's expert coders is refused: 409
-  `coder_is_expert` (possible only when a study had expert coders before);
-  ids are never prefixed or changed to tell the kinds apart.
+  that isn't a coder yet (`coderParam`) makes one, kind `crowd`. An id that
+  differs only in case from a coder's is that coder (the session's `coder`
+  is the id as first written). A crowd's id that is one of the study's
+  expert coders is refused: 409 `coder_is_expert` (a study has one kind of
+  coders, so this takes a study whose kind was changed before its first
+  deploy, after expert coders were added); ids are never prefixed or changed
+  to tell the kinds apart. A crowd's coder goes with their last session:
+  when the researchers delete it (§8), and when it is removed unused (§5).
 - **The id never changes; the email address can.** `PATCH
   /study/:studyId/coders/:coder { email }` sets or clears it. Signing in
   uses the address as it is now (§5); a session keeps the address it was
@@ -74,20 +80,19 @@ the researcher UI on the Coders page (`client.md` §7).
 Links are made by deploying: one, or one per coder for expert coders with
 a link each (`architecture.md` §7). A link no longer part of the design is
 retired (403 `link_inactive` for new sessions; started sessions go on). A
-revoked link (403 `link_revoked`) can be reopened. The who codes
-(`architecture.md` §6.1) decides how a session starts:
+revoked link (403 `link_revoked`) can be reopened. The invitation
+(`architecture.md` §6.1), which is for the study's kind of coders, decides
+how a session starts:
 
 | Invitation | Sign-in | The coder (`$session.coder`) |
 | --- | --- | --- |
-| expert coders, `per_coder` | optional | the link's coder |
-| expert coders, `pick_name` | optional | the picked name (`nameDevices: "first"`: the first device's; `"any"`: picking it continues its session) |
-| expert coders, `login` | required; only the email addresses of coders in the coder set (403 `email_not_allowed`) | the coder with the login's address (`coders.email`) |
-| one link (crowd) | optional | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
-| one link with `login: true` | required (401 `auth_required`) | the login's email, unless the URL gives one |
+| expert coders, `per_coder` | the coder's choice | the link's coder |
+| expert coders, `pick_name` | the coder's choice | the picked name (`nameDevices: "first"`: the first device's; `"any"`: picking it continues its session) |
+| expert coders, `login` | required (401 `auth_required`); only the email addresses of coders in the coder set (403 `email_not_allowed`) | the coder with the login's address (`coders.email`) |
+| one link (crowd) | never required; the coder's choice only where the study's owner's plan has crowd sign-in on (§5) | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
 
-Coders can always log in, to resume elsewhere. Where sign-in is optional,
-researchers don't see the email (contracts `loginRequired`). One link's
-`maxCoders` caps its
+Where the coder chooses to sign in, researchers don't see the email
+(contracts `loginRequired`). One link's `maxCoders` caps its
 sessions (403 `link_used_up`; the link's `maxUses`).
 
 **Duplicate coder ids are allowed**: a coder who can't reach their first
@@ -142,8 +147,9 @@ most 5 sessions in a study (§4).
      `409 { code: "coder_has_session" }`.
   2. The client says: continue on the original device, or make a transfer
      link there. A coder who logged in there can **Log in** here: the
-     notice has the button (where the server has a login), and the page
-     they come back to continues the account's session (§5).
+     notice has the button where the 409 says `canLogIn` (the server has a
+     login, and the study's coders may sign in: §5), and the page they come
+     back to continues the account's session.
   3. Only for a coder who can't get back (lost device, cleared browser):
      **I can't get back to my earlier session…** asks to confirm, then **Start
      a new session** retries with `x-new-session: 1` (first request only). The
@@ -188,10 +194,23 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
 `runtime/startSession.ts`; client `pages/CodePage.tsx`,
 `session/coderSession.ts`.
 
-- **The invitation decides.** Coders can always log in. Sign-in is required
-  for expert coders with `link: "login"` and a crowd with `login`; only
-  there do researchers see the email a session signed in with (Coders ›
-  Sessions, export).
+- **Who must, and who may.** Sign-in is required only for expert coders
+  with `link: "login"`; only there do researchers see the email a session
+  signed in with (Coders › Sessions, export). Everywhere else it is the
+  coder's choice (optional sign-in), and not every coder has it:
+  - **expert coders** always may;
+  - **a crowd's coders** only where the study's owner's limits have
+    `crowdSignIn` on (`accounts.md` §3): a plan's setting, off unless set,
+    so off on a fresh server's default plan. It is read from the owner
+    (`studies.owner_id`; a study without one: off) when a session asks
+    (`crowdSignInAllowed`, `shared/limits.ts`), so a change of plan applies
+    at once. Where it is off, the server ignores a crowd coder's choice
+    (`x-use-login`): no login is read, linked or looked up.
+- **What a session says** (`GET /session`): `signIn`, how signing in stands
+  in the study (`required`; `optional`: the server has a login and the
+  study's coders may sign in; `none`, also in previews), and `canLogIn`:
+  optional, the request has this study's link, and the session has no email
+  yet.
 - **Expert coders who sign in** are the coder whose email address
   (`coders.email`) the login has, ignoring case; `$session.coder` is that
   coder's id, never the address. The coder must be in the deployed coder
@@ -208,7 +227,9 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   (another panel id) starts its own session.
 - **How a coder chooses.** Three places send the browser to the study's
   page with `login=1` in the address: **Log in** under "Continue on another
-  device" and on the notice "You already started on another device" (the
+  device" (shown with `canLogIn`: "Sign in to continue from any device. The
+  researchers don't see your email address.") and on the notice "You
+  already started on another device" (the
   login's return address, `logInWithAccount`: `coderLoginUrl({ useLogin:
   true })`), and a study of the login on another device in the coder
   home's list (`continueUrl`). The page reads `login=1` once, takes it out of the
@@ -224,23 +245,32 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   session in this study. Never while coding, never in previews. Another
   study's link doesn't link a session here.
 - **Required**: without a login 401 `auth_required`; the client offers the
-  login and comes back to the same page. Where expert coders sign in, an
-  address that isn't a coder's in the coder set gets 403 `email_not_allowed`.
-- **Optional**: `GET /session` says `canLogIn` (the server has a login, the
-  request has this study's link, and the session has no email); logging in
-  from there links the email.
+  login and comes back to the same page. An address that isn't a coder's in
+  the coder set gets 403 `email_not_allowed`. "Continue on another device"
+  says to sign in on the other device, with the session's address.
+- **Optional**: logging in from the offer (`canLogIn`) links the email.
+- **A device that joined by a transfer link** has no link of the study, so
+  its login can't be linked to the session; what logging in there brings is
+  the coder's own settings (theme, keys: `GET /coder/settings`). While its
+  browser isn't logged in, and signing in is possible in the study (`signIn`
+  not `none`), the coding screen shows one line: "Sign in here too to use
+  your saved settings", with **Log in** (a plain login that comes back to
+  the page; `SignInHereLine`).
 - **Another device**: on a device without a session in this study, a login
   that counts finds the email's session and adds the device, also without
   the link. A login whose email has a session in the study is also enough
   for the server to load the study for the request (`Deployments.admit`,
-  `api/coder.md`), e.g. after a restart.
+  `api/coder.md`), e.g. after a restart; so is a login whose address is now
+  that of an expert coder who has a session (the researchers changed the
+  coder's address since the session started, which keeps the old one).
 - **One session per email per study**: a device that started its own session
   and then logs in continues the email's session instead. Nobody can get
   back to the session it left (no device, no email). If the coder answered
   nothing in it (what a second device starts on an anonymous link, before
   the coder can log in) it is removed, and its link gets its place back
   (`maxCoders`); with answers it stays, for the researcher
-  (`removeIfUnused`, `runtime/startSession.ts`).
+  (`removeIfUnused`, `runtime/startSession.ts`). A crowd's coder whose only
+  session that was is removed with it (`forgetCrowdCoders`).
 - **The login cookie** is sent again when a coder's request extended the
   login session (§7; `loginReader`, `runtime/requestCoder.ts`): on the
   coder home, and on a study's routes where the login is read.
@@ -341,12 +371,12 @@ the sessions (`removeCoders`, `shared/coderDeletion.ts`):
   units have no coder from that moment (the runtimes read the sets again).
   The Coders, Units and Deploy pages say how many units have none; the
   researcher divides them again (Make coder set) and deploys the units;
-- their own link (expert coders with a link each), which is revoked: 403
-  `link_revoked` for anyone who has it.
+- their own link (expert coders with a link each), which is deleted (its
+  sessions are gone): 404 `link_not_found` for anyone who has it.
 
 The coder id can be made again afterwards: a new coder, without the earlier
-one's units, sessions or address (their link, if the deployed design makes
-it again, is the revoked one: reopen it under Links). By session id an
+one's units, sessions or address, who gets a new link (another secret) when
+the units are deployed with them in the coder set. By session id an
 expert coder stays, with their units. A crowd's coder goes with their last
 session, so nothing of them is left.
 
@@ -358,8 +388,8 @@ email address of the coder:
 
 - the session's email (`coder_sessions.email`, from signing in) and the
   coder's (`coders.email`) are not copied to it;
-- a coder id that looks like an email address (a crowd that signs in, or an
-  id the researchers chose) is kept as `sha256:<hash>`: the SHA-256 of the address
+- a coder id that looks like an email address (a panel's id, or an id the
+  researchers chose) is kept as `sha256:<hash>`: the SHA-256 of the address
   in lower case, in hex (`loggedCoder`, `shared/coderDeletion.ts`). It names
   nobody, and still finds the coder in results downloaded earlier: hash the
   coder ids there the same way and compare. In R:

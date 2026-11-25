@@ -3,5 +3,5 @@
 -- server's settings (one row).
 ALTER TABLE "rate_limits" SET UNLOGGED;--> statement-breakpoint
 INSERT INTO "plans" ("name", "limits") VALUES
-  ('Default', '{"studies": 20, "unitsPerStudy": 50000, "units": 200000, "codersPerStudy": 5000, "answersPerStudy": 2000000}');--> statement-breakpoint
+  ('Default', '{"studies": 20, "unitsPerStudy": 50000, "units": 200000, "codersPerStudy": 5000, "answersPerStudy": 2000000, "crowdSignIn": false}');--> statement-breakpoint
 INSERT INTO "server_settings" ("default_plan_id") SELECT "id" FROM "plans" WHERE "name" = 'Default';

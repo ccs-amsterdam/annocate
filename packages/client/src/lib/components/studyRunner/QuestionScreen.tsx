@@ -1,5 +1,7 @@
 import type { VariableValue } from "@annotinder/contracts";
 import type { CoderApi } from "../../api/httpCoderApi";
+import { useCoderSettings } from "../../context/coderSettings";
+import { offersSignInHere } from "../../session/coderSession";
 import { DisplayContext, type DisplayState } from "../../display/context";
 import { AnswerKeysContext } from "../../keyboard/context";
 import type { StudyManager } from "../../studyManager/StudyManager";
@@ -12,6 +14,7 @@ import { WaitingForConnection } from "./ConnectionNotices";
 import type { NavDirection } from "./hooks";
 import { NewUnitsBanner } from "./NewUnitsBanner";
 import { PracticeCorrectFlash } from "./PracticeCorrectFlash";
+import { SignInHereLine } from "./SignInNotes";
 import { UnitQuestionLayout } from "./UnitQuestionLayout";
 import type { CurrentQuestion } from "./useCurrentQuestion";
 import type { useUnitSlide } from "./useUnitSlide";
@@ -37,6 +40,8 @@ interface QuestionScreenProps {
   /** Flash "Correct" now (`usePracticeFlash`). */
   correctFlash: boolean;
   transferUrl: (token: string) => string;
+  /** This device joined the session by a transfer link, just now. */
+  joinedByTransfer: boolean;
   preview?: boolean;
 }
 
@@ -58,8 +63,10 @@ export function QuestionScreen({
   unitSlide,
   correctFlash,
   transferUrl,
+  joinedByTransfer,
   preview,
 }: QuestionScreenProps) {
+  const { loggedIn } = useCoderSettings();
   const slideClass = navDirection === "next" ? "animate-slide-in-right" : "animate-slide-in-left";
   const answeredQuestion = (
     <AnsweredQuestion question={question} snapshot={snapshot} manager={manager} onAnswer={moves.answer} />
@@ -82,6 +89,7 @@ export function QuestionScreen({
             onForward={moves.forward}
           />
           {snapshot.retrying && <WaitingForConnection />}
+          {offersSignInHere(joinedByTransfer, snapshot.signIn, loggedIn) && <SignInHereLine />}
           {snapshot.newUnits && (
             <NewUnitsBanner message={snapshot.newUnits} onDismiss={() => manager.dismissNewUnits()} />
           )}

@@ -3,6 +3,7 @@ import {
   designErrors,
   designItems,
   EMPTY_SESSION,
+  type CoderKind,
   type DesignVersionMeta,
   type DesignVersion,
   type PublicInfo,
@@ -49,9 +50,14 @@ export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsS
   return parsed.success ? parsed.data : { fields: [] };
 }
 
-/** Whether a design's items (with the Study entry) pass validation and ask something, as required to deploy or preview them. */
-export function itemsValid(items: unknown[]): boolean {
-  return items.some((i) => (i as { type?: unknown } | null)?.type !== "session") && designErrors(items).length === 0;
+/**
+ * Whether a design's items (with the Study entry) pass validation in a study
+ * with this kind of coders and ask something, as required to deploy or
+ * preview them.
+ */
+export function itemsValid(items: unknown[], coderKind: CoderKind): boolean {
+  const asks = items.some((i) => (i as { type?: unknown } | null)?.type !== "session");
+  return asks && designErrors(items, coderKind).length === 0;
 }
 
 /**
@@ -59,23 +65,24 @@ export function itemsValid(items: unknown[]): boolean {
  * takes milliseconds, and a study's list of versions asks for each of them
  * on every request. A version's items change only with its revision; the
  * time of the change is in the key too, since ids start again in an emptied
- * database (tests).
+ * database (tests), and so is the study's kind of coders.
  */
 const knownValid = new Map<string, boolean>();
 const MAX_KNOWN_VALID = 5000;
 
 /** Whether a stored design version passes validation (see `itemsValid`). */
-function versionValid(row: DesignVersionRow): boolean {
-  const key = `${row.id}/${row.revision}/${row.updated.getTime()}`;
+function versionValid(row: DesignVersionRow, coderKind: CoderKind): boolean {
+  const key = `${row.id}/${row.revision}/${row.updated.getTime()}/${coderKind}`;
   const known = knownValid.get(key);
   if (known !== undefined) return known;
-  const valid = itemsValid(designVersionItems(row));
+  const valid = itemsValid(designVersionItems(row), coderKind);
   if (knownValid.size >= MAX_KNOWN_VALID) knownValid.delete(knownValid.keys().next().value!);
   knownValid.set(key, valid);
   return valid;
 }
 
-export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
+/** A stored design version as listed; `coderKind`: its study's kind of coders, which its invitation must be for. */
+export function toDesignVersionMeta(row: DesignVersionRow, coderKind: CoderKind): DesignVersionMeta {
   return {
     id: row.id,
     note: row.note,
@@ -84,14 +91,14 @@ export function toDesignVersionMeta(row: DesignVersionRow): DesignVersionMeta {
     updatedBy: row.updatedBy,
     revision: row.revision,
     immutable: row.immutable,
-    valid: versionValid(row),
+    valid: versionValid(row, coderKind),
   };
 }
 
 /** A stored design version as served. */
-export function toDesignVersion(row: DesignVersionRow): DesignVersion {
+export function toDesignVersion(row: DesignVersionRow, coderKind: CoderKind): DesignVersion {
   return {
-    ...toDesignVersionMeta(row),
+    ...toDesignVersionMeta(row, coderKind),
     studyId: row.studyId,
     formatVersion: row.formatVersion,
     items: storedItems(row),

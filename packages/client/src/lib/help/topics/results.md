@@ -129,12 +129,12 @@ A row per **coder** of the study (see
 who haven't started; join `sessions.csv` and `annotations.csv` on `coder`.
 Sessions without a coder id have no row here.
 
-| Column    | Meaning                                                                               |
-| --------- | ------------------------------------------------------------------------------------- |
-| `coder`   | the coder id                                                                          |
-| `kind`    | `expert` (a coder you added) or `crowd` (made when they started with a coder id)      |
-| `email`   | an expert coder's email address, only where coders [sign in](links.md#login) with it  |
-| `created` | when the coder was added, or first started                                            |
+| Column    | Meaning                                                                              |
+| --------- | ------------------------------------------------------------------------------------ |
+| `coder`   | the coder id                                                                         |
+| `kind`    | `expert` (a coder you added) or `crowd` (made when they started with a coder id)     |
+| `email`   | an expert coder's email address, only where coders [sign in](links.md#login) with it |
+| `created` | when the coder was added, or first started                                           |
 
 ## units.csv
 
@@ -259,16 +259,16 @@ kept, though. **Include answers that were reset** (under **Download
 settings**, off by default) adds `reset_answers.csv`, a row per reset
 answer:
 
-| Column                           | Meaning                                              |
-| -------------------------------- | ---------------------------------------------------- |
-| `unit_id`, `unit_version_id`     | the unit, and the version the coder saw              |
-| `session_id`, `coder`            | who answered                                         |
-| `variable`                       | the question                                         |
-| `value`                          | the answer, written as in `annotations.csv`          |
-| `value_label`                    | its label (with **Add label columns**)               |
-| `value_json`                     | the full answer as JSON                              |
-| `design_version`                 | the version it was answered under                    |
-| `answered`, `reset_at`           | when it was given, and when it was reset             |
+| Column                       | Meaning                                     |
+| ---------------------------- | ------------------------------------------- |
+| `unit_id`, `unit_version_id` | the unit, and the version the coder saw     |
+| `session_id`, `coder`        | who answered                                |
+| `variable`                   | the question                                |
+| `value`                      | the answer, written as in `annotations.csv` |
+| `value_label`                | its label (with **Add label columns**)      |
+| `value_json`                 | the full answer as JSON                     |
+| `design_version`             | the version it was answered under           |
+| `answered`, `reset_at`       | when it was given, and when it was reset    |
 
 The new answers to the same units are in `annotations.csv`. Use
 `reset_answers.csv` to compare coding before and after a change of the

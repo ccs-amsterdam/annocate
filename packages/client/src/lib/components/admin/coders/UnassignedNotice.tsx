@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { invitedKind, unassignedText } from "../../../admin/codersTable";
-import { useCodersQuery } from "../../../admin/queries";
-import { useCurrentInvite } from "../../../admin/studyInvite";
+import { unassignedText } from "../../../admin/codersTable";
+import { useCodersQuery, useStudyQuery } from "../../../admin/queries";
 
 /**
  * Says how many units no expert coder has (deployed, e.g. after a coder was
@@ -11,9 +10,9 @@ import { useCurrentInvite } from "../../../admin/studyInvite";
  * what to do about it from this page (a button, a link).
  */
 export function UnassignedNotice({ client, children }: { client: ResearcherApi; children?: ReactNode }) {
-  const { invite } = useCurrentInvite(client);
+  const kind = useStudyQuery(client).data?.coderKind;
   const unassigned = useCodersQuery(client).data?.unassigned;
-  const text = unassigned ? unassignedText(unassigned, invitedKind(invite)) : null;
+  const text = unassigned && kind ? unassignedText(unassigned, kind) : null;
   if (text === null) return null;
   return (
     <div

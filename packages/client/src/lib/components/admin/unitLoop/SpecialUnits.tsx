@@ -37,7 +37,7 @@ export function TestUnitsEditor({
 }: {
   units: LoopUnits;
   groups: SetGroupResponse[];
-  invite: Invite | null;
+  invite: Invite;
   checkable: AnswerKeyQuestion[];
   answerKey?: AnswerKeyContext;
   /** The design's end items with outcome `screenout`: where gold checks can end a session. */
@@ -54,7 +54,7 @@ export function TestUnitsEditor({
   const shows = (kind: "practice" | "gold", check: unknown) =>
     settings[kind] !== "ignore" && (count(kind) > 0 || check !== undefined);
   // Expert coders: the units in the coder set; otherwise all units (test units aside)
-  const coders = invite?.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
+  const coders = invite.mode === "coders" ? groups.find((g) => g.name === CODER_SET) : undefined;
   const codingCount = coders ? new Set(coders.sets.flatMap((s) => s.unitIds)).size : null;
   return (
     <>

@@ -7,6 +7,7 @@ const props = {
   errorCode: null,
   onRetry: () => {},
   onStartNewSession: () => {},
+  canLogIn: false,
   baseUrl: "/api/d/1",
   onPickName: () => {},
 };
@@ -33,10 +34,18 @@ describe("SessionErrorScreen", () => {
   });
 
   it("offers a coder who started on another device to log in, besides starting again", () => {
-    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="coder_has_session" />);
+    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="coder_has_session" canLogIn />);
     expect(html).toContain("You already started on another device");
     expect(html).toContain("log in here too");
     expect(html).toMatch(/<button[^>]*>Log in<\/button>/);
+  });
+
+  it("doesn't offer it where the coder can't sign in (a crowd's, unless the owner's plan allows; no login on the server)", () => {
+    const html = renderToStaticMarkup(<SessionErrorScreen {...props} errorCode="coder_has_session" />);
+    expect(html).toContain("You already started on another device");
+    expect(html).not.toContain("log in here too");
+    expect(html).not.toMatch(/<button[^>]*>Log in<\/button>/);
+    expect(html).toContain("I can&#x27;t get back to my earlier session");
   });
 
   it("treats a code that is a property of every object as any unknown code", () => {

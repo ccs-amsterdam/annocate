@@ -206,6 +206,7 @@ export class StudyManager {
       display: session.codebook.display ?? {},
       login: session.login ?? null,
       canLogIn: session.canLogIn ?? false,
+      signIn: session.signIn ?? "none",
       ...(session.deletionRequest ? { deletionRequested: true } : {}),
       // Told once (the server doesn't repeat it): kept until dismissed
       ...(session.newUnits ? { newUnits: session.newUnits.message } : {}),

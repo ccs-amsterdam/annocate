@@ -9,11 +9,11 @@ import {
   type CodersCreate,
   type UnassignedUnits,
 } from "@annotinder/contracts";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, sql } from "drizzle-orm";
 import { row, rows, type Db } from "../db/index.js";
 import { advisoryLock } from "../db/locks.js";
 import { anyOf } from "../db/sql.js";
-import { coders, deployments } from "../db/schema/index.js";
+import { coderSessions, coders, deployments } from "../db/schema/index.js";
 import { HttpError } from "./http.js";
 
 // The study's coders (`coders`, docs/coder-identity.md §2): expert coders are
@@ -107,7 +107,7 @@ export async function setCoderEmail(db: Db, studyId: number, coder: string, emai
   const found = await findCoder(db, studyId, coder);
   if (!found || found.coder !== coder) throw new HttpError(404, `No coder '${coder}' in this study`);
   if (found.kind !== "expert")
-    throw new HttpError(400, "Only expert coders have an email address: a crowd's coders sign in for themselves");
+    throw new HttpError(400, "Only expert coders have an email address: a crowd's coders aren't known by one");
   if (email !== null) {
     const taken = await db.$count(
       coders,
@@ -160,6 +160,33 @@ export async function crowdCoder(db: Db, studyId: number, coder: string): Promis
   if (found) return found.coder;
   await db.insert(coders).values({ studyId, coder, kind: "crowd" });
   return coder;
+}
+
+/**
+ * Removes the crowd's coders among these ids who have no session (left):
+ * a crowd's coder is there for their sessions, and goes with the last one.
+ * Returns the ids removed.
+ */
+export async function forgetCrowdCoders(db: Db, studyId: number, ids: readonly string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const sessions = db
+    .select({ one: sql`1` })
+    .from(coderSessions)
+    .where(and(eq(coderSessions.studyId, coders.studyId), eq(coderSessions.coder, coders.coder)));
+  const removed = await db
+    .delete(coders)
+    .where(
+      and(eq(coders.studyId, studyId), eq(coders.kind, "crowd"), inArray(coders.coder, [...ids]), notExists(sessions)),
+    )
+    .returning({ coder: coders.coder });
+  return removed.map((c) => c.coder);
+}
+
+/** Whether a login's address is an expert coder's now, and that coder has a session in the study. */
+export async function expertOfEmailHasSession(db: Db, studyId: number, email: string): Promise<boolean> {
+  const coder = await coderOfEmail(db, studyId, email);
+  if (coder === null) return false;
+  return (await db.$count(coderSessions, and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)))) > 0;
 }
 
 /** What the list's query gives per coder; counts are missing where there is nothing to count. */

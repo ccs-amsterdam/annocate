@@ -4,7 +4,8 @@ import { urlPatternError } from "./urlPattern.js";
 
 // How coders come to a study (the Study entry, docs/architecture.md §6-7):
 // the who codes (`invite`: expert coders with a link each, a
-// login or names to pick, or a crowd with one link), and the URL parameters a link may
+// login or names to pick, or a crowd with one link; which of the two is the
+// study's own setting, `coderKind`), and the URL parameters a link may
 // carry (context such as a distribution channel, or a panel's ids for its
 // return link). All are `$session.<name>` values, stored on the session
 // when it starts.
@@ -75,6 +76,15 @@ export const CoderParamSchema = z.strictObject({
 export type CoderParam = z.infer<typeof CoderParamSchema>;
 
 /**
+ * Who codes in a study, and who a coder is: the researchers' expert coders,
+ * or a crowd. A study's setting (`StudyWriteSchema.coderKind`), chosen when
+ * it is made and fixed by its first deploy; its designs' invitation is for
+ * that kind (`inviteKind`, `coderKindProblem`).
+ */
+export const CoderKindSchema = z.enum(["expert", "crowd"]);
+export type CoderKind = z.infer<typeof CoderKindSchema>;
+
+/**
  * Expert coders (docs/architecture.md §6.1): who codes which units is the
  * units' `coder_set` column; each of its values is one of the study's
  * expert coders, by their coder id (`$session.coder`, also when the design
@@ -100,15 +110,14 @@ export type CodersInvite = z.infer<typeof CodersInviteSchema>;
 /**
  * A crowd (docs/architecture.md §6.1), also for surveys and survey
  * experiments: one link for everyone. Who the coder is (`$session.coder`):
- * from a URL parameter (`coderParam`), or with `login` (coders must sign
- * in) their email. Whether the units are divided among the coders is each
- * loop's (unitLoop.ts `divide`). `maxCoders`: the link takes at most this
- * many sessions.
+ * from a URL parameter (`coderParam`), else nobody. A crowd never has to
+ * sign in. Whether the units are divided among the coders is each loop's
+ * (unitLoop.ts `divide`). `maxCoders`: the link takes at most this many
+ * sessions.
  */
 export const CrowdInviteSchema = z.strictObject({
   mode: z.literal("crowd"),
   coderParam: CoderParamSchema.optional(),
-  login: z.boolean().optional(),
   maxCoders: z.number().int().positive().optional(),
 });
 export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
@@ -116,6 +125,16 @@ export type CrowdInvite = z.infer<typeof CrowdInviteSchema>;
 /** How coders come to the study (who codes): expert coders, or a crowd (one link). */
 export const InviteSchema = z.discriminatedUnion("mode", [CodersInviteSchema, CrowdInviteSchema]);
 export type Invite = z.infer<typeof InviteSchema>;
+
+/** A crowd's invitation with the defaults: one open link. What a design without an invitation has. */
+export const CROWD_INVITE: CrowdInvite = { mode: "crowd" };
+
+/** The invitation a study of a kind starts with: a crowd's open link, or a link per expert coder. */
+export const firstInvite = (kind: CoderKind): Invite =>
+  kind === "expert" ? { mode: "coders", link: "per_coder" } : CROWD_INVITE;
+
+/** The kind of coders an invitation is for. */
+export const inviteKind = (invite: Invite): CoderKind => (invite.mode === "coders" ? "expert" : "crowd");
 
 /**
  * What coders see about a study (the design's `public`, docs/glossary.md
@@ -184,7 +203,7 @@ export type Display = z.infer<typeof DisplaySchema>;
 export const SessionItemSchema = z.strictObject({
   type: z.literal("session"),
   label: z.string().optional(),
-  /** How coders come to the study. Absent: a crowd with one open link. */
+  /** How coders come to the study, for the study's kind of coders (`coderKind`). Absent: a crowd with one open link. */
   invite: InviteSchema.optional(),
   /** The URL parameters a link may carry. */
   urlParams: z.array(UrlParamSchema).max(20).optional(),
@@ -247,17 +266,29 @@ export function sessionItem(items: readonly unknown[]): SessionItem | null {
   return (found as SessionItem | undefined) ?? null;
 }
 
-/**
- * Who codes (the design's invitation): expert coders or a crowd. null:
- * not chosen yet. A design can't be deployed without it (`deployErrors`);
- * previews run it as a crowd.
- */
-export const inviteOf = (item: SessionItem | null | undefined): Invite | null => item?.invite ?? null;
+/** Who codes (the design's invitation): expert coders or a crowd. Without one: a crowd with one open link. */
+export const inviteOf = (item: Pick<SessionItem, "invite"> | null | undefined): Invite =>
+  item?.invite ?? CROWD_INVITE;
 
-/** Whether coders must sign in to start: expert coders with a login, or a crowd that requires it. */
+/** Whether coders must sign in to start: expert coders with a login. A crowd never has to. */
 export function loginRequired(item: SessionItem | null | undefined): boolean {
   const invite = inviteOf(item);
-  return invite?.mode === "coders" ? invite.link === "login" : invite?.login === true;
+  return invite.mode === "coders" && invite.link === "login";
+}
+
+/**
+ * What is wrong when a design's invitation isn't for the study's kind of
+ * coders (`coderKind`), or null: a study has expert coders or a crowd, and
+ * its designs invite those.
+ */
+export function coderKindProblem(
+  item: Pick<SessionItem, "invite"> | null | undefined,
+  coderKind: CoderKind,
+): string | null {
+  if (inviteKind(inviteOf(item)) === coderKind) return null;
+  return coderKind === "expert"
+    ? 'This study has expert coders, but the design invites a crowd: choose how the expert coders get in (session.invite with mode "coders")'
+    : 'This study has a crowd, but the design invites expert coders: use a crowd\'s invitation (session.invite with mode "crowd", or none)';
 }
 
 /** The names `$session` has under a design: its URL parameters and the built-in ones. */
@@ -272,7 +303,7 @@ export const isEmail = (value: string) => /^[^\s@;#]+@[^\s@;#]+\.[^\s@;#]+$/.tes
 /** The most sessions a link takes: a crowd's limit. */
 export function linkMaxCoders(item: SessionItem | null | undefined): number | undefined {
   const invite = inviteOf(item);
-  return invite?.mode === "crowd" ? invite.maxCoders : undefined;
+  return invite.mode === "crowd" ? invite.maxCoders : undefined;
 }
 
 /**
@@ -282,7 +313,7 @@ export function linkMaxCoders(item: SessionItem | null | undefined): number | un
  */
 export function linkCombinations(item: SessionItem | null, coders: readonly string[]): Record<string, string>[] {
   const invite = inviteOf(item);
-  if (invite?.mode === "coders" && invite.link === "per_coder") return coders.map((coder) => ({ coder }));
+  if (invite.mode === "coders" && invite.link === "per_coder") return coders.map((coder) => ({ coder }));
   return [{}];
 }
 

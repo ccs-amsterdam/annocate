@@ -1,11 +1,15 @@
 import {
   DesignConflictSchema,
+  EMPTY_SESSION,
   designItems,
+  firstInvite,
   splitDesignItems,
+  type CoderKind,
   type DesignConflict,
   type DesignVersion,
   type DesignVersionMeta,
   type DesignWrite,
+  type SessionSpec,
   type TopLevelItem,
 } from "@annotinder/contracts";
 import { ResearcherApiError } from "../api/httpResearcherApi";
@@ -34,9 +38,13 @@ export interface DraftStart {
  * version they were made on as they were left; on another version (a draft
  * was made, or deployed, since) as edits of that one.
  */
-export function startDraft(version: DesignVersion | null | undefined, restore?: DesignBackup | null): DraftStart {
+export function startDraft(
+  version: DesignVersion | null | undefined,
+  restore?: DesignBackup | null,
+  coderKind: CoderKind = "crowd",
+): DraftStart {
   // The Study entry (session and public info) is edited as the first item (contracts designItems), stored next to the items
-  const versionItems = designItems(version ?? { items: [] }) as TopLevelItem[];
+  const versionItems = designItems(version ?? newDesign(coderKind)) as TopLevelItem[];
   if (!restore) {
     const items = ensureKeys(versionItems);
     return { items, saved: items, revision: version?.revision };
@@ -45,6 +53,11 @@ export function startDraft(version: DesignVersion | null | undefined, restore?: 
   if (restore.designVersionId === (version?.id ?? null))
     return { items, saved: ensureKeys(restore.saved), revision: restore.revision };
   return { items, saved: ensureKeys(carryKeys(versionItems, items)), revision: version?.revision };
+}
+
+/** A study's first design: nothing yet, for its kind of coders (expert coders start with a link each). */
+function newDesign(coderKind: CoderKind): { items: []; session: SessionSpec } {
+  return { items: [], session: coderKind === "expert" ? { invite: firstInvite("expert") } : EMPTY_SESSION };
 }
 
 /** What saving a draft does: a new version, an update of one, or first a question (someone else saved meanwhile). */

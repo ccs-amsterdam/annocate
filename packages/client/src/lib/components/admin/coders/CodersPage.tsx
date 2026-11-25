@@ -2,14 +2,7 @@ import { useState } from "react";
 import { UserPlus, Users } from "lucide-react";
 import type { CoderKind, CoderResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import {
-  DEFAULT_CODER_SORT,
-  codersOfKind,
-  invitedKind,
-  linkOfCoder,
-  sortCoders,
-  type CoderSort,
-} from "../../../admin/codersTable";
+import { DEFAULT_CODER_SORT, codersOfKind, linkOfCoder, sortCoders, type CoderSort } from "../../../admin/codersTable";
 import {
   useCoderDeletionMutations,
   useCodersQuery,
@@ -17,7 +10,6 @@ import {
   useSetGroupsQuery,
   useStudyQuery,
 } from "../../../admin/queries";
-import { useCurrentInvite } from "../../../admin/studyInvite";
 import { HelpButton } from "../../../help/HelpButton";
 import { Button } from "@/components/ui/button";
 import { CoderSetDialog } from "../session/CoderSetDialog";
@@ -34,14 +26,13 @@ import { useHandOver } from "./useHandOver";
 type Open = { dialog: "add" | "set" } | { dialog: "email" | "delete"; coder: CoderResponse } | null;
 
 /**
- * The Coders page (docs/client.md §7, "Coders"): the study's coders of the
- * kind its invitation asks for (expert coders, or a crowd's), with their
+ * The Coders page (docs/client.md §7, "Coders"): the study's coders of its
+ * kind (`coderKind`: expert coders, or a crowd's), with their
  * units and progress; adding expert coders, dividing the units over them,
  * and deleting a coder. Below it, the coder sessions.
  */
 export function CodersPage({ client }: { client: ResearcherApi }) {
-  const { invite, ready } = useCurrentInvite(client);
-  const kind = invitedKind(invite);
+  const kind = useStudyQuery(client).data?.coderKind;
   const codersQuery = useCodersQuery(client, { poll: true });
   const all = codersQuery.data?.coders ?? [];
   const groups = useSetGroupsQuery(client).data ?? [];
@@ -67,7 +58,7 @@ export function CodersPage({ client }: { client: ResearcherApi }) {
           )}
         </header>
         <UnassignedNotice client={client} />
-        {ready && !codersQuery.isLoading ? (
+        {kind && !codersQuery.isLoading ? (
           <KindCoders
             client={client}
             kind={kind}
@@ -93,7 +84,7 @@ export function CodersPage({ client }: { client: ResearcherApi }) {
 const NO_CODERS: Record<CoderKind, string> = {
   expert: "No expert coders yet. Add coders, then divide the units over them (Make coder set).",
   crowd:
-    "No coders yet. A crowd's coders appear here when they start with a coder id (from their link, or by signing in); sessions without one are under Sessions.",
+    "No coders yet. A crowd's coders appear here when they start with a coder id (from their link); sessions without one are under Sessions.",
 };
 
 /** The coders of one kind as a sortable table, with each row's actions. */

@@ -42,21 +42,30 @@ describe("whether a design version is valid", () => {
 
   it("is found once per revision, not every time the version is listed", () => {
     const first = row({ id: 7001 });
-    expect(toDesignVersionMeta(first).valid).toBe(true);
-    expect(toDesignVersionMeta({ ...first }).valid).toBe(true);
+    expect(toDesignVersionMeta(first, "crowd").valid).toBe(true);
+    expect(toDesignVersionMeta({ ...first }, "crowd").valid).toBe(true);
     expect(validations.count).toBe(1);
 
     // Saved again: a new revision, now with a name used twice
     const saved = row({ id: 7001, revision: 2, updated: new Date(2000), items: [question("q"), question("q")] });
-    expect(toDesignVersionMeta(saved).valid).toBe(false);
-    expect(toDesignVersionMeta(saved).valid).toBe(false);
+    expect(toDesignVersionMeta(saved, "crowd").valid).toBe(false);
+    expect(toDesignVersionMeta(saved, "crowd").valid).toBe(false);
     expect(validations.count).toBe(2);
   });
 
+  it("is found for the study's kind of coders: a crowd's invitation isn't valid in a study with expert coders", () => {
+    const crowd = row({ id: 7003 });
+    expect(toDesignVersionMeta(crowd, "crowd").valid).toBe(true);
+    expect(toDesignVersionMeta(crowd, "expert").valid).toBe(false);
+    const experts = row({ id: 7004, session: { invite: { mode: "coders", link: "per_coder" } } });
+    expect(toDesignVersionMeta(experts, "expert").valid).toBe(true);
+    expect(toDesignVersionMeta(experts, "crowd").valid).toBe(false);
+  });
+
   it("is found again for the same id and revision in an emptied database", () => {
-    expect(toDesignVersionMeta(row({ id: 7002 })).valid).toBe(true);
+    expect(toDesignVersionMeta(row({ id: 7002 }), "crowd").valid).toBe(true);
     const other = row({ id: 7002, updated: new Date(5000), items: [question("q"), question("q")] });
-    expect(toDesignVersionMeta(other).valid).toBe(false);
+    expect(toDesignVersionMeta(other, "crowd").valid).toBe(false);
   });
 });
 

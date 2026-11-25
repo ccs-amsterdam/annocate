@@ -7,6 +7,7 @@ import {
   useDeleteDesignVersionMutation,
   useDeploymentQuery,
   useUpdateDesignVersionMutation,
+  useStudyQuery,
 } from "../../admin/queries";
 import { describeVersions, draftMadeMeanwhile, editorMode, type OpenVersion } from "../../design/versions";
 import { DesignEditor, type SaveFn } from "./DesignEditor";
@@ -98,6 +99,8 @@ export function DesignManager({
   const followedId = fromUrl ? null : (selectedId ?? versions.currentId);
   const openId = pinned ? pinned.id : followedId;
   const openQuery = useDesignVersionQuery(client, openId);
+  const studyQuery = useStudyQuery(client);
+  const study = studyQuery.data ?? null;
 
   // Bumped when the open version's content is replaced underneath the editor (restore)
   const [editorEpoch, setEditorEpoch] = useState(0);
@@ -200,6 +203,7 @@ export function DesignManager({
   }
 
   const loadError =
+    (study ? null : studyQuery.error) ??
     (designVersionsQuery.data ? null : designVersionsQuery.error) ??
     (deploymentQuery.data !== undefined ? null : deploymentQuery.error) ??
     (openId !== null && !openVersion ? openQuery.error : null);
@@ -209,7 +213,14 @@ export function DesignManager({
     return <LoadError error={loadError} onOpenCurrent={toCurrent} />;
   }
 
-  if (fromUrl || designVersionsQuery.isLoading || deploymentQuery.isLoading || (openId !== null && !openVersion)) {
+  // The study too: the editor starts a design for its kind of coders
+  if (
+    !study ||
+    fromUrl ||
+    designVersionsQuery.isLoading ||
+    deploymentQuery.isLoading ||
+    (openId !== null && !openVersion)
+  ) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -224,6 +235,7 @@ export function DesignManager({
         <DesignEditor
           key={`${openId ?? "new"}:${editorEpoch}`}
           client={client}
+          coderKind={study.coderKind}
           version={openVersion}
           versionNumber={openId === null ? null : versions.numberOf(openId)}
           mode={mode}

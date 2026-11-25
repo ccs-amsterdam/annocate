@@ -24,13 +24,19 @@ import {
   resolveRequestCoder,
   urlParamsOf,
   versionGuard,
+  type SignInOffer,
 } from "./runtime/requestCoder.js";
 import type { Coder, DeploymentRuntime } from "./runtime/runtime.js";
 import { idParam, parseJson } from "./shared/request.js";
 
 interface Env {
-  /** `deviceId`: the device's row (`session_devices`; null in previews). `canLogIn`: the link offers a login the session hasn't used. */
-  Variables: { runtime: DeploymentRuntime; coder: Coder; deviceId: number | null; canLogIn: boolean };
+  /** `deviceId`: the device's row (`session_devices`; null in previews). `signInOffer`: what the session says about signing in. */
+  Variables: {
+    runtime: DeploymentRuntime;
+    coder: Coder;
+    deviceId: number | null;
+    signInOffer: () => Promise<SignInOffer>;
+  };
 }
 
 /**
@@ -110,18 +116,18 @@ export function coderApi(server: Server): Hono {
     requireClientHeader(c);
     const runtime = await loadRuntime(server, c, await proofOf(server, c));
     versionGuard(c, runtime);
-    const { coder, deviceId, canLogIn } = await resolveRequestCoder(server, c, runtime);
+    const { coder, deviceId, signInOffer } = await resolveRequestCoder(server, c, runtime);
     c.set("runtime", runtime);
     c.set("coder", coder);
     c.set("deviceId", deviceId);
-    c.set("canLogIn", canLogIn);
+    c.set("signInOffer", signInOffer);
     await next();
   });
 
   session.post("/transfer", async (c) => c.json(await c.get("runtime").createTransfer(c.get("coder"))));
 
   session.get("/session", async (c) =>
-    c.json({ ...(await c.get("runtime").session(c.get("coder"))), canLogIn: c.get("canLogIn") }),
+    c.json({ ...(await c.get("runtime").session(c.get("coder"))), ...(await c.get("signInOffer")()) }),
   );
 
   session.get("/loop/:loop/next", async (c) => {

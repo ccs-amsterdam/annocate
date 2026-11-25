@@ -1,4 +1,5 @@
 import {
+  CROWD_INVITE,
   loopLayouts,
   type DesignItem,
   type DesignIssue,
@@ -26,7 +27,7 @@ export function UnitLoopForm({
   groups,
   screenouts = [],
   validationIssues,
-  unitsContext = { invite: null, sources: [], earlier: [] },
+  unitsContext = { invite: CROWD_INVITE, sources: [], earlier: [] },
   onChange,
 }: {
   loop: UnitLoopItem;

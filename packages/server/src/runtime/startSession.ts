@@ -1,12 +1,12 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import { linkMaxCoders, type CodersInvite } from "@annotinder/contracts";
+import { inviteOf, linkMaxCoders, type CodersInvite } from "@annotinder/contracts";
 import { and, asc, eq, gt, lt, sql } from "drizzle-orm";
 import { type Db } from "../db/index.js";
 import { annotationValues, sessionDevices, coderSessions, links } from "../db/schema/index.js";
 import { type CoderRow } from "../shared/coders.js";
 import { HttpError } from "../shared/http.js";
-import { emailCoders, runtimeInvite, sessionValues, type SessionLogin } from "./sessionValues.js";
-import { coderOfEmail, crowdCoder } from "../shared/studyCoders.js";
+import { emailCoders, sessionValues, type SessionLogin } from "./sessionValues.js";
+import { coderOfEmail, crowdCoder, forgetCrowdCoders } from "../shared/studyCoders.js";
 import { nothingHere } from "./session.js";
 import { checkNewCoder } from "../shared/limits.js";
 import type { ResolveCoderRequest } from "./types.js";
@@ -86,7 +86,7 @@ export async function findOrCreateCoder(
   const mine = signedIn ? await sessionOfLogin(db, studyId, request, signedIn) : undefined;
   if (mine) return { row: mine, deviceId: await addDevice(db, studyId, mine.id, coderKey, device) };
   const link = await openLink(db, studyId, request);
-  const invite = runtimeInvite(request.sessionRules?.item);
+  const invite = inviteOf(request.sessionRules?.item);
   let params = link.params;
   if (invite.mode === "coders" && invite.link === "pick_name") {
     const picked = await pickName(db, studyId, request, invite);
@@ -184,7 +184,8 @@ async function linkLogin(
  * Removes a session its device just left for its email's session, if nobody
  * can get back to it (no device, no email) and the coder answered nothing in
  * it: the session a second device starts before the coder logs in. A session
- * with answers stays, for the researcher.
+ * with answers stays, for the researcher. A crowd's coder whose only session
+ * it was goes with it.
  */
 async function removeIfUnused(db: Db, studyId: number, left: CoderRow): Promise<void> {
   const a = annotationValues;
@@ -193,6 +194,7 @@ async function removeIfUnused(db: Db, studyId: number, left: CoderRow): Promise<
   if (devices > 0 || answers > 0 || left.ended !== null) return;
   await db.delete(coderSessions).where(eq(coderSessions.id, left.id));
   await returnLinkUse(db, studyId, left);
+  if (left.coder !== null) await forgetCrowdCoders(db, studyId, [left.coder]);
 }
 
 /** Gives a removed session's place on its link back, unless it didn't take one (a known coder's further session). */

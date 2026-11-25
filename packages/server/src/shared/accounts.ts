@@ -503,6 +503,8 @@ export async function loadLimitRules(db: Db): Promise<LimitRules> {
 /**
  * A user's limits: their own plan, else the most generous of their email
  * domains' plans, else the default plan; then their personal overrides.
+ * `crowdSignIn` the same way: the user's own if set, else the plan's, else
+ * off.
  */
 export function limitsOf(user: { email: string; planId: number | null; limits: Limits }, rules: LimitRules): Limits {
   const base =
@@ -510,7 +512,7 @@ export function limitsOf(user: { email: string; planId: number | null; limits: L
     domainLimits(user.email, rules) ??
     (rules.defaultPlanId !== null ? rules.plans.get(rules.defaultPlanId) : undefined) ??
     {};
-  const limits: Limits = {};
+  const limits: Limits = { crowdSignIn: user.limits.crowdSignIn ?? base.crowdSignIn ?? false };
   for (const key of LIMIT_KEYS) {
     const own = user.limits[key];
     limits[key] = own !== undefined ? own : (base[key] ?? null);
@@ -518,13 +520,13 @@ export function limitsOf(user: { email: string; planId: number | null; limits: L
   return limits;
 }
 
-/** The most generous limits of the plans of an address's email domains; undefined if none has a plan. */
+/** The most generous limits of the plans of an address's email domains (`crowdSignIn`: on in any of them); undefined if none has a plan. */
 function domainLimits(email: string, rules: LimitRules): Limits | undefined {
   const matching = rules.domainPlans
     .filter((rule) => rule.planId !== null && emailAtDomain(email, rule.domain) && rules.plans.has(rule.planId))
     .map((rule) => rules.plans.get(rule.planId!)!);
   if (matching.length === 0) return undefined;
-  const limits: Limits = {};
+  const limits: Limits = { crowdSignIn: matching.some((plan) => plan.crowdSignIn === true) };
   for (const key of LIMIT_KEYS) limits[key] = matching.map((plan) => plan[key] ?? null).reduce(generous);
   return limits;
 }

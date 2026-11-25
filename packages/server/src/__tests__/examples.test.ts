@@ -54,6 +54,8 @@ describe("example studies", () => {
       expect(res.status).toBe(201);
       const study = StudyResponseSchema.parse(await res.json());
       expect(study.origin).toBe(id);
+      // Its coders are the example's kind: expert coders for the one with a link per coder
+      expect(study.coderKind).toBe(id === "swipe-sentiment" ? "expert" : "crowd");
 
       // The researcher owns it, and it is deployed with an invitation
       expect((await researcher(`/api/study/${study.id}`)).status).toBe(200);
@@ -148,6 +150,28 @@ describe("studies from a recipe", () => {
   };
   const post = (body: object) => researcher("/api/study/from-recipe", { method: "POST", body: JSON.stringify(body) });
   const studyCount = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0].n;
+
+  it("the study's kind of coders: the recipe's, else the kind its design invites", async () => {
+    const made = async (extra: object) => {
+      const res = await post({ name: "Kind", design: { items: [] }, ...extra });
+      expect(res.status, await res.clone().text()).toBe(201);
+      return StudyResponseSchema.parse(await res.json()).coderKind;
+    };
+    const experts = { session: { invite: { mode: "coders", link: "per_coder" } }, items: [] };
+    expect(await made({})).toBe("crowd");
+    expect(await made({ design: experts })).toBe("expert");
+    expect(await made({ coderKind: "expert" })).toBe("expert");
+    expect(await made({ coderKind: "crowd", design: experts })).toBe("crowd");
+    // Deployed, the design must invite the recipe's kind
+    const specified = structuredClone(items);
+    (specified[1] as { children: { variable: object }[] }).children[1].variable = { type: "confirm", question: "?" };
+    const other = await post({ ...recipe, coderKind: "expert", design: { items: specified }, deploy: true });
+    expect(other.status).toBe(400);
+    expect(await other.json()).toMatchObject({
+      code: "recipe_invalid",
+      error: expect.stringContaining("This study has expert coders, but the design invites a crowd"),
+    });
+  });
 
   it("makes the units, columns with a role and a draft design; deploying makes its links", async () => {
     const res = await post(recipe);

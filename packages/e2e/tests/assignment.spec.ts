@@ -446,25 +446,21 @@ test("dividing units again keeps the units coders already coded", async ({ page,
   expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);
 });
 
-test("expert coders without a coder set: how coders get in waits for one, and the draft still saves", async ({
+test("expert coders without a coder set: how coders get in waits for one, and the first design is for expert coders", async ({
   page,
   request,
 }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "No coder set yet" });
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "No coder set yet", coderKind: "expert" });
   await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "u1", data: { text: "A text" } }] });
-  await api(request, "POST", `/study/${study.id}/design`, { items: [loop()] });
+  // No design yet: the editor starts one for the study's expert coders, with a link each
   await page.goto(`/research/studies/${study.id}/design`);
   await page.getByRole("button", { name: /^Who codes/ }).click();
-  await page.getByRole("radio", { name: /^Expert coders/ }).click();
+  await expect(page.getByText("expert coders, a link each").first()).toBeVisible();
+  // Who codes is the study's: said here, not chosen
+  await expect(page.getByRole("radio", { name: /Crowd/ })).toHaveCount(0);
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
   await expect(page.getByLabel(/A link per coder/)).toBeDisabled();
   await expect(page.getByRole("button", { name: "Create coder set…" })).toBeVisible();
-  // Saved as a draft without a coder set: after a reload, still expert coders without one
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
-  await page.reload();
-  await page.getByRole("button", { name: /^Who codes/ }).click();
-  await expect(page.getByText(/A coder set is required/)).toBeVisible();
 });
 
 test("the Units page creates special sets: a part set anew (asking first), units without a value assigned, a test set", async ({

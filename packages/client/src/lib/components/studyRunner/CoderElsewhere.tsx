@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { logInWithAccount } from "../../session/coderSession";
-import { useLoginAvailable } from "./hooks";
 import { SessionNotice } from "./SessionNotice";
 
 /**
@@ -9,12 +8,13 @@ import { SessionNotice } from "./SessionNotice";
  * (docs/coder-identity.md §4). Normally the coder continues there, or here
  * with a transfer link or the account they logged in with there; a new
  * session is only for a coder who can't get back to the earlier one (a lost
- * device, cleared browser data), after confirming that.
+ * device, cleared browser data), after confirming that. `canLogIn`: logging
+ * in is offered (the server has a login, and this study's coders may sign
+ * in: not a crowd's, unless the study's owner's plan allows).
  */
-export function CoderElsewhere({ onStartNewSession }: { onStartNewSession: () => void }) {
+export function CoderElsewhere({ onStartNewSession, canLogIn }: { onStartNewSession: () => void; canLogIn: boolean }) {
   const [cantReturn, setCantReturn] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const loginAvailable = useLoginAvailable();
   return (
     <SessionNotice title="You already started on another device">
       <p>
@@ -27,12 +27,12 @@ export function CoderElsewhere({ onStartNewSession }: { onStartNewSession: () =>
           To continue <em>here</em>: on that device, open &quot;Continue on another device&quot; (top right) and open
           the link or scan the code it shows here.
         </li>
-        {loginAvailable !== false && (
+        {canLogIn && (
           <li>If you logged in on that device (also under &quot;Continue on another device&quot;), log in here too.</li>
         )}
       </ul>
-      {loginAvailable !== false && (
-        <Button type="button" variant="outline" disabled={loginAvailable === null} onClick={logInWithAccount}>
+      {canLogIn && (
+        <Button type="button" variant="outline" onClick={logInWithAccount}>
           Log in
         </Button>
       )}

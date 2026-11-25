@@ -1,4 +1,4 @@
-import type { CoderKind, CoderResponse, Invite, LinkResponse, UnassignedUnits } from "@annotinder/contracts";
+import type { CoderKind, CoderResponse, LinkResponse, UnassignedUnits } from "@annotinder/contracts";
 
 // The Coders page's table (docs/client.md §7, "Coders"): which coders and
 // columns it shows, and its order.
@@ -23,9 +23,6 @@ const COLUMNS: Record<CoderKind, CoderColumn[]> = {
 };
 
 export const coderColumns = (kind: CoderKind): CoderColumn[] => COLUMNS[kind];
-
-/** The kind of coder a study's invitation asks for: expert coders, else a crowd (also before it is chosen). */
-export const invitedKind = (invite: Invite | null): CoderKind => (invite?.mode === "coders" ? "expert" : "crowd");
 
 /** The coders of one kind. */
 export const codersOfKind = (coders: readonly CoderResponse[], kind: CoderKind): CoderResponse[] =>

@@ -5,6 +5,7 @@ import type {
   Display,
   EndItem,
   Reopen,
+  SignIn,
   UnitLayout,
   VariableValue,
 } from "@annotinder/contracts";
@@ -103,8 +104,14 @@ export interface StudyManagerSnapshot {
   deletionRequested: boolean;
   /** The email the coder is logged in with (their session is found by it on any device); null without. */
   login: string | null;
-  /** The link lets the coder log in, and they haven't. */
+  /**
+   * The coder is offered to log in (the server has a login, and their
+   * study's coders may sign in), and they haven't. With phase `error` and
+   * `coder_has_session`: to continue the session they started elsewhere.
+   */
   canLogIn: boolean;
+  /** How signing in stands in the study (contracts `SessionResponse.signIn`): required, optional, or none. */
+  signIn: SignIn;
   /** With phase `finished`: whether the coder can go back (`reopen()`); `until` null: always. */
   reopen: Reopen;
   /** The coder got new units since they were last here: the study's message for it, until dismissed (`dismissNewUnits()`). */

@@ -22,6 +22,8 @@ interface GateSession {
 export function CoderSessionGate(props: StudyRunnerProps) {
   const { baseUrl, linkSecret, transferToken, onTransferRedeemed, newSession = false } = props;
   const scope = useMemo<CoderSessionScope>(() => ({ baseUrl, linkSecret }), [baseUrl, linkSecret]);
+  // The page was opened with a transfer link (which is taken out of the URL once redeemed)
+  const [joinedByTransfer] = useState(transferToken !== undefined);
   const [session, setSession] = useState<GateSession>(() => ({
     ready: !transferToken,
     generation: 0,
@@ -57,6 +59,7 @@ export function CoderSessionGate(props: StudyRunnerProps) {
       key={session.generation}
       {...props}
       newSession={session.newSession}
+      joinedByTransfer={joinedByTransfer}
       onStartNewSession={startNewSession}
       coderName={session.coderName}
       onPickName={(coderName) => setSession((s) => ({ ...s, generation: s.generation + 1, coderName }))}

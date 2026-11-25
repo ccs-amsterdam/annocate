@@ -84,7 +84,7 @@ export async function assignmentChecks(db: Db, studyId: number, items: DesignIte
 
   // Units no coder gets: test units aside, those without a coder or condition, or a part a loop shows
   const selections: Selection[] = [];
-  if (invite?.mode === "coders" && coders.length > 0)
+  if (invite.mode === "coders" && coders.length > 0)
     selections.push({ label: "coder", units: columns.placed(CODER_SET) });
   if (experiments.length > 0 && conditions.length > 0)
     selections.push({ label: "condition", units: columns.placed(CONDITION_SET) });
@@ -108,7 +108,7 @@ export async function assignmentChecks(db: Db, studyId: number, items: DesignIte
  * sign in, and a warning for ids like email addresses where they pick their name.
  */
 function coderChecks(invite: Invite, coders: string[], experts: { coder: string; email: string | null }[]): Checks {
-  if (invite?.mode === "coders" && coders.length === 0)
+  if (invite.mode === "coders" && coders.length === 0)
     return {
       errors: [`Expert coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`],
       warnings: [],

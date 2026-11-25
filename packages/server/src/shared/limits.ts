@@ -16,6 +16,14 @@ export async function studyLimits(db: Db, studyId: number): Promise<{ ownerId: n
   return { ownerId: study.ownerId, limits: await effectiveLimits(db, study.ownerId) };
 }
 
+/**
+ * Whether a crowd's coders may sign in in this study, to continue on other
+ * devices: its owner's `crowdSignIn` (no owner: no).
+ */
+export async function crowdSignInAllowed(db: Db, studyId: number): Promise<boolean> {
+  return (await studyLimits(db, studyId)).limits.crowdSignIn === true;
+}
+
 const limitReached = (message: string) => new HttpError(403, message, "limit_reached");
 
 function size(bytes: number): string {

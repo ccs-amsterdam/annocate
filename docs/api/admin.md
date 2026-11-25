@@ -58,8 +58,13 @@ Notes:
   subdomains. `researcher`: users with a verified email there are
   researchers (a role row by domain, `docs/accounts.md` §2); `planId`:
   their plan (the most generous of several).
+- **plans**: `limits` (`LimitsSchema`) holds the limits (a number, or
+  `null` / left out for none) and `crowdSignIn`: whether a crowd's coders
+  may sign in in the studies of researchers on the plan (`true`; left out
+  or `false`: no; `docs/accounts.md` §3).
 - **updateUser**: fields left out stay. `limits` replaces the user's
-  overrides (`{}` clears them; `null` for a limit is no limit). `blocked`
+  overrides (`{}` clears them; `null` for a limit is no limit;
+  `crowdSignIn: true` or `false` goes over the plan's, left out takes it). `blocked`
   ends their sessions; API keys stop working while blocked. An admin can't
   block themselves or take away their own admin role (409). Every change
   of who is an admin is sensitive (403 `step_up_required` without a recent

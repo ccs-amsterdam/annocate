@@ -9,26 +9,22 @@ export const DEV_HEADERS = {
 };
 
 export async function api<T>(request: APIRequestContext, method: string, path: string, data?: unknown): Promise<T> {
-  // A design's top-level end items go in a branch; who codes: a crowd, unless the test says otherwise
-  const withInvite = (design: { session?: object }) => ({
-    ...design,
-    session: { invite: { mode: "crowd" }, ...design.session },
-  });
   const items = (data as { items?: unknown })?.items;
-  const recipeDesign = (data as { design?: { session?: object } })?.design;
-  const body =
-    method === "POST" && /\/design$/.test(path) && Array.isArray(items)
-      ? {
-          ...withInvite(data as { session?: object }),
-          items: items.map((i) =>
-            (i as { type?: string }).type === "end"
-              ? { type: "branch", condition: { script: "true" }, children: [i] }
-              : i,
-          ),
-        }
-      : method === "POST" && path === "/study/from-recipe" && recipeDesign
-        ? { ...(data as object), design: withInvite(recipeDesign) }
-        : data;
+  const newDesign = method === "POST" && /^\/study\/\d+\/design$/.test(path) && Array.isArray(items);
+  // A design for expert coders: its study is made one with expert coders first
+  const invite = (data as { session?: { invite?: { mode?: string } } })?.session?.invite;
+  if (newDesign && invite?.mode === "coders") await haveExpertCoders(request, Number(path.split("/")[2]));
+  // A design's top-level end items go in a branch
+  const body = newDesign
+    ? {
+        ...(data as object),
+        items: (items as unknown[]).map((i) =>
+          (i as { type?: string }).type === "end"
+            ? { type: "branch", condition: { script: "true" }, children: [i] }
+            : i,
+        ),
+      }
+    : data;
   const res = await request.fetch(`/api${path}`, {
     method,
     headers: DEV_HEADERS,
@@ -37,6 +33,16 @@ export async function api<T>(request: APIRequestContext, method: string, path: s
   expect(res.ok(), `${method} ${path}: ${res.status()} ${await res.text()}`).toBe(true);
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
+}
+
+/**
+ * Makes a study one with expert coders, if it isn't (a study starts with a
+ * crowd unless said): possible until its first deploy.
+ */
+async function haveExpertCoders(request: APIRequestContext, studyId: number): Promise<void> {
+  const study = await api<StudyResponse>(request, "GET", `/study/${studyId}`);
+  if (study.coderKind !== "expert")
+    await api(request, "PUT", `/study/${studyId}`, { name: study.name, coderKind: "expert" });
 }
 
 /**
@@ -88,8 +94,9 @@ export async function shortcutStyle(page: Page, name: string): Promise<void> {
   await page.keyboard.press("Escape");
 }
 
-/** A new design asks who codes first (the design page shows only that): choose. */
-export async function chooseWhoCodes(page: Page, mode: "Crowd" | "Expert coders" = "Crowd"): Promise<void> {
-  await page.getByRole("radio", { name: new RegExp(`^${mode}`) }).click();
-  await expect(page.getByRole("button", { name: /add item/i })).toBeVisible();
+/** In the Create New Study dialog: names the study, chooses who codes, and creates it. */
+export async function createStudy(page: Page, name: string, coders: "Crowd" | "Expert coders"): Promise<void> {
+  await page.getByPlaceholder(/Sentiment Analysis/).fill(name);
+  await page.getByRole("radio", { name: new RegExp(`^${coders}`) }).click();
+  await page.getByRole("button", { name: "Create Study" }).click();
 }

@@ -3,9 +3,8 @@ import { codebookMarkdown } from "../../design/codebookMarkdown";
 import {
   RELEASE,
   designFile,
-  inviteOf,
-  sessionItem,
   splitDesignItems,
+  type CoderKind,
   type DesignVersion,
   type DesignVersionMeta,
 } from "@annotinder/contracts";
@@ -42,13 +41,15 @@ import {
 import { TreePanel } from "./designEditor/TreePanel";
 import { downloadFile } from "../../admin/download";
 import { ItemPanel, PreviewPanel } from "./designEditor/ItemPanel";
-import { ChooseWhoCodes } from "./session/ChooseWhoCodes";
+import { CoderKindContext } from "./session/coderKind";
 
 /** The editor's save function, for a parent to save from e.g. an "unsaved changes" dialog. */
 export type SaveFn = () => Promise<DesignVersion>;
 
 interface DesignEditorProps {
   client: ResearcherApi;
+  /** The study's kind of coders (expert coders or a crowd): the design's invitation is for it. */
+  coderKind: CoderKind;
   /** The version's number as people see it (v1, v2, ...): in an exported design file. */
   versionNumber?: number | null;
   /** The version to edit; null/undefined for a new design version. Mount with a `key` per version. */
@@ -94,6 +95,7 @@ const NARROW_SCREEN = "(max-width: 767px)";
  */
 export function DesignEditor({
   client,
+  coderKind,
   versionNumber,
   version,
   mode = "draft",
@@ -120,6 +122,7 @@ export function DesignEditor({
   const loopProgress = useMemo(() => finishedPerLoop(coders ?? []), [coders]);
   const draft = useDesignDraft({
     client,
+    coderKind,
     version,
     readOnly,
     onSaved,
@@ -213,114 +216,107 @@ export function DesignEditor({
     return () => registerSave?.(null);
   });
 
-  // Who codes comes first: until it is chosen, the page is only that choice
-  const session = sessionItem(draft.items);
-  if (!readOnly && session && !inviteOf(session))
-    return (
-      <div className="flex h-full min-h-[32rem] flex-col">
-        <ChooseWhoCodes draft={draft} />
-      </div>
-    );
-
   return (
-    <DeployedValuesContext.Provider value={deployedValues}>
-      <div className="flex h-full min-h-[32rem] flex-col gap-2">
-        <EditorToolbar
-          status={banner}
-          mode={mode}
-          view={view}
-          onViewChange={setView}
-          errors={errors}
-          warnings={warningIssues}
-          onOpenIssue={openIssue}
-          dirty={dirty}
-          canSave={draft.canSave}
-          canUndo={draft.canUndo}
-          canRedo={draft.canRedo}
-          onUndo={draft.undo}
-          onRedo={draft.redo}
-          changedItems={changedItems}
-          onRevertItem={draft.revert}
-          onRevertAll={draft.revertAll}
-          saving={draft.saving}
-          onSave={() => void draft.save().catch(() => {})}
-          onOpenVersions={onOpenVersions}
-          onExport={async (kind) => {
-            if (kind === "codebook") {
-              downloadFile(
-                codebookMarkdown(draft.cleanItems, "Codebook", version?.note),
-                "codebook.md",
-                "text/markdown",
+    <CoderKindContext.Provider value={coderKind}>
+      <DeployedValuesContext.Provider value={deployedValues}>
+        <div className="flex h-full min-h-[32rem] flex-col gap-2">
+          <EditorToolbar
+            status={banner}
+            mode={mode}
+            view={view}
+            onViewChange={setView}
+            errors={errors}
+            warnings={warningIssues}
+            onOpenIssue={openIssue}
+            dirty={dirty}
+            canSave={draft.canSave}
+            canUndo={draft.canUndo}
+            canRedo={draft.canRedo}
+            onUndo={draft.undo}
+            onRedo={draft.redo}
+            changedItems={changedItems}
+            onRevertItem={draft.revert}
+            onRevertAll={draft.revertAll}
+            saving={draft.saving}
+            onSave={() => void draft.save().catch(() => {})}
+            onOpenVersions={onOpenVersions}
+            onExport={async (kind) => {
+              if (kind === "codebook") {
+                downloadFile(
+                  codebookMarkdown(draft.cleanItems, "Codebook", version?.note),
+                  "codebook.md",
+                  "text/markdown",
+                );
+                return;
+              }
+              // The whole design as a design file (contracts version.ts), as edited now, with this server's release
+              const server = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
+              const { items, session, public: info } = splitDesignItems(draft.cleanItems);
+              const file = designFile(
+                { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
+                { name: studyName ?? "design", version: versionNumber ?? null, client: server },
               );
-              return;
-            }
-            // The whole design as a design file (contracts version.ts), as edited now, with this server's release
-            const server = await client.getServerVersion().catch(() => ({ release: RELEASE, commit: "unknown" }));
-            const { items, session, public: info } = splitDesignItems(draft.cleanItems);
-            const file = designFile(
-              { items, session, public: info, units: version?.units ?? { fields: [] }, note: version?.note ?? null },
-              { name: studyName ?? "design", version: versionNumber ?? null, client: server },
-            );
-            downloadFile(JSON.stringify(file, null, 2), "design.json", "application/json");
-          }}
-        />
+              downloadFile(JSON.stringify(file, null, 2), "design.json", "application/json");
+            }}
+          />
 
-        {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
+          {draft.saveError && <p className="text-sm text-destructive">{draft.saveError.message}</p>}
 
-        <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Someone else saved a draft</DialogTitle>
-              <DialogDescription>
-                {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
-                {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.
-                Saving yours replaces their changes.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              {onReload && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (confirm("Throw away your unsaved changes and load the saved draft?")) onReload();
-                  }}
-                >
-                  Discard mine, load theirs
+          <Dialog open={draft.conflict !== null} onOpenChange={(open) => !open && draft.dismissConflict()}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Someone else saved a draft</DialogTitle>
+                <DialogDescription>
+                  {draft.conflict?.updatedBy ?? "Someone"} saved it at{" "}
+                  {draft.conflict ? new Date(draft.conflict.updated).toLocaleTimeString() : ""}, while you were editing.
+                  Saving yours replaces their changes.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                {onReload && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (confirm("Throw away your unsaved changes and load the saved draft?")) onReload();
+                    }}
+                  >
+                    Discard mine, load theirs
+                  </Button>
+                )}
+                <Button onClick={() => void draft.save({ overwrite: true }).catch(() => {})}>
+                  Save mine over theirs
                 </Button>
-              )}
-              <Button onClick={() => void draft.save({ overwrite: true }).catch(() => {})}>
-                Save mine over theirs
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-        {view === "json" ? (
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "grid min-h-0 flex-1 gap-3 overflow-hidden",
-              narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2",
-            )}
-          >
-            {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
-            {(!narrow || showItemOnly) && (
-              <ItemPanel
-                client={client}
-                draft={draft}
-                readOnly={readOnly}
-                warnings={warnings}
-                previewBeside={wide}
-                onBack={narrow ? () => draft.select(null) : undefined}
-              />
-            )}
-            {wide && <PreviewPanel client={client} draft={draft} />}
-          </div>
-        )}
-      </div>
-    </DeployedValuesContext.Provider>
+          {view === "json" ? (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <DesignJsonEditor items={draft.cleanItems} onChange={draft.replaceAll} disabled={readOnly} />
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "grid min-h-0 flex-1 gap-3 overflow-hidden",
+                narrow ? "grid-cols-1" : wide ? "grid-cols-[1fr_1.15fr_1fr]" : "grid-cols-2",
+              )}
+            >
+              {!showItemOnly && <TreePanel draft={draft} readOnly={readOnly} />}
+              {(!narrow || showItemOnly) && (
+                <ItemPanel
+                  client={client}
+                  draft={draft}
+                  readOnly={readOnly}
+                  warnings={warnings}
+                  previewBeside={wide}
+                  onBack={narrow ? () => draft.select(null) : undefined}
+                />
+              )}
+              {wide && <PreviewPanel client={client} draft={draft} />}
+            </div>
+          )}
+        </div>
+      </DeployedValuesContext.Provider>
+    </CoderKindContext.Provider>
   );
 }

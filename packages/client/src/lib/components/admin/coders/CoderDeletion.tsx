@@ -153,9 +153,9 @@ export function ConfirmDeleteDialog({
           </p>
           {target?.expert ? (
             <p className="text-muted-foreground">
-              The coder leaves the coder set, deployed and in the draft, and their link is revoked: their units have no
+              The coder leaves the coder set, deployed and in the draft, and their link is deleted: their units have no
               coder until you divide them again (Make coder set) and deploy the units. The coder id can be added again
-              afterwards.
+              afterwards: a new coder, who gets a new link when the units are deployed.
             </p>
           ) : (
             <p className="text-muted-foreground">

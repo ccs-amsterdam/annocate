@@ -15,14 +15,14 @@ New here? Follow [Your first study](first-study.md).
 
 ## The parts of a study
 
-| Part        | What it is                                                                         | Where            |
-| ----------- | ---------------------------------------------------------------------------------- | ---------------- |
-| **Design**  | The questions, how units are shown and handed out, who codes. Versions v1, v2, ... | Design           |
-| **Units**   | The material to code: rows with an id and fields such as `headline` and `text`     | Units            |
-| **Sets**    | Columns of the units that say which coder (or condition) gets which units          | Units            |
-| **Links**   | The links coders open to start, made when you deploy                               | Links            |
-| **Coders**  | Your expert coders, or a crowd's: who has which units, and how far they got        | Coders           |
-| **Results** | All answers, as a zip of CSV files                                                 | Results          |
+| Part        | What it is                                                                         | Where   |
+| ----------- | ---------------------------------------------------------------------------------- | ------- |
+| **Design**  | The questions, how units are shown and handed out, who codes. Versions v1, v2, ... | Design  |
+| **Units**   | The material to code: rows with an id and fields such as `headline` and `text`     | Units   |
+| **Sets**    | Columns of the units that say which coder (or condition) gets which units          | Units   |
+| **Links**   | The links coders open to start, made when you deploy                               | Links   |
+| **Coders**  | Your expert coders, or a crowd's: who has which units, and how far they got        | Coders  |
+| **Results** | All answers, as a zip of CSV files                                                 | Results |
 
 ## How a design is built
 
@@ -40,7 +40,8 @@ get, if a condition holds (see [Branches and conditions](conditions.md)),
 and, in a branch, **end items** (see
 [Ending a session](end-items.md)). A loop can have a condition too. Above
 the tree, **Who codes**
-say who codes and how they get in, **URL parameters** what a link carries,
+says how the study's coders (expert coders or a crowd, chosen with the
+study) get in, **URL parameters** what a link carries,
 and **Display** how the screen looks.
 
 ```text

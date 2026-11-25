@@ -4,7 +4,6 @@ import {
   DEFAULT_CODER_SORT,
   coderColumns,
   codersOfKind,
-  invitedKind,
   linkOfCoder,
   nextSort,
   sortCoders,
@@ -29,10 +28,7 @@ const coder = (id: string, extra: Partial<CoderResponse> = {}): CoderResponse =>
 const ids = (coders: CoderResponse[]) => coders.map((c) => c.coder);
 
 describe("which coders the table shows", () => {
-  it("those of the invitation: expert coders, else a crowd's (also before who codes is chosen)", () => {
-    expect(invitedKind({ mode: "coders", link: "per_coder" })).toBe("expert");
-    expect(invitedKind({ mode: "crowd" })).toBe("crowd");
-    expect(invitedKind(null)).toBe("crowd");
+  it("those of the study's kind", () => {
     const coders = [coder("anna"), coder("P1", { kind: "crowd" }), coder("bob")];
     expect(ids(codersOfKind(coders, "expert"))).toEqual(["anna", "bob"]);
     expect(ids(codersOfKind(coders, "crowd"))).toEqual(["P1"]);

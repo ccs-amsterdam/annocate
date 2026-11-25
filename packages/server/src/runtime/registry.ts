@@ -8,6 +8,7 @@ import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from 
 import { nothingHere, sha256 } from "./session.js";
 import { DbStore } from "./dbStore.js";
 import { sessionOfEmail } from "./startSession.js";
+import { expertOfEmailHasSession } from "../shared/studyCoders.js";
 import type { Store } from "./store.js";
 import { PreviewStore, previewToken, verifyPreviewToken } from "./preview.js";
 
@@ -27,7 +28,11 @@ export interface Proof {
   linkSecret?: string;
   deviceKeys?: string[];
   transferToken?: string;
-  /** The request's login, read only when nothing else shows it belongs: its email has a session in the study. */
+  /**
+   * The request's login, read only when nothing else shows it belongs: its
+   * email has a session in the study, or is now the address of an expert
+   * coder who has one (the researchers changed it since the session started).
+   */
   login?: () => Promise<{ email: string } | null>;
 }
 
@@ -101,7 +106,10 @@ export class Deployments {
       if ((await this.db.$count(transfers, transfer)) > 0) return true;
     }
     const login = await proof.login?.();
-    return !!login && (await sessionOfEmail(this.db, studyId, login.email)) !== undefined;
+    if (!login) return false;
+    // The address a session signed in with, or the one an expert coder with a session has now
+    if ((await sessionOfEmail(this.db, studyId, login.email)) !== undefined) return true;
+    return expertOfEmailHasSession(this.db, studyId, login.email);
   }
 
   private async studyId(publicId: string): Promise<number | null> {

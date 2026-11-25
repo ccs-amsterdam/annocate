@@ -50,12 +50,11 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
       <div className="flex flex-wrap items-center gap-1 px-1">
         <HeaderButton
           guide="who-codes"
-          icon={invite?.mode === "coders" ? Users : Globe}
+          icon={invite.mode === "coders" ? Users : Globe}
           label="Who codes"
           summary={inviteSummary(invite)}
           selected={selected && tab === "invite"}
-          // Not chosen: needed to deploy
-          issues={issuesOf("invite") + (invite ? 0 : 1)}
+          issues={issuesOf("invite")}
           title="Who codes, and how they get in. Open to edit"
           onClick={() => open("invite")}
         />

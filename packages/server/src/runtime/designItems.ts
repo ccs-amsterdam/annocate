@@ -1,10 +1,10 @@
-import { runtimeInvite } from "./sessionValues.js";
 import {
   STUDY_END_NAME,
   effectiveLoopUnits,
   forEachItem,
   innerItems,
   sessionItem,
+  inviteOf,
   unitLoops,
   type AnyVariableType,
   type DesignItem,
@@ -28,7 +28,7 @@ export interface LoopInfo {
 }
 
 export function collectLoops(items: TopLevelItem[]): LoopInfo[] {
-  const crowd = runtimeInvite(sessionItem(items)).mode === "crowd";
+  const crowd = inviteOf(sessionItem(items)).mode === "crowd";
   return unitLoops(items).map(({ key, loop }, position, loops) => {
     const variables = new Map<string, AnyVariableType>();
     collectQuestions(loop.children as DesignItem[], variables);

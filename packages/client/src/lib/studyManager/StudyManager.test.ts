@@ -113,6 +113,19 @@ describe("StudyManager error-handling, rollback, and retry contract", () => {
     expect(manager.getSnapshot().phase).toBe("finished");
   });
 
+  it("a coder who started elsewhere: the snapshot says whether logging in is offered, as the server said", async () => {
+    for (const canLogIn of [true, false]) {
+      const elsewhere = new CoderApiError("Started on another device", 409, "coder_has_session", canLogIn);
+      const manager = new StudyManager(makeFlakyServer({ getSession: vi.fn().mockRejectedValue(elsewhere) }));
+      await manager.start();
+      expect(manager.getSnapshot()).toMatchObject({ phase: "error", errorCode: "coder_has_session", canLogIn });
+    }
+    // An error that says nothing about it leaves what the session said
+    const manager = new StudyManager(makeFlakyServer({ getSession: vi.fn().mockRejectedValue(new Error("down")) }));
+    await manager.start();
+    expect(manager.getSnapshot()).toMatchObject({ phase: "error", canLogIn: false });
+  });
+
   it("retry() is a no-op when nothing has failed", async () => {
     const server = makeFlakyServer();
     const manager = new StudyManager(server);

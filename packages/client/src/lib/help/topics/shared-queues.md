@@ -9,7 +9,7 @@ With **crowd coding**, coders draw from one queue. Each unit is handed out
 until it is **done**: a number of coders coded it, or agreed on it. You
 don't need to know how many coders will come; those who do more code more.
 
-With **Crowd (one link)** in **Who codes**, select a unit loop and
+In a study with a **Crowd (one link)**, select a unit loop and
 choose **Divide units among coders** under **Units and
 coders** (the default is **Everyone codes everything**). The rules are
 set per loop, and each loop has its own queue of its units (per condition

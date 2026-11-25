@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { designItems, redirectSettings, type StudyResponse } from "@annotinder/contracts";
+import { designItems, redirectSettings, type CoderKind, type StudyResponse } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
 import {
+  useDeploymentQuery,
   useDesignVersionQuery,
   useDesignVersionsQuery,
   useStudyQuery,
@@ -13,12 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Download, Trash2 } from "lucide-react";
 import { downloadFile } from "../../admin/download";
 import { ReopenSetting } from "./session/ReopenSetting";
+import { WhoCodesCards } from "./session/WhoCodesCards";
 import { DeleteStudyDialog } from "./studyList/DeleteStudyDialog";
 
 /**
  * Study settings (docs/client.md §7), on the Settings page: the study's name,
- * archived, keeping finished sessions open, panel return links, exporting
- * the whole study, and deleting it.
+ * archived, who codes (until the first deploy), keeping finished sessions
+ * open, panel return links, exporting the whole study, and deleting it.
  */
 export function StudySettings({ client, onDeleted }: { client: ResearcherApi; onDeleted?: () => void }) {
   const studyQuery = useStudyQuery(client);
@@ -52,6 +54,10 @@ function StudyEditForm({
   const updateStudy = useUpdateStudyMutation(client);
   const [name, setName] = useState(study.name);
   const [archived, setArchived] = useState(study.archived);
+  const [coderKind, setCoderKind] = useState(study.coderKind);
+  // Who codes is fixed by the first deploy (unknown yet: fixed, until the deployment is read)
+  const deployment = useDeploymentQuery(client);
+  const kindLocked = deployment.data !== null;
   const [reopenMinutes, setReopenMinutes] = useState(study.reopenMinutes);
   const [redirects, setRedirects] = useState<Record<string, string>>(study.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
@@ -63,7 +69,11 @@ function StudyEditForm({
   // Compared as saved: without empty URLs, in any key order (the server stores JSONB)
   const redirectsDirty = JSON.stringify(setUrls(redirects)) !== JSON.stringify(setUrls(study.redirectUrls ?? {}));
   const dirty =
-    name !== study.name || archived !== study.archived || reopenMinutes !== study.reopenMinutes || redirectsDirty;
+    name !== study.name ||
+    archived !== study.archived ||
+    coderKind !== study.coderKind ||
+    reopenMinutes !== study.reopenMinutes ||
+    redirectsDirty;
 
   return (
     <div className="max-w-md space-y-6">
@@ -77,6 +87,8 @@ function StudyEditForm({
             body: {
               name,
               archived,
+              // Only a change is sent: after the first deploy the server refuses another kind
+              ...(coderKind !== study.coderKind ? { coderKind } : {}),
               reopenMinutes,
               redirectUrls,
             },
@@ -97,6 +109,8 @@ function StudyEditForm({
           />
           <span>Archived (hide from active coding lists)</span>
         </label>
+
+        <WhoCodesSetting value={coderKind} locked={kindLocked} onChange={setCoderKind} />
 
         <ReopenSetting value={reopenMinutes} onChange={setReopenMinutes} />
 
@@ -139,6 +153,29 @@ function StudyEditForm({
 
       <StudyDeletion client={client} study={study} onDeleted={onDeleted} />
     </div>
+  );
+}
+
+/** Who codes in the study (expert coders or a crowd): a choice until the study's first deploy, then fixed. */
+function WhoCodesSetting({
+  value,
+  locked,
+  onChange,
+}: {
+  value: CoderKind;
+  locked: boolean;
+  onChange: (kind: CoderKind) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-1.5">
+      <legend className="mb-1 text-sm font-medium text-foreground">Who codes</legend>
+      <WhoCodesCards value={value} disabled={locked} onChoose={onChange} />
+      <p className="text-xs text-muted-foreground">
+        {locked
+          ? "Fixed since the study's first deploy: coders started, and their links and units follow from it."
+          : "Can be changed until the study's first deploy. Changing it sets the design's Who codes to the new kind's defaults."}
+      </p>
+    </fieldset>
   );
 }
 

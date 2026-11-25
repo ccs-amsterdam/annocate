@@ -34,7 +34,7 @@ export function selectsUnits(item: unknown): item is { type: "experiment"; name:
  */
 export function loopShareColumns(items: readonly unknown[]): Map<string, ShareColumn[]> {
   const sessionShares: ShareColumn[] =
-    inviteOf(sessionItem(items))?.mode === "coders" ? [{ name: "coder", column: CODER_SET }] : [];
+    inviteOf(sessionItem(items)).mode === "coders" ? [{ name: "coder", column: CODER_SET }] : [];
   const randomShares: ShareColumn[] = [];
   const out = new Map<string, ShareColumn[]>();
   forEachItem<{ type?: unknown; name?: unknown; id?: unknown }>(items, (it) => {

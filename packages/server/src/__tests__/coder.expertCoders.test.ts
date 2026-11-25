@@ -10,7 +10,6 @@ import { ensureUser } from "../shared/accounts.js";
 import { createSession } from "../shared/sessions.js";
 
 import {
-  chosen,
   adminHeaders,
   db,
   server,
@@ -32,6 +31,7 @@ import {
   sessionItem,
   crowd,
   codersInvite,
+  setCoderKind,
   useServer,
   CODER_LOGIN,
 } from "./coderHarness.js";
@@ -180,21 +180,20 @@ describe("coders", () => {
     await addCoders(["anna", { coder: "bob", email: "b@example.org" }, "carl"]);
     await createSet("anna", ["unit-1"], "coder_set");
     await createSet("bob", ["unit-2"], "coder_set");
+    await setCoderKind("expert");
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify(
-        chosen(
-          splitDesignItems([
-            codersInvite("login"),
-            {
-              type: "unit_loop",
-              id: "loop_1",
-              units: {},
-              children: [{ type: "layout", template: "" }, sentimentQuestion],
-            },
-          ]),
-        ),
+        splitDesignItems([
+          codersInvite("login"),
+          {
+            type: "unit_loop",
+            id: "loop_1",
+            units: {},
+            children: [{ type: "layout", template: "" }, sentimentQuestion],
+          },
+        ]),
       ),
     });
     const { id } = (await design.json()) as { id: number };
@@ -221,21 +220,20 @@ describe("coders", () => {
   });
 
   it("without coder_set there are no coders: the draft saves, deploying is refused", async () => {
+    await setCoderKind("expert");
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify(
-        chosen(
-          splitDesignItems([
-            codersInvite(),
-            {
-              type: "unit_loop",
-              id: "loop_1",
-              units: {},
-              children: [{ type: "layout", template: "" }, sentimentQuestion],
-            },
-          ]),
-        ),
+        splitDesignItems([
+          codersInvite(),
+          {
+            type: "unit_loop",
+            id: "loop_1",
+            units: {},
+            children: [{ type: "layout", template: "" }, sentimentQuestion],
+          },
+        ]),
       ),
     });
     expect(design.status).toBe(201);

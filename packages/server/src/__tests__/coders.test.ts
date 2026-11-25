@@ -15,10 +15,13 @@ import {
   deployDrafts,
   devices,
   links,
+  ownedBy,
   redeploy,
+  restart,
   send,
   sentiment,
   server,
+  useServer,
 } from "./coderHarness.js";
 
 // The study's coders (shared/studyCoders.ts, docs/coder-identity.md §2): the
@@ -42,6 +45,13 @@ const panel = () => redeploy({}, [crowd(undefined, { coderParam: { param: "pid",
 const start = (device: string, params = "", headers: Record<string, string> = {}) =>
   send(device, "/session", {}, { "x-link-secret": "demo-secret", "x-url-params": params, ...headers });
 
+/** Logs a device's browser in, keeping the sessions it has. */
+async function logIn(device: string, email: string) {
+  const user = await ensureUser(db, email);
+  devices.get(device)!.cookies.set("annotinder_session", await createSession(db, user.id, CODER_LOGIN));
+}
+
+/** A new device, logged in as this address. */
 async function loggedIn(device: string, email: string) {
   const user = await ensureUser(db, email);
   devices.set(device, {
@@ -344,13 +354,6 @@ describe("a crowd's coders", () => {
     expect(await query(db, "SELECT id FROM coder_sessions")).toEqual([]);
     expect(await rows()).toEqual([{ coder: "anna", kind: "expert" }]);
   });
-
-  it("who sign in without a coder id in the link: the coder id is their address", async () => {
-    await redeploy({}, [crowd(undefined, { login: true })]);
-    await loggedIn("phone", "P@Example.org");
-    expect((await start("phone")).status).toBe(200);
-    expect(await rows()).toEqual([{ coder: "p@example.org", kind: "crowd" }]);
-  });
 });
 
 describe("a session's coder", () => {
@@ -418,6 +421,19 @@ describe("expert coders who sign in", () => {
     expect(await query(db, "SELECT coder, email FROM coder_sessions")).toEqual([
       { coder: "anna", email: "anna@uni.nl" },
     ]);
+    // Also on a device that has only the login (no link), when the study isn't in memory (a restart)
+    const withoutLink = async (device: string) => {
+      useServer(restart());
+      const res = await send(device, "/session");
+      return { status: res.status, body: (await res.json()) as SessionResponse & { code?: string } };
+    };
+    await loggedIn("tablet", "A.deVries@work.nl");
+    expect(await withoutLink("tablet")).toMatchObject({ status: 200, body: { sessionId: first.body.sessionId } });
+    // The old address shows nothing of the study, nor does another coder's who hasn't started
+    await loggedIn("old tablet", "anna@uni.nl");
+    expect(await withoutLink("old tablet")).toMatchObject({ status: 404, body: { code: "link_not_found" } });
+    await loggedIn("bob's", "bob@uni.nl");
+    expect(await withoutLink("bob's")).toMatchObject({ status: 404, body: { code: "link_not_found" } });
     // Without an address: nobody signs in as this coder
     expect((await request("PATCH", "/coders/anna", { email: null })).status).toBe(200);
     await loggedIn("later", "a.devries@work.nl");
@@ -489,18 +505,14 @@ describe("deleting a coder", () => {
     expect((await byId()).get("bob")).toMatchObject({ assigned: 1, assignedDraft: 1, draftDiffers: false });
   });
 
-  it("revokes their own link: nobody starts as them, and the others' links work", async () => {
+  it("deletes their own link: nobody starts as them, and the others' links work", async () => {
     const { secrets } = await setUp();
     await remove({ coders: ["anna"] });
-    const state = Object.fromEntries(
-      (await links()).map((l) => [l.params.coder, (l as { revokedAt?: string | null }).revokedAt]),
-    );
-    expect(state.anna).not.toBeNull();
-    expect(state.bob).toBeNull();
+    expect((await links()).filter((l) => !l.retiredAt).map((l) => l.params.coder)).toEqual(["bob"]);
     const again = await send("anna-again", "/session", {}, { "x-link-secret": secrets.anna! });
-    expect(await refusal(again)).toMatchObject({ status: 403, code: "link_revoked" });
+    expect(await refusal(again)).toMatchObject({ status: 404, code: "link_not_found" });
     // Their browser has no session any more
-    expect((await send("anna", "/session", {}, { "x-link-secret": secrets.anna! })).status).toBe(403);
+    expect((await send("anna", "/session", {}, { "x-link-secret": secrets.anna! })).status).toBe(404);
     expect((await send("bob", "/session", {}, { "x-link-secret": secrets.bob! })).status).toBe(200);
   });
 
@@ -515,6 +527,30 @@ describe("deleting a coder", () => {
       done: 0,
       sessions: 0,
     });
+  });
+
+  it("a coder made again with the id gets a new link at the next deploy, which works", async () => {
+    const { secrets } = await setUp();
+    await remove({ coders: ["anna"] });
+    await create([{ coder: "anna" }]);
+    await createSet("anna", ["unit-2"], "coder_set");
+    await deployDrafts();
+    const listed = (await links()) as (Awaited<ReturnType<typeof links>>[number] & {
+      revokedAt: string | null;
+      uses: number;
+    })[];
+    const now = Object.fromEntries(listed.filter((l) => !l.retiredAt).map((l) => [l.params.coder, l]));
+    expect(Object.keys(now).sort()).toEqual(["anna", "bob"]);
+    expect(now.anna).toMatchObject({ retiredAt: null, revokedAt: null, uses: 0 });
+    expect(now.anna!.secret).not.toBe(secrets.anna);
+    expect(now.bob!.secret).toBe(secrets.bob);
+    // The new link starts the new coder, with their units and none of the earlier answers
+    const anna = coder("anna's new laptop", now.anna!.secret);
+    expect((await anna.session()).session.coder).toBe("anna");
+    expect((await anna.next())!.externalId).toBe("unit-2");
+    // The earlier link stays gone
+    const earlier = await send("earlier", "/session", {}, { "x-link-secret": secrets.anna! });
+    expect(await refusal(earlier)).toMatchObject({ status: 404, code: "link_not_found" });
   });
 
   it("works for a coder who never started, and by the email address the researchers gave", async () => {
@@ -541,6 +577,42 @@ describe("deleting a coder", () => {
     expect((await byId()).get("P1")!.sessions).toBe(1);
     expect(await remove({ sessionIds: [second.sessionId] })).toMatchObject({ coders: ["P1"] });
     expect((await coderList()).coders).toEqual([]);
+  });
+
+  it("a crowd's coder goes with a session that is removed unused: its device moved to its login's session", async () => {
+    await ownedBy("owner@example.org", { crowdSignIn: true });
+    await panel();
+    const signIn = { "x-use-login": "1" };
+    // P1 signs in on their phone
+    const phone = (await (await start("phone", "pid=P1")).json()) as SessionResponse;
+    await logIn("phone", "p@example.org");
+    expect(((await (await start("phone", "pid=P1", signIn)).json()) as SessionResponse).login).toBe("p@example.org");
+    // On a laptop the same person starts as P2, then signs in: the laptop continues the phone's session
+    const laptop = (await (await start("laptop", "pid=P2")).json()) as SessionResponse;
+    expect(laptop.sessionId).not.toBe(phone.sessionId);
+    expect((await coderList()).coders.map((c) => c.coder)).toEqual(["P1", "P2"]);
+    await logIn("laptop", "p@example.org");
+    const moved = (await (await start("laptop", "pid=P2", signIn)).json()) as SessionResponse;
+    expect(moved.sessionId).toBe(phone.sessionId);
+    // P2's only session was unused and is gone, and so is P2
+    expect(await query(db, "SELECT coder FROM coder_sessions")).toEqual([{ coder: "P1" }]);
+    expect(await query(db, "SELECT coder, kind FROM coders")).toEqual([{ coder: "P1", kind: "crowd" }]);
+  });
+
+  it("a crowd's coder stays when the session a device left had answers, or they have another session", async () => {
+    await ownedBy("owner@example.org", { crowdSignIn: true });
+    await panel();
+    const signIn = { "x-use-login": "1" };
+    await start("phone", "pid=P1");
+    await logIn("phone", "p@example.org");
+    await start("phone", "pid=P1", signIn);
+    // P2 has two sessions: the unused one a device leaves is removed, P2 stays for the other
+    await start("tablet", "pid=P2");
+    await start("laptop", "pid=P2", { "x-new-session": "1" });
+    await logIn("laptop", "p@example.org");
+    await start("laptop", "pid=P2", signIn);
+    expect(await query(db, "SELECT coder FROM coder_sessions ORDER BY id")).toEqual([{ coder: "P1" }, { coder: "P2" }]);
+    expect((await coderList()).coders.map((c) => c.coder)).toEqual(["P1", "P2"]);
   });
 
   it("the log keeps a hash of a coder id that looks like an email address", async () => {

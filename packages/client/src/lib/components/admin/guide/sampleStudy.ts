@@ -1,10 +1,12 @@
-import type {
-  DesignVersion,
-  SetGroupResponse,
-  StudyResponse,
-  TopLevelItem,
-  UnitField,
-  UnitResponse,
+import {
+  firstInvite,
+  type CoderKind,
+  type DesignVersion,
+  type SetGroupResponse,
+  type StudyResponse,
+  type TopLevelItem,
+  type UnitField,
+  type UnitResponse,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 
@@ -127,9 +129,9 @@ const units: UnitResponse[] = [
 const now = new Date("2026-01-01T12:00:00Z");
 
 /** The sample's design version, as the server would send it: with a crowd, or expert coders. */
-export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersion {
+export function sampleDesign(coderKind: CoderKind = "crowd"): DesignVersion {
   return {
-    id: invite === "crowd" ? DESIGN_ID : DESIGN_ID - 1,
+    id: DESIGN_ID,
     studyId: STUDY_ID,
     formatVersion: 1,
     note: null,
@@ -141,20 +143,21 @@ export function sampleDesign(invite: "coders" | "crowd" = "crowd"): DesignVersio
     valid: true,
     items,
     units: { fields },
-    session: { invite: invite === "crowd" ? { mode: "crowd" } : { mode: "coders", link: "per_coder" } },
+    session: { invite: firstInvite(coderKind) },
     public: { title: "News headlines" },
   };
 }
 
-const study: StudyResponse = {
+const sampleStudy = (coderKind: CoderKind): StudyResponse => ({
   id: STUDY_ID,
   publicId: "samplestudy1",
   name: "Sample: news headlines",
   archived: false,
+  coderKind,
   created: now,
   reopenMinutes: 1440,
   redirectUrls: {},
-};
+});
 
 // Expert coders: whose units are whose
 const groups: SetGroupResponse[] = [
@@ -168,12 +171,12 @@ const groups: SetGroupResponse[] = [
 ];
 
 /** What the sample's pages ask the API for; anything else gets nothing. */
-const answers: Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown>> = {
-  getStudy: () => study,
-  listStudies: () => [study],
+const sampleAnswers = (coderKind: CoderKind): Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown>> => ({
+  getStudy: () => sampleStudy(coderKind),
+  listStudies: () => [sampleStudy(coderKind)],
   getDeployment: () => null,
-  getDesignVersion: (id: number) => sampleDesign(id === DESIGN_ID ? "crowd" : "coders"),
-  listDesignVersions: () => [sampleDesign()],
+  getDesignVersion: () => sampleDesign(coderKind),
+  listDesignVersions: () => [sampleDesign(coderKind)],
   getUnitFields: () => fields,
   listUnits: () => units.map((u) => ({ id: u.id, externalId: u.externalId, hash: String(u.id), coded: false })),
   listUnitPage: (q: { offset?: number; limit?: number }) => ({
@@ -186,14 +189,15 @@ const answers: Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown
   listCoders: () => ({ coders: [], unassigned: { live: null, draft: 0 } }),
   getPendingChanges: () => ({ units: { added: 0, changed: 0, removed: 0, sets: false }, designVersionId: null }),
   listDeploymentVersions: () => [],
-};
+});
 
 /**
- * A ResearcherApi for the sample: answers from memory, never writes. Its
- * pages are drawn inert, so nothing should write; a write that slips
- * through is refused.
+ * A ResearcherApi for the sample, as a study with a crowd or with expert
+ * coders: answers from memory, never writes. Its pages are drawn inert, so
+ * nothing should write; a write that slips through is refused.
  */
-export function sampleClient(): ResearcherApi {
+export function sampleClient(coderKind: CoderKind = "crowd"): ResearcherApi {
+  const answers = sampleAnswers(coderKind);
   const api: ResearcherApi = new Proxy({} as ResearcherApi, {
     get(_, prop) {
       if (prop === "studyId") return STUDY_ID;

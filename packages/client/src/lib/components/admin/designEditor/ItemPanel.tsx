@@ -267,9 +267,10 @@ function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unk
     .map(([name, v]) => ({ name, selectsUnits: (v as { selectsUnits?: boolean }).selectsUnits === true }));
   const loops = unitLoops(items);
   const at = loops.findIndex((l) => getItemKey(l.loop as DesignItem) === key);
+  const invite = inviteOf(session);
   return {
-    invite: inviteOf(sessionItem(cleanItems)),
-    sources: shareSources(session.invite, random),
+    invite,
+    sources: shareSources(invite, random),
     earlier: loops.slice(0, Math.max(0, at)).map((l) => ({ title: loopTitle(l.loop) })),
   };
 }

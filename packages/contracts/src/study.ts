@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { IdSchema, RoleSchema, SafeNameSchema } from "./common.js";
+import { CoderKindSchema } from "./design/session.js";
 
 /** The reopen time of new studies (`reopenMinutes`): a day. */
 export const DEFAULT_REOPEN_MINUTES = 24 * 60;
@@ -14,6 +15,16 @@ export const StudyWriteSchema = z.object({
   name: StudyNameSchema,
   /** Left out: a new study isn't archived; `PUT` keeps what it was. */
   archived: z.boolean().optional(),
+  /**
+   * Who codes: the researchers' expert coders, or a crowd
+   * (docs/architecture.md §6.1). Chosen when the study is made (left out: a
+   * crowd), and can be changed until the study's first deploy: after it, a
+   * `PUT` with another kind is refused (409 `coder_kind_locked`). The
+   * study's designs invite this kind (`validateDesignItems`); changing it
+   * sets its designs' invitation to the new kind's first one
+   * (`firstInvite`). `PUT` left out: unchanged.
+   */
+  coderKind: CoderKindSchema.optional(),
   /**
    * How long coders can go back after finishing, in minutes (counted from
    * when they last finished). null: always, the session stays open (coders
@@ -54,6 +65,7 @@ export const PublicStudyIdSchema = z.string().regex(new RegExp(`^[a-z0-9]{${PUBL
 
 export const StudyResponseSchema = StudyWriteSchema.extend({
   archived: z.boolean(),
+  coderKind: CoderKindSchema,
   id: IdSchema,
   publicId: PublicStudyIdSchema,
   created: z.coerce.date(),

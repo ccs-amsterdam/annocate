@@ -57,6 +57,7 @@ export function CodingScreen(props: CodingScreenProps) {
           onRetry={() => void manager.retry()}
           onBackToUnit={snapshot.refusedUnit ? () => void manager.backToRefusedUnit() : undefined}
           onStartNewSession={props.onStartNewSession}
+          canLogIn={snapshot.canLogIn}
           baseUrl={props.baseUrl}
           linkSecret={props.linkSecret}
           coderName={props.coderName}
@@ -92,6 +93,7 @@ export function CodingScreen(props: CodingScreenProps) {
           unitSlide={unitSlide}
           correctFlash={correctFlash}
           transferUrl={props.transferUrl ?? defaultTransferUrl}
+          joinedByTransfer={props.joinedByTransfer}
           preview={props.preview}
         />
       );

@@ -26,6 +26,8 @@ release can't be used with it: start with an empty database
   on. Coders' unsaved answers survive a new version.
 - Results as a download (CSV or .xlsx) with documented column names that
   can't collide, and a results view with agreement.
+- A study has expert coders or a crowd: chosen when you create it, and
+  changed in its Settings until its first deploy.
 - Coder links name a study by a random id. At most 5 sessions per coder id
   per study.
 - Moving a study between servers: export and import a whole study.
@@ -42,7 +44,9 @@ release can't be used with it: start with an empty database
   says so; a closed tab loses no finished unit.
 - Stop for now and continue later, on this device or another; quit; or quit
   and ask the researchers to delete your answers.
-- Logging in is your choice, unless a study requires it.
+- Logging in is your choice where a study offers it, unless the study
+  requires it (expert coders who sign in). The researchers don't see the
+  address you chose to log in with.
 
 ### For those who run a server
 
@@ -50,7 +54,8 @@ release can't be used with it: start with an empty database
   step-by-step hosting guide and a smoke test (`docs/hosting.md`).
 - Researcher login through an OpenID Connect provider, with a second factor
   for sensitive actions; registration by invitation, email domain or
-  request; plans with limits per researcher.
+  request; plans with limits per researcher, and whether a crowd's coders
+  can sign in in their studies (off by default).
 - The server doesn't start on settings that only fit development: with a
   database it needs `ANNOTINDER_SECRET` and `ANNOTINDER_PUBLIC_URL`.
 - Rate limits, request size limits, a request log without query strings,

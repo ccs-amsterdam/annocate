@@ -11,7 +11,7 @@ import { columnValues } from "../../../design/assignment";
  * (deploying is refused), and coder ids that look like email addresses
  * where coders pick their name (a warning).
  */
-export function InviteChecks({ client, invite }: { client: ResearcherApi; invite: Invite | null }) {
+export function InviteChecks({ client, invite }: { client: ResearcherApi; invite: Invite }) {
   const groups = useSetGroupsQuery(client).data;
   const coders = useCodersQuery(client).data?.coders;
   // Nothing to say before both are known: a coder not read yet would count as one without an address

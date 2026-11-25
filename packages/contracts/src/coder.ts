@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
-import { isEmail, type Invite } from "./design/session.js";
+import { CoderKindSchema, isEmail, type Invite } from "./design/session.js";
 import { ListQuerySchema, listResponse } from "./paging.js";
 import { DeletionRequestSchema, DisplayChangeSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
@@ -59,10 +59,6 @@ export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 // researchers, and a crowd's coders, made when a session with a new coder id
 // starts. A coder id is per study and never changes; ids that differ only in
 // case are the same coder.
-
-/** Who a coder is: one of the researchers' expert coders, or a coder of a crowd. */
-export const CoderKindSchema = z.enum(["expert", "crowd"]);
-export type CoderKind = z.infer<typeof CoderKindSchema>;
 
 /** The longest id of an expert coder. */
 export const MAX_CODER_ID = 64;
@@ -126,12 +122,12 @@ export function listedCoders(ids: readonly string[]): string {
  * with the link: a warning if they look like email addresses.
  */
 export function coderInviteChecks(
-  invite: Invite | null,
+  invite: Invite,
   assigned: readonly { coder: string; email: string | null }[],
 ): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
-  if (invite?.mode !== "coders") return { errors, warnings };
+  if (invite.mode !== "coders") return { errors, warnings };
   const noEmail = assigned.filter((c) => !c.email).map((c) => c.coder);
   if (invite.link === "login" && noEmail.length > 0)
     errors.push(

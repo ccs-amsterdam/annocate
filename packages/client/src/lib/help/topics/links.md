@@ -2,22 +2,27 @@
 title: Links
 section: Coders
 order: 1
-summary: The links coders open to start - made from the design's who codes, with coder ids, sign-in and a maximum number of coders per link.
+summary: The links coders open to start - made for the study's expert coders or its crowd, with coder ids, sign-in and a maximum number of coders per link.
 ---
 
 Coders start by opening a **link**, listed under **Links**.
-Deploying makes the links: you don't create them by hand. The design's
-**Who codes** decides which links there are.
+Deploying makes the links: you don't create them by hand. **Who codes**
+decides which links there are.
 
 ## Who codes
 
-Open **Who codes** above the item tree and choose (a new design asks
-first; it can't be deployed without a choice):
+A study has **expert coders** or a **crowd**. You choose when you create
+the study, and can change it under **Settings** until the study's first
+deploy; after that it is fixed. (Changing it sets the design's **Who
+codes** to the new kind's defaults.)
 
 | Who codes            | For                                                                              | Links                                                   |
 | -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | **Expert coders**    | coders you know, each with their own units (content analysis, trained coders)    | a link per coder, or one link to pick a name or sign in |
 | **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
+
+How those coders get in is part of the design: **Who codes** above the
+item tree, which shows the options for your study's kind of coders.
 
 **Expert coders**: you add your coders on **Coders**, and the units'
 **coder set** (`coder_set`) names the coder(s) of each unit; **Create
@@ -37,7 +42,6 @@ See [Giving each coder their own units](own-units.md).
 
 - **Coder id from a URL parameter**, e.g. a panel's `PROLIFIC_PID` (see
   [Coder ids](#coder-ids));
-- **Coders sign in**: you see their email address (see [Login](#login));
 - **Max. nr of coders**: the sample size (see
   [Max. nr of coders](#max-nr-of-coders)).
 
@@ -54,7 +58,9 @@ coders without units is fine (e.g. a survey of experts, a link each).
 Deploying a different invitation makes the links it needs and **retires**
 the rest. A new coder in the coder set gets a link when the units are
 deployed; a removed coder's link is retired; a returning coder gets the
-same link again. Deleting a coder (on **Coders**) **revokes** their link. Retired links show _"This link is no longer active"_;
+same link again. Deleting a coder (on **Coders**) **deletes** their link:
+a coder you add again with the same id gets a new one when you deploy the
+units. Retired links show _"This link is no longer active"_;
 coders who started keep working. More than 500 links asks to confirm; at
 most 2000.
 
@@ -64,12 +70,12 @@ A **coder id** says who the coder is, in the **Coder** column and the
 `coder` column of the results, to link to your other data. In the design:
 `$session.coder`.
 
-| Invitation                            | Coder id                     |
-| ------------------------------------- | ---------------------------- |
-| Expert coders                         | the coder id you gave them   |
-| One link                              | none (anonymous; a number)   |
-| One link, coder id from URL parameter | the parameter's value        |
-| One link with sign-in                 | their email address          |
+| Invitation                            | Coder id                   |
+| ------------------------------------- | -------------------------- |
+| Expert coders                         | the coder id you gave them |
+| One link                              | none (anonymous; a number) |
+| One link, coder id from URL parameter | the parameter's value      |
+| One link with sign-in                 | their email address        |
 
 Expert coders keep their coder id however they get in: also when they sign
 in, they are `anna` in your results, not their address.
@@ -128,24 +134,31 @@ widely; coders who started keep working.
 
 ## Login
 
-Coders sign in with the server's login. They can **always** sign in
-(**Continue on another device** → **Log in**) to keep a session with their
-account and continue it on other devices. Whether they **must**, and
-whether you see their address, depends on the invitation:
+Coders sign in with the server's login. Who **must**, who **may**, and
+whether you see their address:
 
-- **Expert coders, sign in**: their address must be the email address of
-  a coder with units (others see _"This email address has no access to
-  this study"_). You enter the addresses on **Coders**; deploying is
-  refused while a coder with units has none;
-- **One link with Coders sign in**: they sign in before starting;
-- **otherwise**: optional, and you don't see their address.
+- **Expert coders who sign in** (one link, their email address): they must.
+  Their address must be the email address of a coder with units (others see
+  _"This email address has no access to this study"_). You enter the
+  addresses on **Coders**; deploying is refused while a coder with units
+  has none;
+- **Other expert coders** (a link each, or picking a name): they may
+  (**Continue on another device** → **Log in**: _"Sign in to continue from
+  any device. The researchers don't see your email address."_), to keep
+  their session with their account and continue on other devices. You
+  don't see their address;
+- **A crowd's coders** never have to sign in. Whether they may is not a
+  setting of your study but of your **plan** on this server, and off
+  unless the server's admins turned it on: ask them. Where it is off,
+  crowd coders aren't offered **Log in**, and continue on another device
+  with the QR code or link under **Continue on another device**.
 
 Where sign-in is required, the address a coder signed in with is stored
 (`email` in the results) and you can delete a coder's data by email.
 
 Being logged in on the server is not the same as signing in to your
-study. Where sign-in is optional, a coder's account is used only after
-they chose **Log in** in your study. Someone who opens your link while
+study. Where signing in is the coder's choice, their account is used only
+after they chose **Log in** in your study. Someone who opens your link while
 logged in for something else (another study, or you testing your own
 link as a researcher) codes without an account: no address is stored, and
 a second link in the same browser starts its own session.

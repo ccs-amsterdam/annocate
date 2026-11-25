@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, inArray, notExists, or, sql } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
 import { sha256Hex } from "./crypto.js";
 import {
   CODER_SET,
@@ -9,6 +9,7 @@ import {
   type DeleteCodersResponse,
 } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
+import { forgetCrowdCoders } from "./studyCoders.js";
 import { lockUnits } from "../db/locks.js";
 import { anyOf } from "../db/sql.js";
 import {
@@ -39,9 +40,9 @@ export async function deleteCoders(
     const named = await namedCoders(tx, studyId, select);
     const sessions = await selectedSessions(tx, studyId, select, named);
     const answers = await deleteSessions(tx, studyId, sessions, deletedBy);
-    const left = (await crowdCodersWithoutSessions(tx, studyId, sessions)).filter((c) => !named.includes(c));
     await removeCoders(tx, studyId, named);
-    await removeCoders(tx, studyId, left);
+    const theirs = [...new Set(sessions.flatMap((s) => (s.coder === null ? [] : [s.coder])))];
+    const left = await forgetCrowdCoders(tx, studyId, theirs);
     return { sessionIds: sessions.map((s) => s.id), answers, coders: [...named, ...left] };
   });
 }
@@ -138,28 +139,12 @@ async function deleteSessions(db: Db, studyId: number, sessions: Selected[], del
   return removed.length;
 }
 
-/** The crowd's coders among the deleted sessions' who have no session left. */
-async function crowdCodersWithoutSessions(db: Db, studyId: number, deleted: Selected[]): Promise<string[]> {
-  const theirs = [...new Set(deleted.flatMap((s) => (s.coder === null ? [] : [s.coder])))];
-  if (theirs.length === 0) return [];
-  const sessions = db
-    .select({ one: sql`1` })
-    .from(coderSessions)
-    .where(and(eq(coderSessions.studyId, coders.studyId), eq(coderSessions.coder, coders.coder)));
-  const found = await db
-    .select({ coder: coders.coder })
-    .from(coders)
-    .where(
-      and(eq(coders.studyId, studyId), eq(coders.kind, "crowd"), inArray(coders.coder, theirs), notExists(sessions)),
-    );
-  return found.map((c) => c.coder);
-}
-
 /**
  * Removes coders from the study: their row (with their email address), their
  * units in the draft's and the deployed `coder_set` (those units have no
- * coder until the researchers divide them again), and their own link, which
- * is revoked. The ids can be made again afterwards.
+ * coder until the researchers divide them again), and their own link (a
+ * link per coder): deleted, since its sessions are gone, so a coder made
+ * again with the id gets a new link at the next deploy.
  */
 async function removeCoders(db: Db, studyId: number, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
@@ -167,25 +152,22 @@ async function removeCoders(db: Db, studyId: number, ids: string[]): Promise<voi
   await db
     .delete(unitSets)
     .where(and(eq(unitSets.studyId, studyId), eq(unitSets.grp, CODER_SET), inArray(unitSets.name, ids)));
-  await db
-    .update(links)
-    .set({ revokedAt: sql`COALESCE(${links.revokedAt}, now())` })
-    .where(
-      and(
-        eq(links.studyId, studyId),
-        inArray(
-          links.linkKey,
-          ids.map((coder) => linkKey({ coder })),
-        ),
+  await db.delete(links).where(
+    and(
+      eq(links.studyId, studyId),
+      inArray(
+        links.linkKey,
+        ids.map((coder) => linkKey({ coder })),
       ),
-    );
+    ),
+  );
   await db.delete(coders).where(and(eq(coders.studyId, studyId), inArray(coders.coder, ids)));
 }
 
 /**
  * A deleted coder's id as the deletion log keeps it. A coder id that looks
- * like an email address (a crowd that signs in, or an id the researchers
- * chose) is kept as `sha256:<hash of the address in lower case>`, which
+ * like an email address (a panel's id, or an id the researchers chose) is
+ * kept as `sha256:<hash of the address in lower case>`, which
  * finds the coder in results downloaded earlier (hash the ids there) and
  * names nobody.
  */

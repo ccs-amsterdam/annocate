@@ -63,7 +63,6 @@ export function SessionPreview({
 
 function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetGroupResponse[]; base: string }) {
   const invite = inviteOf(item);
-  if (!invite) return <p className="text-sm text-muted-foreground">Who codes isn&apos;t chosen yet.</p>;
   if (invite.mode === "crowd") {
     const id = invite.coderParam;
     return (
@@ -72,13 +71,8 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
           One link for everyone: <Code>{base + (id && !id.optional ? `&${id.param}=<coder id>` : "")}</Code>
         </Row>
         <Row label="Who the coder is">
-          {id
-            ? `The coder id in ?${id.param}=${id.optional ? " (optional)" : ""}`
-            : invite.login
-              ? "Their email (they sign in)"
-              : "Anonymous: a session per browser"}
+          {id ? `The coder id in ?${id.param}=${id.optional ? " (optional)" : ""}` : "Anonymous: a session per browser"}
         </Row>
-        {invite.login && <Row label="Signing in">Coders sign in before they start</Row>}
         <Row label="Units">Divided among the coders or not: per unit loop (its Units settings)</Row>
         {invite.maxCoders !== undefined && <Row label="Max. nr of coders">{invite.maxCoders}</Row>}
       </div>

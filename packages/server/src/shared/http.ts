@@ -9,7 +9,8 @@ export interface RequestIssue {
 /**
  * An error that maps directly onto an HTTP response, in the API's one error
  * shape: `{ error: string, code?, issues? }` (`issues`: what a schema
- * refused in the request, shared/request.ts).
+ * refused in the request, shared/request.ts), with what else a code's
+ * response says (`details`, e.g. `canLogIn` of `coder_has_session`).
  */
 export class HttpError extends Error {
   constructor(
@@ -18,6 +19,7 @@ export class HttpError extends Error {
     /** Machine-readable code the client handles specially (contracts `CoderErrorCode`). */
     readonly code?: string,
     readonly issues?: RequestIssue[],
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }

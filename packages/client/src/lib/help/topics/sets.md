@@ -8,12 +8,12 @@ summary: The units' columns with a role - who codes each unit (coder_set), each 
 Four columns of your units have a fixed name and meaning. Any other column
 is data (text to show, metadata).
 
-| Column          | Label         | Says                                                     | Used by                                                                                                 |
-| --------------- | ------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `coder_set`     | Coder set     | who codes the unit, by coder id: `anna`, `anna;bob`      | **Expert coders** (see [Giving each coder their own units](own-units.md))                               |
-| `condition_set` | Condition set | the experiment's conditions the unit is for              | an [experiment](experimental-conditions.md) that gives each condition its own units                     |
-| `part_set`      | Part set      | the part of the study, e.g. `pre`, `post`                | a unit loop shows one part (see [Handing out units](unit-distribution.md))                              |
-| `test_set`      | Test set      | `overlap`, `practice` or `gold` (empty: a coding unit)   | where loops put test units, and their checks (see [Overlap, gold and practice units](special-units.md)) |
+| Column          | Label         | Says                                                   | Used by                                                                                                 |
+| --------------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `coder_set`     | Coder set     | who codes the unit, by coder id: `anna`, `anna;bob`    | **Expert coders** (see [Giving each coder their own units](own-units.md))                               |
+| `condition_set` | Condition set | the experiment's conditions the unit is for            | an [experiment](experimental-conditions.md) that gives each condition its own units                     |
+| `part_set`      | Part set      | the part of the study, e.g. `pre`, `post`              | a unit loop shows one part (see [Handing out units](unit-distribution.md))                              |
+| `test_set`      | Test set      | `overlap`, `practice` or `gold` (empty: a coding unit) | where loops put test units, and their checks (see [Overlap, gold and practice units](special-units.md)) |
 
 Without them every coder gets all units. Each value of a `*_set` column is
 a **set**: the units with that value.

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   undeclaredFields,
   validateDesignItems,
+  type CoderKind,
   type DesignIssue,
   type DesignItem,
   type StudyEnd,
@@ -54,6 +55,8 @@ const BACKUP_DELAY_MS = 1000;
 
 interface UseDesignDraftOptions {
   client: ResearcherApi;
+  /** The study's kind of coders: a new design starts with its invitation, and the invitation must be for it. */
+  coderKind: CoderKind;
   /** The version being edited; null/undefined for a new design version. */
   version?: DesignVersion | null;
   readOnly: boolean;
@@ -79,6 +82,7 @@ interface UseDesignDraftOptions {
  */
 export function useDesignDraft({
   client,
+  coderKind,
   version,
   readOnly,
   onSaved,
@@ -88,7 +92,7 @@ export function useDesignDraft({
   loopProgress,
 }: UseDesignDraftOptions) {
   // The items, the items as last saved, the revision the edits are based on, undo steps (design/draft.ts)
-  const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore)));
+  const [draft, setDraft] = useState(() => openDraft(startDraft(version, restore, coderKind)));
   const { items, saved, revision, history, conflict } = draft;
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -109,7 +113,7 @@ export function useDesignDraft({
   }, [version, studyFields]);
   const undeclared = useMemo(() => (declared ? undeclaredFields(cleanItems, declared) : []), [cleanItems, declared]);
   const validationIssues = useMemo(() => {
-    const issues: DesignIssue[] = validateDesignItems(cleanItems);
+    const issues: DesignIssue[] = validateDesignItems(cleanItems, coderKind);
     if (undeclared.length === 0) return issues;
     // At the items that use them, where they can be found; the rest (e.g. answer columns) in one issue
     const located = new Set<string>();
@@ -127,7 +131,7 @@ export function useDesignDraft({
       });
     }
     return issues;
-  }, [cleanItems, declared, undeclared]);
+  }, [cleanItems, coderKind, declared, undeclared]);
   const validationErrors = useMemo(() => validationIssues.filter((i) => !i.warning), [validationIssues]);
   const dirty = useMemo(() => isDirty({ items, saved }), [items, saved]);
   const valid = items.length > 0 && validationErrors.length === 0;

@@ -90,6 +90,10 @@ export type Reopen = z.infer<typeof ReopenSchema>;
 export const EndSessionResponseSchema = z.object({ reopen: ReopenSchema });
 export type EndSessionResponse = z.infer<typeof EndSessionResponseSchema>;
 
+/** How signing in stands in a study (`SessionResponse.signIn`). */
+export const SignInSchema = z.enum(["required", "optional", "none"]);
+export type SignIn = z.infer<typeof SignInSchema>;
+
 /**
  * What an ended session's end screen shows, after a reload: the values its
  * message and redirect link use (`$var`, and with an end inside a unit loop
@@ -136,8 +140,20 @@ export const SessionResponseSchema = z.object({
   session: z.record(z.string(), z.string()).default({}),
   /** The email of the login this session belongs to (docs/coder-identity.md §5); null without. Logged-in coders continue on any device by logging in there. */
   login: z.string().nullable().optional(),
-  /** Coders may sign in (the server has a login), and this one hasn't: offer it, to continue on other devices. */
+  /**
+   * This coder may sign in and hasn't: offer it, to continue on other
+   * devices. The server has a login, the request has the study's link, and
+   * the study's coders may sign in: expert coders always, a crowd where the
+   * study's owner's plan has it on (`Limits.crowdSignIn`).
+   */
   canLogIn: z.boolean().optional(),
+  /**
+   * Signing in, in this study: `required` to start (expert coders who sign
+   * in); `optional`, the coder may (the server has a login, and the study's
+   * coders may sign in: `canLogIn` says whether this session still can);
+   * `none`, there is no signing in here (also in previews). Absent: none.
+   */
+  signIn: SignInSchema.optional(),
   /** With `ended`: what its end screen shows. */
   endValues: EndValuesSchema.nullable().optional(),
   /** With `ended`: whether the coder can go back. */
@@ -157,7 +173,11 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
  * client handles specially (docs/coder-identity.md).
  */
 export const CoderErrorCodeSchema = z.enum([
-  /** The coder id already has a session; retry with `x-new-session: 1` to start another. */
+  /**
+   * The coder id already has a session; retry with `x-new-session: 1` to
+   * start another. The response also says `canLogIn`: whether signing in
+   * here is offered (as `SessionResponse.canLogIn`).
+   */
   "coder_has_session",
   /** The coder id has as many sessions in the study as one coder can have (5): no new one, also with `x-new-session` (403). */
   "coder_session_limit",
@@ -167,7 +187,7 @@ export const CoderErrorCodeSchema = z.enum([
   "name_required",
   /** The picked name is another device's (a name is the first device's that picks it): pick another (409). */
   "name_taken",
-  /** The study requires sign-in (a crowd's, or expert coders who sign in). */
+  /** The study requires sign-in (expert coders who sign in). */
   "auth_required",
   /**
    * The login's address isn't the email address of an expert coder with units (expert coders who sign in):

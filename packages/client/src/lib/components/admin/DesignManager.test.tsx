@@ -35,6 +35,7 @@ const study = ["admin", "study", 1] as const;
 function cacheWith(versions: DesignVersion[]): QueryClient {
   // A failed query stays failed (in the browser it is tried again when the page opens)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false } } });
+  queryClient.setQueryData(study, { id: 1, name: "News", coderKind: "crowd" });
   queryClient.setQueryData([...study, "designVersions"], versions);
   queryClient.setQueryData([...study, "deployment"], { designVersionId: versions[0]?.id ?? null });
   for (const v of versions) queryClient.setQueryData([...study, "designVersion", v.id], v);

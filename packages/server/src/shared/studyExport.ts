@@ -12,7 +12,8 @@ import {
   STUDY_EXPORT_FORMAT_VERSION,
   StudyExportManifestSchema,
   StudyWriteSchema,
-  deployErrors,
+  designErrors,
+  CoderKindSchema,
   sessionItem,
   undeclaredFields,
   type StudyExportManifest,
@@ -114,9 +115,37 @@ const EXPORT_PAGE_ROWS = 2000;
 /** How many rows the import writes at a time. */
 const INSERT_ROWS = 500;
 
+/** A column of a table that exported rows are read back into. */
+interface ReadColumn {
+  name: string;
+  /** A JSONB column that can't be NULL: a null read back is its value `null`. */
+  valueNull: boolean;
+}
+
+/**
+ * The columns of an INSERT of exported rows, and how each is read from
+ * `jsonb_populate_recordset`: `INSERT INTO t (<into>) SELECT <read> FROM ...`.
+ * An export writes a JSONB value `null` (a unit's empty field) like a column
+ * without a value, and reading gives NULL for both: in a column that can't
+ * be NULL, it was the value.
+ */
+function readColumns(columns: ReadColumn[]): { into: string; read: string } {
+  return {
+    into: columns.map((c) => `"${c.name}"`).join(", "),
+    read: columns.map((c) => (c.valueNull ? `COALESCE("${c.name}", 'null'::jsonb)` : `"${c.name}"`)).join(", "),
+  };
+}
+
+/** A table's columns as the database it is in has them (`$1`: the table's name). */
+const COLUMNS_OF = `SELECT column_name AS name, data_type = 'jsonb' AND is_nullable = 'NO' AS "valueNull"
+  FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1`;
+
 const nameOf = (table: PgTable) => getTableConfig(table).name;
 const column = (c: { name: string; keyAsName?: boolean }) => (c.keyAsName === false ? c.name : toSnakeCase(c.name));
 const hasColumn = (table: PgTable, name: string) => getTableConfig(table).columns.some((c) => column(c) === name);
+/** A table's columns as this server's schema has them. */
+const columnsOf = (table: PgTable): ReadColumn[] =>
+  getTableConfig(table).columns.map((c) => ({ name: column(c), valueNull: c.getSQLType() === "jsonb" && c.notNull }));
 
 /**
  * A table's references to other tables by their `id`: its column, the table
@@ -391,10 +420,11 @@ async function migrateRows(manifest: StudyExportManifest, byTable: Rows): Promis
     for (const { name } of manifest.tables) {
       const found = byTable.get(name) ?? [];
       const quoted = `"${name.replace(/"/g, '""')}"`;
+      const { into, read } = readColumns((await temp.query<ReadColumn>(COLUMNS_OF, [name])).rows);
       for (let i = 0; i < found.length; i += INSERT_ROWS) {
         try {
           await temp.query(
-            `INSERT INTO ${quoted} OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(null::${quoted}, $1::jsonb)`,
+            `INSERT INTO ${quoted} (${into}) OVERRIDING SYSTEM VALUE SELECT ${read} FROM jsonb_populate_recordset(null::${quoted}, $1::jsonb)`,
             [JSON.stringify(found.slice(i, i + INSERT_ROWS))],
           );
         } catch (e) {
@@ -486,9 +516,10 @@ export async function importStudy(tx: Db, bytes: Buffer, options: ImportOptions)
       return transform(tableName, r, { options: { ...options, name }, unitIds: ids.get("units"), withCoders });
     });
     const t = sql.identifier(tableName);
+    const { into, read } = readColumns(columnsOf(table));
     for (let i = 0; i < copied.length; i += INSERT_ROWS) {
       await tx.execute(
-        sql`INSERT INTO ${t} OVERRIDING SYSTEM VALUE SELECT * FROM jsonb_populate_recordset(null::${t}, ${JSON.stringify(copied.slice(i, i + INSERT_ROWS))}::jsonb)`,
+        sql`INSERT INTO ${t} (${sql.raw(into)}) OVERRIDING SYSTEM VALUE SELECT ${sql.raw(read)} FROM jsonb_populate_recordset(null::${t}, ${JSON.stringify(copied.slice(i, i + INSERT_ROWS))}::jsonb)`,
       );
     }
   }
@@ -510,6 +541,7 @@ function checkStudy(current: Rows, name: string | undefined): void {
   const study = found[0]!;
   const settings = StudyWriteSchema.safeParse({
     name: name ?? study.name,
+    coderKind: study.coder_kind,
     reopenMinutes: study.reopen_minutes,
     redirectUrls: study.redirect_urls,
   });
@@ -525,6 +557,8 @@ function checkStudy(current: Rows, name: string | undefined): void {
  * checked again: those need the units in the database.)
  */
 function checkDesigns(current: Rows): void {
+  // The study's kind of coders, which the deployed design invites (`checkStudy` checked it)
+  const coderKind = CoderKindSchema.parse(current.get("studies")![0]!.coder_kind);
   const versions = current.get("design_versions") ?? [];
   for (const version of versions) {
     const saved = DesignWriteSchema.safeParse({
@@ -549,9 +583,9 @@ function checkDesigns(current: Rows): void {
     // A deployment without its design version: `checkReferences` refuses it
     if (!deployed) continue;
     const items = designVersionItems(deployed);
-    const errors = deployErrors(items);
+    const errors = designErrors(items, coderKind);
     const undeclared = undeclaredFields(items, designVersionUnits(deployed).fields);
-    if (errors.length > 0 || !itemsValid(items) || undeclared.length > 0)
+    if (errors.length > 0 || !itemsValid(items, coderKind) || undeclared.length > 0)
       throw invalid("The deployed design in this study export has issues: it can't be imported", [
         ...issuesOf(errors),
         ...undeclared.map((field) => ({

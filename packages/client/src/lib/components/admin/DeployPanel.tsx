@@ -78,7 +78,7 @@ export function DeployPanel({
   const [withUnits, setWithUnits] = useState(true);
   const deployDesign = version !== null && (withDesign || firstDeploy);
   const deployUnits = firstDeploy || (unitsChanged && withUnits);
-  const crowd = version !== null && inviteOf(sessionItem(designItems(version)))?.mode === "crowd";
+  const crowd = version !== null && inviteOf(sessionItem(designItems(version))).mode === "crowd";
   const [reopenMinutes, setReopenMinutes] = useState(() => firstDeployReopenMinutes(studyReopenMinutes, crowd));
   const currentMessage = useDeploymentQuery(client).data?.newUnitsMessage;
   const [message, setMessage] = useState<string | null>(null);

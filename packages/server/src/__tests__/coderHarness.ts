@@ -2,11 +2,12 @@ import { beforeEach, expect } from "vitest";
 import type {
   CoderUnitResponse,
   DeploymentResponse,
+  Limits,
   SessionResponse,
   UnitData,
   VariableValue,
 } from "@annotinder/contracts";
-import { splitDesignItems } from "@annotinder/contracts";
+import { inviteKind, inviteOf, splitDesignItems, type CoderKind } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { eq } from "drizzle-orm";
 import { units } from "../db/schema/index.js";
@@ -14,7 +15,9 @@ import { unitDraftData } from "../db/sql.js";
 import { emptyDb, query } from "./testDb.js";
 import { seed } from "../seed.js";
 import { DEMO_PUBLIC_ID } from "../db/publicId.js";
-import { createApp } from "../app.js";
+import { createApp, type AppOptions } from "../app.js";
+import { ensureUser } from "../shared/accounts.js";
+import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 import type { RuntimeOptions } from "../runtime/runtime.js";
 import type { Store } from "../runtime/store.js";
 
@@ -26,9 +29,13 @@ import type { Store } from "../runtime/store.js";
 /** A coder's login: a verified email, no second factor needed. */
 export const CODER_LOGIN = { mfa: false, authTime: null, issuer: "https://idp.test" };
 
-/** Who codes, chosen (deploying needs it): a crowd, unless the design says otherwise. */
-export function chosen<T extends { session?: object }>(design: T): T {
-  return { ...design, session: { invite: { mode: "crowd" }, ...design.session } };
+/**
+ * Makes study 1 one with expert coders or a crowd, whatever it has
+ * deployed: the tests run both kinds on the seeded study (a study's own
+ * kind is fixed by its first deploy).
+ */
+export async function setCoderKind(kind: CoderKind): Promise<void> {
+  await query(db, "UPDATE studies SET coder_kind = $1 WHERE id = 1", [kind]);
 }
 
 export const adminHeaders = { "content-type": "application/json", "x-dev-role": "ADMIN" };
@@ -58,13 +65,31 @@ export function recording(store: Store): Store {
  * predictable: `random` is 0 (a balanced tie goes to the first value) unless
  * a test sets it.
  */
-export function restart(runtime: Partial<RuntimeOptions> = {}) {
+export function restart(runtime: Partial<RuntimeOptions> = {}, options: Partial<AppOptions> = {}) {
   return createApp(db, {
     secret: "test-secret",
     runtime: { random: () => 0, ...runtime },
     wrapStore: recording,
     devMode: true,
+    ...options,
   });
+}
+
+/** A (re)started server that has a login (a mock provider's): its coders can be offered to sign in. */
+export function restartWithLogin() {
+  const oidc = { issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, fetch: mockIssuer().fetch };
+  return restart({}, { login: { oidc, publicUrl: "http://annotinder.test" } });
+}
+
+/**
+ * Gives study 1 an owner (it is seeded without one), with these limits of
+ * their own: `{ crowdSignIn: true }` lets the study's crowd sign in.
+ */
+export async function ownedBy(email: string, limits: Limits = {}): Promise<number> {
+  const owner = await ensureUser(db, email);
+  await query(db, "UPDATE users SET limits = $1 WHERE id = $2", [JSON.stringify(limits), owner.id]);
+  await query(db, "UPDATE studies SET owner_id = $1 WHERE id = 1", [owner.id]);
+  return owner.id;
 }
 
 beforeEach(async () => {
@@ -196,36 +221,29 @@ export function mainLoopId(extraItems: object[]): string {
 
 /**
  * Creates a design with the given unit_loop settings (by default with one
- * question, `sentiment`) and deploys it as a new version. Returns the
- * deployment response.
+ * question, `sentiment`) and deploys it as a new version, in a study of the
+ * kind the design invites (`setCoderKind`). Returns the deployment response.
  */
 export async function redeploy(
   { layout, ...loop }: { layout?: object } & Record<string, unknown>,
   extraItems: object[] = [],
 ): Promise<DeploymentResponse> {
+  const mainLoop = {
+    type: "unit_loop",
+    id: mainLoopId(extraItems),
+    label: "main_loop",
+    units: {},
+    // `layout`: the loop's layout item (first)
+    children: [{ type: "layout", template: "", ...layout }, sentimentQuestion],
+    ...loop,
+  };
+  // A Session item among them goes into `session` (docs/architecture.md §6)
+  const design = splitDesignItems(withDivide([...extraItems, mainLoop]));
+  await setCoderKind(inviteKind(inviteOf(design.session)));
   const res = await server.request("/api/study/1/design", {
     method: "POST",
     headers: adminHeaders,
-    body: JSON.stringify({
-      note: "v2",
-      // A Session item among them goes into `session` (docs/architecture.md §6)
-      ...chosen(
-        splitDesignItems(
-          withDivide([
-            ...extraItems,
-            {
-              type: "unit_loop",
-              id: mainLoopId(extraItems),
-              label: "main_loop",
-              units: {},
-              // `layout`: the loop's layout item (first)
-              children: [{ type: "layout", template: "", ...layout }, sentimentQuestion],
-              ...loop,
-            },
-          ]),
-        ),
-      ),
-    }),
+    body: JSON.stringify({ note: "v2", ...design }),
   });
   expect(res.status).toBe(201);
   const codebook = (await res.json()) as { id: number };

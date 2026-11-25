@@ -6,7 +6,7 @@ import {
   type TopLevelQuestionItem,
   type InLoopQuestionItem,
 } from "./item.js";
-import { availableQuestions, validateDesignItems } from "./validation.js";
+import { availableQuestions, designErrors, validateDesignItems } from "./validation.js";
 import { DesignItemsSchema, DesignWriteSchema } from "./designVersion.js";
 import type { Condition } from "./condition.js";
 
@@ -234,6 +234,31 @@ describe("the Session item", () => {
     expect(messages([session({ invite: { mode: "crowd", coderParam: { param: "PID", optional: true } } }), q])).toEqual(
       [],
     );
+  });
+
+  it("checks the invitation against the study's kind of coders, when given", () => {
+    const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"]))]);
+    const experts = [session({ invite: { mode: "coders", link: "per_coder" } }), loop];
+    const crowd = [session({ invite: { mode: "crowd" } }), loop];
+    const none = [session({}), loop];
+    // Without a study (a design on its own): any invitation
+    expect(validateDesignItems(experts as never)).toEqual([]);
+    expect(validateDesignItems(crowd as never)).toEqual([]);
+    expect(validateDesignItems(experts as never, "expert")).toEqual([]);
+    expect(validateDesignItems(crowd as never, "crowd")).toEqual([]);
+    expect(validateDesignItems(none as never, "crowd")).toEqual([]);
+    expect(validateDesignItems(crowd as never, "expert")).toEqual([
+      { path: [0, "invite"], message: expect.stringContaining("This study has expert coders") },
+    ]);
+    expect(validateDesignItems(none as never, "expert")).toEqual([
+      { path: [0, "invite"], message: expect.stringContaining("This study has expert coders") },
+    ]);
+    expect(designErrors(experts, "crowd")).toEqual([
+      { path: [0, "invite"], message: expect.stringContaining("This study has a crowd") },
+    ]);
+    // Items without the Study entry: a crowd's
+    expect(designErrors([loop], "expert")).toEqual([{ path: [], message: expect.stringContaining("expert coders") }]);
+    expect(designErrors([loop], "crowd")).toEqual([]);
   });
 
   it("checks a loop's units against the invitation: dividing, an earlier loop's units", () => {

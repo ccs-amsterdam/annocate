@@ -17,6 +17,8 @@ interface SessionErrorProps {
   /** The server refused a finished unit's answers: back to that unit, to answer again. Not offered without. */
   onBackToUnit?: () => void;
   onStartNewSession: () => void;
+  /** A coder who started elsewhere is offered to log in here (the server said so with the error). */
+  canLogIn: boolean;
   baseUrl: string;
   linkSecret?: string;
   /** On a pick-your-name link: the name picked, and picking (again). */
@@ -26,7 +28,9 @@ interface SessionErrorProps {
 
 /** The notice for each error code that has its own. */
 const ERROR_NOTICES: Record<string, ComponentType<SessionErrorProps>> = {
-  coder_has_session: ({ onStartNewSession }) => <CoderElsewhere onStartNewSession={onStartNewSession} />,
+  coder_has_session: ({ onStartNewSession, canLogIn }) => (
+    <CoderElsewhere onStartNewSession={onStartNewSession} canLogIn={canLogIn} />
+  ),
   name_required: PickNameNotice,
   name_taken: PickNameNotice,
   study_paused: StudyPausedNotice,

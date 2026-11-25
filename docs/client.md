@@ -54,8 +54,9 @@ coder's settings, the keyboard) around `CoderSessionGate`. Its parts are in
 | `UnitQuestionLayout.tsx` | The unit scrolling above, the question docked below. `UnitAnnotations` (spans and relations) is mounted once per unit, so the unit stays as it is (its frames, how far it is scrolled) from question to question |
 | `AnsweredQuestion.tsx`, `QuestionPanel.tsx`, `SwipeArea.tsx` | The question with the coder's earlier answer, practice feedback or a frozen answer's Continue, and the swipe |
 | `CodingTopBar.tsx`, `KeyboardMenu.tsx`, `CoderSettingsMenu.tsx`, `TransferMenu.tsx` | The top bar and its menus |
+| `SignInNotes.tsx` | Signing in, as the session says it stands (`signIn`, `canLogIn`; `coder-identity.md` §5): what "Continue on another device" says under its transfer link (`SignInNotes`: "Sign in to continue from any device. The researchers don't see your email address." with **Log in** where the coder may; where sign-in is required, to sign in on the other device), and the one line a device shows that joined by a transfer link while its browser isn't logged in (`SignInHereLine`: "Sign in here too to use your saved settings", only where signing in is possible) |
 | `ConnectionNotices.tsx`, `NewUnitsBanner.tsx`, `PracticeCorrectFlash.tsx` | What shows over or under the top bar |
-| `SessionNotices.tsx`, `SessionNotice.tsx`, `CoderElsewhere.tsx`, `PickName.tsx` | What shows instead of a question: a notice per server error code, else the message with Retry |
+| `SessionNotices.tsx`, `SessionNotice.tsx`, `CoderElsewhere.tsx`, `PickName.tsx` | What shows instead of a question: a notice per server error code, else the message with Retry. "You already started on another device" offers **Log in** only where the server says the coder may (`canLogIn` of 409 `coder_has_session`) |
 | `hooks.ts`, `useCurrentQuestion.ts`, `useUnitSlide.ts`, `practiceFeedback.ts` | The screen's hooks (display, leave warning, document title, slide direction) |
 
 `useStudyManager` starts the manager when the screen mounts and calls
@@ -568,8 +569,13 @@ the public title and has a button per part (**Who codes**, **URL
 parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders
-(`SessionPreview.tsx`: the links, what a link must carry, the screen). Two modes:
-**Expert coders** and **Crowd (one link)** (`session/InvitationSettings.tsx`). The
+(`SessionPreview.tsx`: the links, what a link must carry, the screen). Who
+codes (**Expert coders** or **Crowd (one link)**) is the study's setting, not
+the design's: the form (`session/InvitationSettings.tsx`) says which it is and
+shows that kind's options only (the study's kind comes from the editor,
+`session/coderKind.ts`). An invitation for the other kind (a design written
+through the API) is a validation error; the form then shows the study's
+options and a button that replaces it. The
 expert coders form shows the units' coder set (`coder_set`: how many
 coders, or that one is required), how coders get in (disabled until
 there is a coder set), and what that asks of the coders
@@ -591,7 +597,7 @@ them by default (`GET /coders/units`, contracts `distributeUnits`).
 and the expert coders there are; the dialog opens on it while the study has
 none. No names are typed into the coder set: it names expert coders only.
 The One link form has
-the coder id URL parameter, "Coders sign in" and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
+the coder id URL parameter and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 
 ## 5. Scripting sandbox: QuickJS
@@ -745,7 +751,8 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   height. Next and Back go through all steps in order (`guideSteps.ts`).
   Each step shows the sample study (`sampleStudy.ts`: a design with two
   coder questions and a unit loop with three questions, the third in a
-  branch, and three units; with a crowd or expert coders) drawn with the
+  branch, and three units; as a study with a crowd or one with expert
+  coders, each with its own in-memory API) drawn with the
   real page, read only: the design editor (wide, the step's item selected;
   all of it, or only its tree or its form) or the Units page, from an
   in-memory API, inert and scaled to fit (`GuideSample.tsx`). "Show me"
@@ -754,10 +761,12 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   **Guide** opens the page's section, at the step last open there in this
   session. After a first study, `GuidePrompt.tsx` asks (yes or no, it can't
   be dismissed otherwise).
-- **Who codes** (`session/ChooseWhoCodes.tsx`): until a design chooses
-  (`invite`; deploying refuses it without, contracts `deployErrors`), the
-  design page is only the two ways, as cards; choosing one opens the editor
-  on its form.
+- **Who codes** (`session/WhoCodesCards.tsx`, the two kinds as cards): chosen
+  in the Create study dialog (`studyList/CreateStudyDialog.tsx`: no study
+  without it) and changed in the study's Settings until its first deploy
+  (then the cards are disabled, with why). A study's first design starts
+  with its kind's first invitation (`design/draft.ts` `startDraft`: expert
+  coders with a link each).
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
   questions, experiments, `branch`es and unit loops; validation refuses an
   end item there ("An end item goes in a branch") and a loop inside a
@@ -932,8 +941,8 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   Deploy page, the deploys' history too.
 - **Settings** (`StudySettingsPage` in `overview/StudyOverview.tsx`): the
   team (`overview/TeamSettings.tsx`, at least one ADMIN) and
-  `StudySettings.tsx`: rename, archive, when coders finish (the reopen
-  time), panel return links, export, delete. Deleting (`studyList/DeleteStudyDialog.tsx`, also from the studies
+  `StudySettings.tsx`: rename, archive, who codes (until the first deploy),
+  when coders finish (the reopen time), panel return links, export, delete. Deleting (`studyList/DeleteStudyDialog.tsx`, also from the studies
   list) says what goes (design versions, units, coders and their answers,
   sessions, results downloads) and asks to type the study's name.
 - **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their
@@ -943,8 +952,7 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
 - **Coders** (`coders/CodersPage.tsx`; `coder-identity.md` §2): the coders
-  of the kind the design's invitation asks for (expert coders, or a crowd's:
-  `admin/studyInvite.ts`, the draft's choice), in a table
+  of the study's kind (its `coderKind`: expert coders, or a crowd's), in a table
   (`coders/CodersTable.tsx`, its columns and order in
   `admin/codersTable.ts`) that sorts on every column, most left to do
   first: coder, and for expert coders their email address and their units

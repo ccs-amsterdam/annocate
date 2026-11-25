@@ -4,9 +4,13 @@ import {
   EMPTY_SESSION,
   addedFields,
   collectQuestions,
+  coderKindProblem,
+  sessionItem,
   reservedColumnError,
   designItems,
   checkUnitData,
+  inviteKind,
+  inviteOf,
   isSetType,
   roleColumnType,
   type DesignItem,
@@ -146,6 +150,8 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     const parsed = DesignItemsSchema.safeParse(designItems(recipe.design));
     if (!parsed.success)
       throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
+    const problem = recipe.coderKind && coderKindProblem(sessionItem(parsed.data), recipe.coderKind);
+    if (problem) throw invalid(`The design can't be deployed: ${problem}`);
   }
 
   const [made] = await tx
@@ -155,6 +161,8 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       ...(options.publicId ? { publicId: options.publicId } : {}),
       ownerId: options.ownerId,
       origin: options.origin ?? null,
+      // Left out: the kind the design invites
+      coderKind: recipe.coderKind ?? inviteKind(inviteOf(recipe.design.session)),
     })
     .returning();
   const study = made!;

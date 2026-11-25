@@ -8,6 +8,7 @@
     "Download the results: the condition is a column in coders.csv, next to the answers."
   ],
   "name": "A simple experiment",
+  "coderKind": "crowd",
   "deploy": true,
   "design": {
     "note": "Example: a simple experiment",

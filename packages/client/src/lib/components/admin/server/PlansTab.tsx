@@ -5,7 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ServerApi } from "../../../api/serverApi";
-import { LIMITS, selectClass, usePlans, useInvalidate } from "./shared";
+import { CROWD_SIGN_IN, CROWD_SIGN_IN_ABOUT, LIMITS, selectClass, usePlans, useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
 
 // The server admin's Plans and Registration pages: plans with their limits, and who may register.
@@ -22,8 +22,8 @@ export function PlansTab({ server }: { server: ServerApi }) {
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         A plan is a set of limits. Researchers get the default plan (Registration), their email domain&apos;s, or the
-        one set on them; an empty field is no limit. Limits apply when something is added: nothing is removed when they
-        shrink.
+        one set on them; an empty field is no limit. Whether a crowd&apos;s coders can sign in is a plan&apos;s setting
+        too (off unless ticked). Limits apply when something is added: nothing is removed when they shrink.
       </p>
       {(plans.data ?? []).map((p) => (
         <PlanRow
@@ -46,17 +46,21 @@ function PlanRow({ server, plan, isDefault }: { server: ServerApi; plan: Plan; i
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(LIMITS.map(({ key }) => [key, plan.limits[key] == null ? "" : String(plan.limits[key])])),
   );
+  const [crowdSignIn, setCrowdSignIn] = useState(plan.limits.crowdSignIn === true);
   const invalidate = useInvalidate();
   const save = useMutation({
     mutationFn: () =>
       server.updatePlan(plan.id, {
         name,
-        limits: Object.fromEntries(
-          LIMITS.map(({ key }) => [
-            key,
-            values[key].trim() === "" ? null : Math.max(0, Math.floor(Number(values[key])) || 0),
-          ]),
-        ),
+        limits: {
+          ...Object.fromEntries(
+            LIMITS.map(({ key }) => [
+              key,
+              values[key].trim() === "" ? null : Math.max(0, Math.floor(Number(values[key])) || 0),
+            ]),
+          ),
+          crowdSignIn,
+        },
       }),
     onSuccess: invalidate,
   });
@@ -95,6 +99,10 @@ function PlanRow({ server, plan, isDefault }: { server: ServerApi; plan: Plan; i
           </label>
         ))}
       </div>
+      <label className="flex w-fit items-center gap-2 text-xs" title={CROWD_SIGN_IN_ABOUT}>
+        <input type="checkbox" checked={crowdSignIn} onChange={(e) => setCrowdSignIn(e.target.checked)} />
+        {CROWD_SIGN_IN}
+      </label>
       <ErrorLine error={save.error ?? remove.error} />
     </div>
   );

@@ -7,7 +7,6 @@ import { DbStore } from "../runtime/dbStore.js";
 import type { Store } from "../runtime/store.js";
 
 import {
-  chosen,
   adminHeaders,
   db,
   server,
@@ -183,7 +182,7 @@ describe("shared queues", () => {
     const res = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify(chosen(splitDesignItems([loop]))),
+      body: JSON.stringify(splitDesignItems([loop])),
     });
     expect(res.status).toBe(201);
     const saved = (await res.json()) as { id: number; valid: boolean; items: object[] };

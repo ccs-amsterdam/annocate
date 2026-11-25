@@ -21,11 +21,11 @@ export interface ShareSource {
 
 /** The share's sources: expert coders (`coder_set`), and the experiment that selects units (`condition_set`). */
 export function shareSources(
-  invite: Invite | undefined,
+  invite: Invite,
   experiments: readonly { name: string; selectsUnits?: boolean }[] = [],
 ): ShareSource[] {
   const out: ShareSource[] = [];
-  if (invite?.mode === "coders") out.push({ label: "coder", column: CODER_SET });
+  if (invite.mode === "coders") out.push({ label: "coder", column: CODER_SET });
   const selecting = experiments.find((c) => c.selectsUnits);
   if (selecting) out.push({ label: selecting.name, column: CONDITION_SET, inFlow: true });
   return out;
@@ -33,8 +33,8 @@ export function shareSources(
 
 /** What the loop's Units settings need to know of the rest of the design. */
 export interface LoopUnitsContext {
-  /** Who codes (null: not chosen yet). */
-  invite: Invite | null;
+  /** Who codes, and how they get in: the design's invitation. */
+  invite: Invite;
   /** What selects a session's units (its coder, the experiment's condition). */
   sources: ShareSource[];
   /** The loops before this one, in design order: the last is the one whose units this loop can take. */

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, CircleDot, Loader2 } from "lucide-react";
 import {
-  NO_INVITE,
-  deployErrors,
+  designErrors,
   designItems,
   inviteOf,
   sessionItem,
@@ -74,16 +73,13 @@ export function DeployPage({
   const liveNumber = deployment ? versions.numberOf(deployment.designVersionId) : null;
   const candidateNumber = candidateId !== null ? (versions.numberOf(candidateId) ?? 0) : 0;
   // As the server checks it: no errors, and every unit field it uses declared
-  const candidateErrors = candidate ? deployErrors(designItems(candidate) as TopLevelItem[]) : [];
+  const candidateErrors = candidate ? designErrors(designItems(candidate) as TopLevelItem[], study.coderKind) : [];
   const problems =
     candidate !== null &&
     (candidateErrors.length > 0 || undeclaredFields(designItems(candidate), candidate.units.fields).length > 0);
-  // Who codes isn't chosen: said as it is, not as "problems"
-  const noInvite = candidateErrors.length === 1 && candidateErrors[0].message === NO_INVITE;
   const unitsChanged = !!pending && hasUnitChanges(pending.units);
-  // Who codes in what would be deployed: the candidate's choice, else the live design's
+  // How coders get in, in what would be deployed: the candidate's invitation, else the live design's
   const toDeploy = candidate ?? live;
-  const invite = toDeploy ? inviteOf(sessionItem(designItems(toDeploy))) : null;
   const openCoders = (
     <Button variant="link" className="h-auto p-0" onClick={onOpenCoders}>
       Open Coders
@@ -117,7 +113,7 @@ export function DeployPage({
         </section>
       )}
       {/* Also when everything is deployed: deleting a coder leaves deployed units without one */}
-      <InviteChecks client={client} invite={invite} />
+      {toDeploy && <InviteChecks client={client} invite={inviteOf(sessionItem(designItems(toDeploy)))} />}
       <UnassignedNotice client={client}>{openCoders}</UnassignedNotice>
       {candidate === null && !unitsChanged && deployment ? (
         <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-5 text-sm">
@@ -135,9 +131,7 @@ export function DeployPage({
         <>
           {problems && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-              {noInvite
-                ? `Design v${candidateNumber}: choose who codes (expert coders or a crowd) before deploying it.`
-                : `Design v${candidateNumber} has problems: fix them before deploying it.`}{" "}
+              Design v{candidateNumber} has problems: fix them before deploying it.{" "}
               <Button variant="link" className="h-auto p-0" onClick={onOpenDesign}>
                 Open the design
               </Button>

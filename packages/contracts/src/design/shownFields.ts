@@ -141,7 +141,7 @@ export function fieldUsage(items: readonly unknown[]): Map<string, FieldUse> {
  */
 export function designSetColumns(items: readonly unknown[]): RoleColumn[] {
   const columns = new Set<RoleColumn>();
-  if (inviteOf(sessionItem(items))?.mode === "coders") columns.add(CODER_SET);
+  if (inviteOf(sessionItem(items)).mode === "coders") columns.add(CODER_SET);
   forEachItem<{ type?: unknown; units?: unknown }>(items, (it) => {
     if (selectsUnits(it)) columns.add(CONDITION_SET);
     if (it.type === "unit_loop" && typeof (it.units as { part?: unknown } | undefined)?.part === "string")

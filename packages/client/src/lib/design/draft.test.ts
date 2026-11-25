@@ -69,6 +69,16 @@ describe("startDraft", () => {
     expect(draft.revision).toBeUndefined();
   });
 
+  it("starts a new design for the study's kind of coders: expert coders with a link each", () => {
+    expect(stripKeys(startDraft(null, null, "crowd").items)).toEqual([{ type: "session" }]);
+    expect(stripKeys(startDraft(null, null, "expert").items)).toEqual([
+      { type: "session", invite: { mode: "coders", link: "per_coder" } },
+    ]);
+    // A saved version keeps its own invitation
+    const saved = startDraft(version(3, false, [question("a")], 4), null, "expert");
+    expect(saved.items[0]).not.toHaveProperty("invite");
+  });
+
   it("continues a backup of the same version as it was left: its edits, what was saved, its revision", () => {
     const open = version(3, false, [question("a"), question("b")], 7);
     const backup = backupOf(open, 6);

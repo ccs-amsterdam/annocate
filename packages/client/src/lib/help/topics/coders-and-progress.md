@@ -89,15 +89,15 @@ envelope icon).
 Then **Make coder set** gives them units (see
 [Giving each coder their own units](own-units.md)).
 
-| Column                 | Shows                                                         |
-| ---------------------- | ------------------------------------------------------------- |
-| **Coder**              | the coder id                                                  |
-| **Email**              | the address they sign in with, if you gave one                |
-| **Assigned (current)** | their units as deployed: what they have now                   |
-| **Assigned (draft)**   | their units in the draft: what they get when you deploy       |
-| **Done**               | units they answered (test units and earlier units included)   |
-| **Remaining**          | deployed units of theirs they haven't answered                |
-| **Last active**        | their last answer                                             |
+| Column                 | Shows                                                       |
+| ---------------------- | ----------------------------------------------------------- |
+| **Coder**              | the coder id                                                |
+| **Email**              | the address they sign in with, if you gave one              |
+| **Assigned (current)** | their units as deployed: what they have now                 |
+| **Assigned (draft)**   | their units in the draft: what they get when you deploy     |
+| **Done**               | units they answered (test units and earlier units included) |
+| **Remaining**          | deployed units of theirs they haven't answered              |
+| **Last active**        | their last answer                                           |
 
 Click a column's name to sort by it (again: the other way round). The table
 starts with who has the most left. A **≠** next to the draft's number
@@ -126,8 +126,7 @@ the units. The same notice is on **Units** and **Deploy**.
 
 With **Crowd (one link)**, a coder appears here the first time someone
 starts with a **coder id** (from a URL parameter such as a panel's
-`PROLIFIC_PID`, or their email address where the crowd signs in). You
-don't add them. The table shows the coder id, the units they answered and
+`PROLIFIC_PID`). You don't add them. The table shows the coder id, the units they answered and
 when they were last active. Sessions without a coder id (an anonymous
 link) have no coder: they are under **Sessions**.
 
@@ -192,10 +191,11 @@ The bin icon in a coder's row deletes the **coder**, for good:
 - **their units**: they leave the coder set, as deployed and in the draft.
   From that moment those units have no coder: the page says how many.
   Divide them again (**Make coder set**) and deploy the units;
-- **their link** (with a link per coder), which is revoked.
+- **their link** (with a link per coder), which is deleted.
 
 You can add a coder with the same id again afterwards: a new coder,
-without the earlier one's units or sessions.
+without the earlier one's units or sessions, who gets a new link when you
+deploy the units with them in the coder set.
 
 ## What counts as finished
 

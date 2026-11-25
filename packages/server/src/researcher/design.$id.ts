@@ -6,6 +6,7 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
 import { idParam, parseJson } from "../shared/request.js";
+import { studyCoderKind } from "../shared/studies.js";
 
 /** The 409 for a save based on an older revision (contracts `DesignConflictSchema`). */
 function conflict(row: DesignVersionRow): DesignConflict {
@@ -30,7 +31,7 @@ export function designVersion(server: Server): Hono<Env> {
   app.get("/study/:studyId/design/:id", requireStudyUser(server, "READ"), async (c) => {
     const row = await findVersion(c.get("studyId"), idParam(c, "id"));
     if (!row) return c.json({ error: "Design version not found" }, 404);
-    return c.json(toDesignVersion(row));
+    return c.json(toDesignVersion(row, await studyCoderKind(db, c.get("studyId"))));
   });
 
   app.put("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {
@@ -77,7 +78,7 @@ export function designVersion(server: Server): Hono<Env> {
       if (now && !now.immutable) return c.json(conflict(now), 409);
       return c.json({ error: "Design version is deployed and cannot be edited" }, 409);
     }
-    return c.json(toDesignVersion(row));
+    return c.json(toDesignVersion(row, await studyCoderKind(db, studyId)));
   });
 
   app.delete("/study/:studyId/design/:id", requireStudyUser(server, "WRITE"), async (c) => {

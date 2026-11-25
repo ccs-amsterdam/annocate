@@ -29,6 +29,11 @@ const limit = z.number().int().nonnegative().nullable().optional();
  * Limits for a researcher: studies they own, units per study and in all their
  * studies, coders per study, answer rows per study. Missing or null: no limit.
  * They apply when something is created; nothing is deleted when they shrink.
+ *
+ * `crowdSignIn`: whether a crowd's coders may sign in in the researcher's
+ * studies, to continue on other devices (optional sign-in,
+ * docs/coder-identity.md §5). Missing: no. Expert coders always may. In a
+ * user's own limits, missing takes the plan's.
  */
 export const LimitsSchema = z.object({
   studies: limit,
@@ -36,6 +41,7 @@ export const LimitsSchema = z.object({
   units: limit,
   codersPerStudy: limit,
   answersPerStudy: limit,
+  crowdSignIn: z.boolean().optional(),
 });
 export type Limits = z.infer<typeof LimitsSchema>;
 

@@ -19,7 +19,8 @@ summary: The item tree, the item form, the preview, errors and warnings, saving,
 
 - **Title shown to coders**: edit it in place. The study's own name stays
   private.
-- **Who codes**: who codes and how they get in (see
+- **Who codes**: how the study's coders get in: its expert coders or its
+  crowd, which you chose when you created the study (see
   [Links](links.md#who-codes)).
 - **URL parameters**: values a link carries (see
   [URL parameters](session-parameters.md)).

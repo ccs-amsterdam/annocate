@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { splitDesignItems } from "@annotinder/contracts";
+import { inviteKind, inviteOf, splitDesignItems } from "@annotinder/contracts";
 
 import {
-  chosen,
   adminHeaders,
   server,
   unitByExternalId,
@@ -13,6 +12,7 @@ import {
   sessionItem,
   crowd,
   codersInvite,
+  setCoderKind,
 } from "./coderHarness.js";
 
 describe("deploy checks of the columns with a role", () => {
@@ -29,10 +29,12 @@ describe("deploy checks of the columns with a role", () => {
   });
   /** Deploys these items (no other loop); the warnings, or the error. */
   const deploy = async (items: object[]) => {
+    const split = splitDesignItems(items);
+    await setCoderKind(inviteKind(inviteOf(split.session)));
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify(chosen(splitDesignItems(items))),
+      body: JSON.stringify(split),
     });
     expect(design.status, await design.clone().text()).toBe(201);
     const { id } = (await design.json()) as { id: number };

@@ -148,7 +148,12 @@ function errorResponse(err: Error, c: Context<Env>) {
   if (err instanceof TooManyRequests) c.header("Retry-After", String(err.retryAfter));
   if (err instanceof HttpError)
     return c.json(
-      { error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.issues ? { issues: err.issues } : {}) },
+      {
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+        ...(err.issues ? { issues: err.issues } : {}),
+        ...err.details,
+      },
       err.status,
     );
   const pgCode = postgresCode(err);

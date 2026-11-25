@@ -38,8 +38,11 @@ describe("the rate limiter", () => {
   });
 
   it("counts new sessions per 10 minutes, the other kinds per minute", async () => {
+    // Ahead of the real clock (the cleanup goes by the database's now()), on a 10-minute window
+    const window = Math.ceil(Date.now() / 600_000) * 600_000 + 3_600_000;
+    const at = (seconds: number) => new Date(window + seconds * 1000);
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-25T10:00:30Z"));
+    vi.setSystemTime(at(30));
     const limits = limiter({ newSessions: 1, login: 1 });
     await limits.count("newSessions", "192.0.2.1");
     await limits.count("login", "192.0.2.1");
@@ -47,11 +50,11 @@ describe("the rate limiter", () => {
     expect((refused as TooManyRequests).retryAfter).toBe(570);
     expect((refused as TooManyRequests).message).toBe("Too many requests: try again in 10 minutes");
 
-    vi.setSystemTime(new Date("2026-11-25T10:01:00Z"));
+    vi.setSystemTime(at(60));
     await limits.count("login", "192.0.2.1"); // a new minute
     await expect(limits.count("newSessions", "192.0.2.1")).rejects.toBeInstanceOf(TooManyRequests);
 
-    vi.setSystemTime(new Date("2026-11-25T10:10:00Z"));
+    vi.setSystemTime(at(600));
     await limits.count("newSessions", "192.0.2.1");
   });
 

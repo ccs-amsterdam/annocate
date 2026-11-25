@@ -25,8 +25,9 @@ On the AnnoTinder server you use:
 
 Not stored: coders' names, email addresses (unless you enter them for
 your expert coders on **Coders**, or coders
-[sign in](links.md#login) to your study: because it requires it, or
-because they chose **Log in** there. Being logged in on the server for
+[sign in](links.md#login) to your study: because it requires it (expert
+coders who sign in), or because they chose **Log in** there (expert
+coders; a crowd's coders only where your plan on the server allows). Being logged in on the server for
 something else stores nothing. You see the address a coder signed in
 with only where sign-in is required), IP addresses, other device details, or URL parameters the
 design doesn't declare. The web server or proxy in front may keep access

@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { ChevronRight, CircleDot, FilePen, PauseCircle, CircleOff } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { CODER_SET, designItems, inviteOf, sessionItem } from "@annotinder/contracts";
+import { CODER_SET } from "@annotinder/contracts";
 import {
-  useDesignVersionQuery,
   useDesignVersionsQuery,
   useDeploymentQuery,
   useLinksQuery,
   useOverviewQuery,
+  useStudyQuery,
 } from "../../../admin/queries";
 import { describeVersions } from "../../../design/versions";
 import { formatWhen } from "../../../admin/format";
@@ -40,9 +40,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
 
   const designVersions = designVersionsQuery.data ?? [];
   const versions = describeVersions(designVersions, deployment?.designVersionId ?? null);
-  // Who codes: as deployed, else as the design is now
-  const shown = useDesignVersionQuery(client, versions.liveId ?? versions.currentId).data ?? null;
-  const invite = shown ? inviteOf(sessionItem(designItems(shown))) : null;
+  const coderKind = useStudyQuery(client).data?.coderKind;
   const overview = overviewQuery.data;
   const openLinks = (linksQuery.data ?? []).filter(
     (link) => !link.revokedAt && !link.retiredAt && (link.maxUses === undefined || link.uses < link.maxUses),
@@ -89,9 +87,9 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
             label="Who codes"
             onClick={() => onNavigate("Coders")}
             value={
-              invite === null
-                ? "Not chosen yet"
-                : invite.mode === "coders"
+              coderKind === undefined
+                ? "…"
+                : coderKind === "expert"
                   ? `${count(experts, "expert coder")} · ${overview ? overview.coders.started : "…"} started`
                   : `${count(overview?.coders.started, "crowd coder")} started`
             }

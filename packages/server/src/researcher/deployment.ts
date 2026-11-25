@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { DeploymentWriteSchema, deployErrors, own, redirectSettings, undeclaredFields } from "@annotinder/contracts";
+import { DeploymentWriteSchema, designErrors, own, redirectSettings, undeclaredFields } from "@annotinder/contracts";
 import { designVersionItems, designVersionUnits, itemsValid } from "../shared/designVersions.js";
 import { and, eq } from "drizzle-orm";
 import { deployments, designVersions, studies } from "../db/schema/index.js";
@@ -9,6 +9,7 @@ import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from
 import { checkLinkCount, syncLinks } from "../shared/links.js";
 import { assignmentChecks } from "../shared/deployChecks.js";
 import { parseJson } from "../shared/request.js";
+import { studyCoderKind } from "../shared/studies.js";
 
 export function deployment(server: Server): Hono<Env> {
   const { db } = server;
@@ -35,9 +36,10 @@ export function deployment(server: Server): Hono<Env> {
     if (!version) return c.json({ error: "Design version not found" }, 404);
     const items = designVersionItems(version);
     const fields = designVersionUnits(version).fields;
-    // Drafts may be saved with issues; coders only ever get a valid design version, with who codes chosen.
-    const errors = deployErrors(items);
-    if (errors.length > 0 || !itemsValid(items)) {
+    // Drafts may be saved with issues; coders only ever get a valid design version, for the study's kind of coders.
+    const coderKind = await studyCoderKind(db, studyId);
+    const errors = designErrors(items, coderKind);
+    if (errors.length > 0 || !itemsValid(items, coderKind)) {
       return c.json({ error: "Fix the design's issues before deploying it", issues: errors }, 400);
     }
     // The unit fields it uses must be declared (docs/architecture.md §8.4)

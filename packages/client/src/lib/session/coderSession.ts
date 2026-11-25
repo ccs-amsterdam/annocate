@@ -1,3 +1,4 @@
+import type { SignIn } from "@annotinder/contracts";
 import { CLIENT_HEADERS, HttpCoderApi } from "../api/httpCoderApi";
 
 // Device-side half of docs/coder-identity.md §4. The device id lives in one
@@ -80,6 +81,16 @@ export function coderLoginUrl({ useLogin = false }: { useLogin?: boolean } = {})
  */
 export function logInWithAccount(): void {
   window.location.assign(coderLoginUrl({ useLogin: true }));
+}
+
+/**
+ * Whether a coding screen says "Sign in here too" (`SignInHereLine`): its
+ * device joined the session by a transfer link, signing in is possible in
+ * the study, and the browser isn't logged in (`loggedIn` null: not known
+ * yet).
+ */
+export function offersSignInHere(joinedByTransfer: boolean, signIn: SignIn, loggedIn: boolean | null): boolean {
+  return joinedByTransfer && signIn !== "none" && loggedIn === false;
 }
 
 /** Whether this server offers login at all. */

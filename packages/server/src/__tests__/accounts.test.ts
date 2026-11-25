@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { adminEndpoints, researcherEndpoints, type AccountRole } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
-import { createApiKey, ensureUser, loginUser, resetIdentities, setServerRole } from "../shared/accounts.js";
+import {
+  createApiKey,
+  ensureUser,
+  limitsOf,
+  loginUser,
+  resetIdentities,
+  setServerRole,
+  type LimitRules,
+} from "../shared/accounts.js";
 import { createSession } from "../shared/sessions.js";
 import { emptyDb, query } from "./testDb.js";
 
@@ -285,6 +293,69 @@ describe("limits", () => {
     const id = users.find((u) => u.email === "r@dept.uni.nl")!.id;
     const updated = await call(admin, "updateUser", { id }, { planId: small.id, limits: { units: 50 } });
     expect(updated.data.effectiveLimits).toMatchObject({ studies: 1, units: 50 });
+  });
+
+  it("crowd sign-in: off unless a plan has it on; a domain's plans: on in any; the user's own setting over the plan's", async () => {
+    const rules = (
+      plans: [number, object][],
+      domainPlans: [string, number][] = [],
+      defaultPlanId: number | null = null,
+    ) => ({
+      plans: new Map(plans) as LimitRules["plans"],
+      domainPlans: domainPlans.map(([domain, planId]) => ({ domain, planId })),
+      defaultPlanId,
+    });
+    const user = (limits: object = {}, planId: number | null = null) => ({ email: "r@dept.uni.nl", planId, limits });
+    const signIn = (...args: Parameters<typeof limitsOf>) => limitsOf(...args).crowdSignIn;
+    // No plan at all, or plans that don't say
+    expect(signIn(user(), rules([]))).toBe(false);
+    expect(signIn(user({}, 1), rules([[1, { studies: 5 }]]))).toBe(false);
+    // The user's plan, before their domain's and the default
+    expect(signIn(user({}, 1), rules([[1, { crowdSignIn: true }]]))).toBe(true);
+    const plans: [number, object][] = [
+      [1, { crowdSignIn: false }],
+      [2, { crowdSignIn: true }],
+    ];
+    expect(signIn(user({}, 1), rules(plans, [["uni.nl", 2]], 2))).toBe(false);
+    // Their domains' plans: on in any of them, before the default
+    expect(signIn(user(), rules(plans, [["dept.uni.nl", 1]], 2))).toBe(false);
+    const both: [string, number][] = [
+      ["dept.uni.nl", 1],
+      ["*.uni.nl", 2],
+    ];
+    expect(signIn(user(), rules(plans, both, 1))).toBe(true);
+    // The default plan
+    expect(signIn(user(), rules(plans, [], 2))).toBe(true);
+    expect(signIn(user(), rules(plans, [], 1))).toBe(false);
+    // Their own setting, either way
+    expect(signIn(user({ crowdSignIn: true }, 1), rules(plans))).toBe(true);
+    expect(signIn(user({ crowdSignIn: false }, 2), rules(plans))).toBe(false);
+  });
+
+  it("crowd sign-in is a plan's setting and a user's own, as the admin API saves them", async () => {
+    const admin = await adminSession("boss@uni.nl");
+    const made = await call(admin, "createPlan", {}, { name: "Panels", limits: { studies: 3, crowdSignIn: true } });
+    expect(made.data.limits).toEqual({ studies: 3, crowdSignIn: true });
+    const off = await call(
+      admin,
+      "updatePlan",
+      { id: made.data.id },
+      { name: "Panels", limits: { crowdSignIn: false } },
+    );
+    expect(off.data.limits).toEqual({ crowdSignIn: false });
+    expect((await call(admin, "createPlan", {}, { name: "x", limits: { crowdSignIn: "yes" } })).status).toBe(400);
+    await call(admin, "updatePlan", { id: made.data.id }, { name: "Panels", limits: { crowdSignIn: true } });
+
+    await keyFor("r@uni.nl", "researcher");
+    const users = (await call(admin, "listUsers")).data.users as { id: number; email: string }[];
+    const id = users.find((u) => u.email === "r@uni.nl")!.id;
+    expect((await call(admin, "updateUser", { id }, { planId: made.data.id })).data.effectiveLimits.crowdSignIn).toBe(
+      true,
+    );
+    const own = await call(admin, "updateUser", { id }, { limits: { crowdSignIn: false } });
+    expect(own.data).toMatchObject({ limits: { crowdSignIn: false }, effectiveLimits: { crowdSignIn: false } });
+    // Left out of their own limits: the plan's again
+    expect((await call(admin, "updateUser", { id }, { limits: {} })).data.effectiveLimits.crowdSignIn).toBe(true);
   });
 
   it("are enforced when studies and units are added, and units have a size limit", async () => {

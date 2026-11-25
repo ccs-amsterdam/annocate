@@ -21,6 +21,8 @@ export interface StudyRunnerProps {
 
 export interface CodingScreenProps extends StudyRunnerProps {
   newSession: boolean;
+  /** This device joined the session by a transfer link, just now. */
+  joinedByTransfer: boolean;
   onStartNewSession: () => void;
   /** On a pick-your-name link: the name picked, and picking (again). */
   coderName?: string;

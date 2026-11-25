@@ -9,6 +9,7 @@ import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { listCoderDeletions } from "./coderDeletion.js";
 import { deploymentVersions } from "./deployments.js";
 import { toDesignVersion } from "./designVersions.js";
+import { studyCoderKind } from "./studies.js";
 import type { FileStore } from "./files.js";
 import { deployedSession } from "./links.js";
 import { listCoderProgress } from "./progress.js";
@@ -138,6 +139,7 @@ async function* exportZip(tx: Db, studyId: number, studyName: string, batch: num
   yield* file("units.jsonl", batches(tx, "export_units", unitsQuery(studyId), batch));
   yield* file("sessions.jsonl", await listCoderProgress(tx, studyId));
   yield* file("coders.jsonl", await coderRows(tx, studyId));
+  const coderKind = await studyCoderKind(tx, studyId);
   const versions = await tx
     .select()
     .from(designVersions)
@@ -146,7 +148,7 @@ async function* exportZip(tx: Db, studyId: number, studyName: string, batch: num
   // `number`: the version's number as researchers see it (its place among the study's versions)
   yield* file(
     "design_versions.jsonl",
-    versions.map((v, i) => ({ ...toDesignVersion(v), number: i + 1 })),
+    versions.map((v, i) => ({ ...toDesignVersion(v, coderKind), number: i + 1 })),
   );
   yield* file("deployments.jsonl", await deploymentVersions(tx, studyId));
   yield* file("sets.jsonl", await listSetGroups(tx, studyId));

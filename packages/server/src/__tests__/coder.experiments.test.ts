@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { splitDesignItems } from "@annotinder/contracts";
 
 import {
-  chosen,
   adminHeaders,
   server,
   restart,
@@ -109,12 +108,10 @@ describe("conditions from a URL parameter", () => {
         method: "POST",
         headers: adminHeaders,
         body: JSON.stringify(
-          chosen(
-            splitDesignItems([
-              ...items,
-              { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, sentimentQuestion] },
-            ]),
-          ),
+          splitDesignItems([
+            ...items,
+            { type: "unit_loop", id: "loop_1", children: [{ type: "layout", template: "" }, sentimentQuestion] },
+          ]),
         ),
       });
       expect(design.status).toBe(201);

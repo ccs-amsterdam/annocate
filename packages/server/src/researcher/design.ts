@@ -9,6 +9,7 @@ import { requireStudyUser } from "./auth.js";
 import { toDesignVersionMeta, toDesignVersion } from "../shared/designVersions.js";
 import { getUnitFields } from "../shared/units.js";
 import { parseJson } from "../shared/request.js";
+import { studyCoderKind } from "../shared/studies.js";
 
 export function designVersions(server: Server): Hono<Env> {
   const { db } = server;
@@ -20,7 +21,14 @@ export function designVersions(server: Server): Hono<Env> {
       .from(versions)
       .where(eq(versions.studyId, c.get("studyId")))
       .orderBy(asc(versions.id));
-    return c.json(listPage(c, "versions", rows.map(toDesignVersionMeta)));
+    const coderKind = await studyCoderKind(db, c.get("studyId"));
+    return c.json(
+      listPage(
+        c,
+        "versions",
+        rows.map((row) => toDesignVersionMeta(row, coderKind)),
+      ),
+    );
   });
 
   app.post("/study/:studyId/design", requireStudyUser(server, "WRITE"), async (c) => {
@@ -43,7 +51,7 @@ export function designVersions(server: Server): Hono<Env> {
         updatedBy: c.get("studyUser")?.email ?? null,
       })
       .returning();
-    return c.json(toDesignVersion(row!), 201);
+    return c.json(toDesignVersion(row!, await studyCoderKind(db, c.get("studyId"))), 201);
   });
 
   return app;

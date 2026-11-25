@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import type { ServerApi } from "../../../api/serverApi";
 import { formatWhen } from "../../../admin/format";
-import { LIMITS, limitText, selectClass, usePlans, useInvalidate } from "./shared";
+import { CROWD_SIGN_IN, CROWD_SIGN_IN_ABOUT, LIMITS, limitText, selectClass, usePlans, useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
 import { DeleteAccountDialog } from "../account/DeleteAccountDialog";
 
@@ -297,7 +297,7 @@ function AddUser({ server, plans }: { server: ServerApi; plans: Plan[] }) {
 }
 
 /** A user's own limits, on top of their plan: empty takes the plan's. */
-function LimitsDialog({
+export function LimitsDialog({
   user,
   planName,
   onClose,
@@ -315,6 +315,10 @@ function LimitsDialog({
         user.limits[key] === undefined ? "" : user.limits[key] === null ? "none" : String(user.limits[key]),
       ]),
     ),
+  );
+  // Crowd sign-in: the plan's (""), or this user's own ("on" / "off")
+  const [crowdSignIn, setCrowdSignIn] = useState(
+    user.limits.crowdSignIn === undefined ? "" : user.limits.crowdSignIn ? "on" : "off",
   );
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -337,6 +341,18 @@ function LimitsDialog({
               <span className="text-xs text-muted-foreground">now {limitText(user.effectiveLimits[key])}</span>
             </div>
           ))}
+          <span title={CROWD_SIGN_IN_ABOUT}>{CROWD_SIGN_IN}</span>
+          <select
+            aria-label={CROWD_SIGN_IN}
+            className={selectClass}
+            value={crowdSignIn}
+            onChange={(e) => setCrowdSignIn(e.target.value)}
+          >
+            <option value="">The plan&apos;s</option>
+            <option value="on">Yes</option>
+            <option value="off">No</option>
+          </select>
+          <span className="text-xs text-muted-foreground">now {user.effectiveLimits.crowdSignIn ? "yes" : "no"}</span>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -350,6 +366,7 @@ function LimitsDialog({
                 if (v === "") continue;
                 limits[key] = v === "none" ? null : Math.max(0, Math.floor(Number(v)) || 0);
               }
+              if (crowdSignIn !== "") limits.crowdSignIn = crowdSignIn === "on";
               onSave(limits);
             }}
           >

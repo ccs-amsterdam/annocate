@@ -53,21 +53,24 @@ function initialShowShortcuts(saved: string | null): boolean {
 
 /**
  * The settings of a logged-in coder's account (`accountUrl`: the API, `GET`
- * / `PUT /coder/settings`): `onLoaded` gets them once, and the returned
- * function saves later changes there too (no login: 401, the browser's only).
+ * / `PUT /coder/settings`): `onLoaded` gets them once, and `save` saves
+ * later changes there too (no login: 401, the browser's only). `loggedIn`:
+ * whether the server knew a login (null until it answered).
  */
 function useAccountSettings(
   accountUrl: string | undefined,
   onLoaded: (saved: UserSettings) => void,
-): (settings: UserSettings) => void {
-  const [account, setAccount] = useState(false);
+): { loggedIn: boolean | null; save: (settings: UserSettings) => void } {
+  const [account, setAccount] = useState<boolean | null>(null);
   useEffect(() => {
     if (!accountUrl) return;
     let live = true;
     fetch(`${accountUrl}/coder/settings`, { headers: CLIENT_HEADERS, credentials: "same-origin" })
       .then(async (res) => {
         const parsed = res.ok ? UserSettingsSchema.safeParse(await res.json()) : null;
-        if (!live || !parsed?.success) return;
+        if (!live) return;
+        if (res.status === 401) setAccount(false);
+        if (!parsed?.success) return;
         onLoaded(parsed.data);
         setAccount(true);
       })
@@ -78,7 +81,7 @@ function useAccountSettings(
     // Once per coding screen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountUrl]);
-  return (settings) => {
+  const save = (settings: UserSettings) => {
     if (!account || !accountUrl) return;
     void fetch(`${accountUrl}/coder/settings`, {
       method: "PUT",
@@ -87,6 +90,7 @@ function useAccountSettings(
       body: JSON.stringify(settings),
     }).catch(() => {});
   };
+  return { loggedIn: account, save };
 }
 
 /**
@@ -106,7 +110,7 @@ export function CoderSettingsProvider({ children, accountUrl }: { children: Reac
   // Answer shortcuts: off until the coder turns them on (stray keys don't answer)
   const answerKeys = usePersistedSetting(STORAGE_KEYS.answerKeys, (saved) => saved === "true");
 
-  const saveToAccount = useAccountSettings(accountUrl, (saved) => {
+  const { loggedIn, save: saveToAccount } = useAccountSettings(accountUrl, (saved) => {
     if (saved.theme) setTheme(saved.theme);
     if (saved.answerKeys !== undefined) answerKeys.set(saved.answerKeys);
     if (saved.keyMapping) keyMapping.set(saved.keyMapping);
@@ -146,6 +150,7 @@ export function CoderSettingsProvider({ children, accountUrl }: { children: Reac
           keyMapping.store(id);
           save({ keyMapping: id as UserSettings["keyMapping"] });
         },
+        loggedIn,
       }}
     >
       {children}

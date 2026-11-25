@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  inviteOf,
   urlParamKey,
   type DesignIssue,
   type SessionItem,
@@ -48,7 +49,7 @@ export function SessionItemForm({
     onChange(withOptional(item, "display", Object.keys(display).length > 0 ? display : undefined));
   const inviteForm = (
     <InvitationSettings
-      invite={item.invite}
+      invite={inviteOf(item)}
       groups={groups}
       issues={issues}
       client={client}

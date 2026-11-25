@@ -51,6 +51,7 @@ export function CodingTopBar({
             transferUrl={transferUrl}
             login={snapshot.login}
             canLogIn={snapshot.canLogIn}
+            signIn={snapshot.signIn}
           />
         )}
         <KeyboardMenu />

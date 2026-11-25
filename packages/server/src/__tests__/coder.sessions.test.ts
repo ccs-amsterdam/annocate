@@ -22,6 +22,10 @@ import {
   redeploy,
   listOf,
   crowd,
+  ownedBy,
+  codersInvite,
+  addCoders,
+  createSet,
   useServer,
   forgetStoreCalls,
   CODER_LOGIN,
@@ -114,8 +118,15 @@ describe("coder login", () => {
   /** The coder chose to sign in. */
   const SIGN_IN = { "x-use-login": "1" };
 
+  /** Expert coders who sign in: anna, with the address a@example.org and a unit. */
+  async function expertsSignIn() {
+    await addCoders([{ coder: "anna", email: "a@example.org" }]);
+    await createSet("anna", ["unit-1"], "coder_set");
+    await redeploy({}, [codersInvite("login")]);
+  }
+
   it("an invitation that requires sign-in: the email is linked once; another device finds the session by logging in", async () => {
-    await redeploy({}, [crowd(undefined, { login: true })]);
+    await expertsSignIn();
     const secret = "demo-secret";
     expect(await session("anonymous", secret)).toMatchObject({ status: 401, body: { code: "auth_required" } });
 
@@ -147,7 +158,8 @@ describe("coder login", () => {
     expect(coders.find((c) => c.id === phone.body.sessionId)?.email).toBe("a@example.org");
   });
 
-  it("coders may always sign in: links the email to the session started on the device, not shown to researchers", async () => {
+  it("a crowd's coders may sign in where the study's owner's plan allows: links the email to the session started on the device, not shown to researchers", async () => {
+    await ownedBy("owner@example.org", { crowdSignIn: true });
     const secret = "demo-secret";
     const before = await session("tablet", secret);
     expect(before.body.login).toBeNull();
@@ -179,6 +191,7 @@ describe("coder login", () => {
   });
 
   it("keeps a session with answers when its device logs in and moves to the email's session", async () => {
+    await ownedBy("owner@example.org", { crowdSignIn: true });
     const secret = "demo-secret";
     const first = await session("laptop", secret);
     const user = await ensureUser(db, "d@example.org");
@@ -197,6 +210,7 @@ describe("coder login", () => {
   });
 
   it("sends the login cookie again when a coder's request extended the login session", async () => {
+    await ownedBy("owner@example.org", { crowdSignIn: true });
     const user = await ensureUser(db, "e@example.org");
     const cookie = await createSession(db, user.id, CODER_LOGIN);
     const home = () =>
@@ -393,7 +407,9 @@ describe("sessions across devices", () => {
   });
 
   it("refuses sessions without a login when the invitation requires sign-in", async () => {
-    await redeploy({}, [crowd(undefined, { login: true })]);
+    await addCoders([{ coder: "anna", email: "a@example.org" }]);
+    await createSet("anna", ["unit-1"], "coder_set");
+    await redeploy({}, [codersInvite("login")]);
     const res = await send("login", "/session", {}, { "x-link-secret": "demo-secret" });
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "auth_required" });

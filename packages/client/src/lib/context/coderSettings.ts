@@ -16,6 +16,8 @@ export interface CoderSettingsContextValue {
   /** Which keys choose answers (keyboard/mappings.ts `MappingId`). */
   keyMapping: string;
   setKeyMapping: (id: string) => void;
+  /** Whether the browser is logged in, so the settings are the account's; null: not known (yet, or outside the coding screen). */
+  loggedIn: boolean | null;
 }
 
 export const CoderSettingsContext = createContext<CoderSettingsContextValue | null>(null);
@@ -35,6 +37,7 @@ export function useCoderSettings(): CoderSettingsContextValue {
       setAnswerKeys: () => {},
       keyMapping: "numbers",
       setKeyMapping: () => {},
+      loggedIn: null,
     };
   }
   return ctx;

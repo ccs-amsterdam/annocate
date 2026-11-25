@@ -250,7 +250,10 @@ development headers the study has no study users, so any development role
 gets in.) The `name` is stored without spaces around it (`StudyNameSchema`:
 1 to 256 characters after trimming; also in `updateStudy`,
 `createStudyFromExample` and a recipe), since deleting a study is
-confirmed by typing its name.
+confirmed by typing its name. `coderKind`: who codes, `expert` (the
+researchers' expert coders) or `crowd` (left out: a crowd); the study's
+designs invite that kind (`docs/architecture.md` §6.1). It can be changed
+until the study's first deploy ([updateStudy](#updatestudy)).
 
 ### listExamples
 
@@ -264,7 +267,8 @@ shows and what to try (`docs/examples.md`).
 (201): a new study from an example, like `createStudy` (the same role, limits
 and ownership): its units and sets, its design deployed (which makes
 its links), and its example answers (coders named "Example coder n").
-The study's `origin` is the example's id. 404 for an unknown example.
+The study's `origin` is the example's id, its `coderKind` the example's
+(`docs/examples.md`). 404 for an unknown example.
 
 ### createStudyFromRecipe
 
@@ -272,6 +276,9 @@ The study's `origin` is the example's id. 404 for an unknown example.
 recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
 `createStudy` (the same role, limits and ownership), in one transaction:
 
+- `coderKind` (`expert` or `crowd`): who codes in the new study. Left out:
+  the kind the design's invitation is for (`session.invite`; a crowd
+  without one);
 - `units` (`{ id, data }`; the first unit's fields become the study's),
   `coders`: its expert coders (`[{ coder, email? }]`, as
   [createCoders](#createcoders)), and `sets`: role columns by the units' ids
@@ -287,7 +294,8 @@ recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-column defined twice, or a design to deploy that has issues or fails the
+column defined twice, or a design to deploy that has issues (also an
+invitation that isn't for the recipe's `coderKind`) or fails the
 deploy's errors ([putDeployment](#putdeployment)); nothing is created then. Example studies are recipes too
 (`packages/server/examples/`), with example answers.
 
@@ -305,6 +313,16 @@ deployment settings end items' `redirectSetting` names, e.g. a panel's
 return links (`docs/architecture.md` §5); coders get them at once, without
 a deploy. `StudyResponseSchema` also has
 `suspendedAt` (a server admin suspended the study).
+
+`coderKind` (`expert` or `crowd`: who codes) can be changed only until the
+study's first deploy: afterwards a request with another kind is refused,
+409 `coder_kind_locked` ("Who codes (expert coders or a crowd) can't be
+changed after the study's first deploy"), and saves nothing. The kind the
+study has, or leaving it out, is no change. Changing it sets `session.invite`
+of every design version of the study (all drafts still) to the new kind's
+first invitation (`{ mode: "crowd" }`, or `{ mode: "coders", link:
+"per_coder" }`) and bumps their `revision`, so they stay valid designs of
+the study.
 
 ### deleteStudy
 
@@ -395,9 +413,15 @@ deploying and previewing require. Versions also have `updated`,
 
 A design version is `{ public, session, units, items }`: `public` what
 coders see about the study (`{ title }`, or null), `session` how a coder's
-session starts (the who codes `invite`, URL parameters `urlParams`,
+session starts (the invitation `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without; a URL parameter's key and `coderParam`
-can't be `link`, `transfer`, `login` or `source`: not `valid`), `units.fields` the declared unit
+can't be `link`, `transfer`, `login` or `source`: not `valid`). The
+invitation is for the study's kind of coders (its `coderKind`): `mode:
+"coders"` in a study with expert coders, `mode: "crowd"` or none in one
+with a crowd. One for the other kind is saved like any draft, but the
+version is not `valid`, and deploying it answers 400 with the issue
+("This study has expert coders, but the design invites a crowd: …") at
+`[0, "invite"]`, `units.fields` the declared unit
 fields, `items` the top-level questions, experiments, branches and unit loops
 (branches and loops holding questions, end items and nested branches;
 branches also experiments). On `PUT`,
@@ -561,7 +585,8 @@ with a link each (`invite: { mode: "coders", link: "per_coder" }`) one per
 coder of `coder_set` (`params: { coder }`), and deploying `coder_set`
 changes syncs them ([putDeployment](#putdeployment)): links follow the
 deployed sets. A link no
-longer made is **retired** (`retiredAt`), never deleted: new coders get 403
+longer made is **retired** (`retiredAt`), not deleted (only deleting a
+coder deletes their link): new coders get 403
 `link_inactive`, coders who started keep working. It comes back, with the
 same secret, if it is made again (e.g. the coder is back in `coder_set`).
 A link has no settings of its own: its label is its values (or "Open
@@ -684,8 +709,10 @@ researcher's email.
 Deleting a coder (`coders` in the response) also removes their row and
 email address, takes them out of the units' `coder_set` in the draft and as
 deployed (their units then have no coder: `unassigned` of
-[listCoders](#listcoders)), and revokes their own link. The id can be made
-again afterwards.
+[listCoders](#listcoders)), and deletes their own link (a link per coder;
+404 `link_not_found` for whoever has it). The id can be made again
+afterwards: a new coder, who gets a new link (another secret) when the
+units are deployed with them in the coder set.
 
 ### postponeDeletion
 
@@ -700,7 +727,7 @@ per deleted coder session `sessionId`, `coder`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
 can be deleted from those too. No units, and not the email address: a `coder` that looks like an
-email address (a crowd that signs in, or an id the researchers chose) is `sha256:<hex>`, the SHA-256 of the
+email address (a panel's id, or an id the researchers chose) is `sha256:<hex>`, the SHA-256 of the
 address in lower case, which still matches the coder in earlier downloads
 (`docs/coder-identity.md` §8). Nothing that identifies the person is kept.
 

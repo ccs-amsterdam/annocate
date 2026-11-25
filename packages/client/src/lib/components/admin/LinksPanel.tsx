@@ -39,7 +39,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
 
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
   const urlParams = [
-    ...(invite?.mode === "crowd" && invite.coderParam && !invite.coderParam.optional
+    ...(invite.mode === "crowd" && invite.coderParam && !invite.coderParam.optional
       ? [`${invite.coderParam.param}=<coder id>`]
       : []),
     ...(session?.urlParams ?? []).filter((p) => p.default === undefined).map((p) => `${urlParamKey(p)}=<${p.name}>`),
@@ -49,7 +49,7 @@ export function LinksPanel({ client }: LinksPanelProps) {
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
   // Expert coders who sign in: one link, and only the coders' addresses may code
-  const emailCoders = invite?.mode === "coders" && invite.link === "login";
+  const emailCoders = invite.mode === "coders" && invite.link === "login";
 
   const links = linksQuery.data ?? [];
   const active = links.filter((l) => !l.retiredAt);

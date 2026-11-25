@@ -1,20 +1,23 @@
-import type { Invite } from "@annotinder/contracts";
+import type { CoderKind } from "@annotinder/contracts";
 import { WHO_CODES } from "./whoCodes";
 import { cn } from "cn";
 
 /**
- * The choice of who codes: a card per mode, as radio buttons. `long`: the
- * longer explanation (the design page while nothing is chosen yet).
+ * The choice of who codes in a study: a card per kind of coders, as radio
+ * buttons. `long`: the longer explanation (making a study). `disabled`: the
+ * choice is fixed (the study was deployed).
  */
 export function WhoCodesCards({
   value,
   long = false,
+  disabled = false,
   onChoose,
   learnMore,
 }: {
-  value: Invite["mode"] | null;
+  value: CoderKind | null;
   long?: boolean;
-  onChoose: (mode: Invite["mode"]) => void;
+  disabled?: boolean;
+  onChoose: (kind: CoderKind) => void;
   /** A "Learn more" link under the cards (the guide). */
   learnMore?: () => void;
 }) {
@@ -25,20 +28,21 @@ export function WhoCodesCards({
         role="radiogroup"
         aria-label="Who codes"
       >
-        {(["coders", "crowd"] as const).map((mode) => {
-          const { icon: Icon, title, short, long: text } = WHO_CODES[mode];
-          const active = value === mode;
+        {(["expert", "crowd"] as const).map((kind) => {
+          const { icon: Icon, title, short, long: text } = WHO_CODES[kind];
+          const active = value === kind;
           return (
             <button
-              key={mode}
+              key={kind}
               type="button"
               role="radio"
               aria-checked={active}
-              onClick={() => onChoose(mode)}
+              disabled={disabled}
+              onClick={() => onChoose(kind)}
               className={cn(
-                "flex flex-col items-start gap-1 rounded-lg border text-left transition-colors",
+                "flex flex-col items-start gap-1 rounded-lg border text-left transition-colors disabled:opacity-60",
                 long ? "p-4" : "p-2.5",
-                active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40",
+                active ? "border-primary bg-primary/5" : "border-border bg-card enabled:hover:border-primary/40",
               )}
             >
               <span className={cn("flex items-center gap-1.5 font-semibold", long ? "text-base" : "text-sm")}>

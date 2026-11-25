@@ -8,6 +8,7 @@
     "Download the results: survey answers are in coders.csv."
   ],
   "name": "A simple survey",
+  "coderKind": "crowd",
   "deploy": true,
   "design": {
     "note": "Example: a simple survey",

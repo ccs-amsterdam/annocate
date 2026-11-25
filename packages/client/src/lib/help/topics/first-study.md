@@ -22,7 +22,8 @@ a003,Local team wins cup,"Thousands celebrated in the city centre after the fina
 
 On the **Studies** page, click **Create new study** and choose:
 
-- **Empty study**: type a name and click **Create Study**. Follow the
+- **Empty study**: type a name, choose **who codes** (for this study:
+  **Crowd (one link)**; see step 5) and click **Create Study**. Follow the
   steps below.
 - **From an example**: a ready study to look around in.
 
@@ -79,20 +80,22 @@ $unit.text
 Select the loop itself to see which units it codes: by default all the
 coder's units. More: [Layout templates](layout-templates.md).
 
-## 5. Choose who codes
+## 5. Who codes
 
-A new design asks first, with two cards (also **Who codes** above the
-tree). It can't be deployed until you choose:
+You chose who codes when you created the study (you can change it under
+**Settings** until the first deploy):
 
 - **Crowd (one link)**: one link for anyone. Without more settings,
   every coder codes all units. Optionally take a coder id from the URL
-  (for a panel), ask coders to sign in, or set a maximum number of
-  coders. Whether coders divide the units is set on each unit loop.
+  (for a panel), or set a maximum number of coders. Whether coders divide
+  the units is set on each unit loop.
 - **Expert coders**: coders you know, each with their own units. You add
   them on **Coders**, and the units' coder set (`coder_set`) names them.
   They get a link each, pick their coder id from one link, or sign in.
 
-For this study, choose **Crowd (one link)**. More: [Links](links.md#who-codes),
+**Who codes** above the tree has the options of your study's kind: for
+this study, a crowd's link, which needs no settings. More:
+[Links](links.md#who-codes),
 [Giving each coder their own units](own-units.md).
 
 ## 6. Save and preview

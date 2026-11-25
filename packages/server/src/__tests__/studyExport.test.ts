@@ -15,6 +15,7 @@ import {
 import type { Db } from "../db/index.js";
 import * as schema from "../db/schema/index.js";
 import { createApp } from "../app.js";
+import { listExamples } from "../examples.js";
 import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
 import { EXPORTED_TABLES, NOT_EXPORTED, exportStudy } from "../shared/studyExport.js";
 import { emptyDb, query } from "./testDb.js";
@@ -372,11 +373,19 @@ describe("study exports", { timeout: 60_000 }, () => {
     expect((await emails()).every((email) => email === null)).toBe(true);
     await query(
       db,
-      `UPDATE design_versions SET session = jsonb_set(session, '{invite}', '{"mode": "crowd", "login": true}')
+      `UPDATE design_versions SET session = jsonb_set(session, '{invite}', '{"mode": "coders", "link": "login"}')
        WHERE id = (SELECT design_version_id FROM deployments WHERE study_id = $1)`,
       [study],
     );
     expect((await emails()).every((email) => /^coder\d+@uni\.nl$/.test(String(email)))).toBe(true);
+  });
+
+  it.each(listExamples().map((e) => e.id))("the %s example is exported and imported as the same study", async (id) => {
+    const study = await exampleStudy(id);
+    const res = await imported(await exported(study));
+    expect(res.status, await res.clone().text()).toBe(201);
+    const copy = StudyResponseSchema.parse(await res.json());
+    expect(await contents(copy.id)).toEqual(await contents(study));
   });
 
   it("an export read in small pages holds the same rows, each once", async () => {

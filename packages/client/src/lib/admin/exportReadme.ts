@@ -34,8 +34,7 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                      : ""
                  }
 sessions.csv     A row per coder session (session_id): the coder (their coder
-                 id: an expert coder's, a panel's id from the URL, or
-                 for a crowd that signs in the email they signed in with),
+                 id: an expert coder's, or a panel's id from the URL),
                  email (where signing in was required), link, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted

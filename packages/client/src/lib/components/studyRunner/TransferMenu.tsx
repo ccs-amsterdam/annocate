@@ -3,26 +3,28 @@ import { renderSVG } from "uqr";
 import { Check, Copy, Loader2, MonitorSmartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { SignIn } from "@annotinder/contracts";
 import type { CoderApi } from "../../api/httpCoderApi";
-import { logInWithAccount } from "../../session/coderSession";
 import { useMenuKeys } from "../../keyboard/hooks";
+import { SignInNotes } from "./SignInNotes";
 
 /**
  * "Continue on another device": a one-time link + QR code for this session.
- * A coder whose session is linked to their email can also log in on the
- * other device (there: **Log in** on the "already started" notice, or in
- * this menu). Where the link offers a login, it is offered here too.
+ * A coder whose session has a login can also sign in on the other device,
+ * and one who may sign in and hasn't is offered to (`SignInNotes`).
  */
 export function TransferMenu({
   coderApi,
   transferUrl,
   login,
   canLogIn,
+  signIn,
 }: {
   coderApi: CoderApi;
   transferUrl: (token: string) => string;
   login: string | null;
   canLogIn: boolean;
+  signIn: SignIn;
 }) {
   const [link, setLink] = useState<{ url: string; expiresAt: Date } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,24 +95,7 @@ export function TransferMenu({
             </p>
           </>
         )}
-        {login && (
-          <p className="border-t pt-2.5 text-[11px] text-muted-foreground">
-            Or open this study&apos;s link on the other device and choose <strong>Log in</strong> there (on the notice
-            that you already started, or under &quot;Continue on another device&quot;): log in as{" "}
-            <strong>{login}</strong>.
-          </p>
-        )}
-        {canLogIn && (
-          <div className="space-y-1.5 border-t pt-2.5">
-            <p className="text-[11px] text-muted-foreground">
-              Or log in: your answers are then kept with your account, and you continue on another device by opening
-              this study&apos;s link and logging in there too.
-            </p>
-            <Button type="button" size="sm" variant="outline" className="w-full" onClick={logInWithAccount}>
-              Log in
-            </Button>
-          </div>
-        )}
+        <SignInNotes login={login} canLogIn={canLogIn} signIn={signIn} />
       </PopoverContent>
     </Popover>
   );

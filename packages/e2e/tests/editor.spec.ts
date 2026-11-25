@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures";
 import type { DesignVersion, StudyResponse } from "@annotinder/contracts";
-import { api, chooseWhoCodes, list } from "./helpers";
+import { api, list } from "./helpers";
 
 // The design editor, step by step as "Your first study" (help) describes it.
 
@@ -12,7 +12,6 @@ test("writing a design in the editor, as the help describes it, and saving it", 
   await page.goto("/research");
   await page.getByText("Editor test").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await chooseWhoCodes(page);
 
   // A unit loop
   // (Form labels aren't tied to their fields yet: placeholders find them.)
@@ -77,7 +76,6 @@ test("an experiment: balanced conditions, each with its own units (condition_set
   await page.goto("/research");
   await page.getByText("Conditions in the editor").click();
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await chooseWhoCodes(page);
 
   // An experiment at the top level
   await page.getByRole("button", { name: /add item/i }).click();
@@ -109,7 +107,6 @@ test("branches: a label and a condition, else items; questions and loops at the 
 }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Branches test" });
   await page.goto(`/research/studies/${study.id}/design`);
-  await chooseWhoCodes(page);
 
   // A question at the top level, then a unit loop: no end item there (they go in a branch)
   await page.getByRole("button", { name: /add item/i }).click();

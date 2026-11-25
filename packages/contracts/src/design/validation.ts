@@ -9,9 +9,11 @@ import {
   RESERVED_SESSION_NAMES,
   RESERVED_URL_KEYS,
   STUDY_END_NAME,
+  coderKindProblem,
   inviteOf,
   sessionItem,
   sessionNames,
+  type CoderKind,
   type SessionItem,
   type UrlParam,
 } from "./session.js";
@@ -100,9 +102,24 @@ interface RefContext {
  *
  * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
+ *
+ * `coderKind`: the kind of coders of the study the design is in. Given, the
+ * invitation must be for that kind (`coderKindIssues`).
  */
-export function validateDesignItems(items: unknown[]): DesignIssue[] {
-  return [...schemaIssues(items), ...semanticIssues(items)];
+export function validateDesignItems(items: unknown[], coderKind?: CoderKind): DesignIssue[] {
+  return [...schemaIssues(items), ...semanticIssues(items), ...(coderKind ? coderKindIssues(items, coderKind) : [])];
+}
+
+/**
+ * A design is in a study with expert coders or a crowd (the study's
+ * `coderKind`): an invitation for the other kind is an error, at the Study
+ * entry's `invite`.
+ */
+export function coderKindIssues(items: unknown[], coderKind: CoderKind): DesignIssue[] {
+  const message = coderKindProblem(sessionItem(items), coderKind);
+  if (message === null) return [];
+  const at = items.findIndex((i) => (i as { type?: unknown } | null)?.type === "session");
+  return [{ path: at >= 0 ? [at, "invite"] : [], message }];
 }
 
 /** Zod schema validation of each item. */
@@ -509,8 +526,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   ) {
     const units = raw && typeof raw === "object" ? raw : null;
     if (!units) return;
-    const invite = sessionItem(items)?.invite;
-    if (units.divide && invite?.mode !== "crowd")
+    if (units.divide && inviteOf(sessionItem(items)).mode !== "crowd")
       issue(
         [...path, "divide"],
         "Dividing units among coders is for a crowd: expert coders get the units of their set (Who codes)",
@@ -708,7 +724,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (selectsUnits(item)) {
       if (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
         issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
-      if (inviteOf(sessionItem(items))?.mode === "coders")
+      if (inviteOf(sessionItem(items)).mode === "coders")
         issue(
           [...itemPath, "variable", "selectsUnits"],
           `Experiment '${item.name}' selects units by condition, but expert coders get the units of their coder set: invite a crowd`,
@@ -1040,19 +1056,13 @@ export function callArgumentProblems(
   );
 }
 
-/** Validation errors only (warnings left out): what blocks saving a design. */
-export function designErrors(items: unknown[]): DesignIssue[] {
-  return validateDesignItems(items).filter((i) => !i.warning);
-}
-
-/** What deploying asks of a design (contracts `NO_INVITE`): no errors, and who codes chosen. */
-export const NO_INVITE = "Choose who codes first: expert coders or a crowd (one link)";
-
-/** The errors that keep a design from being deployed: `designErrors`, and who codes not chosen. */
-export function deployErrors(items: unknown[]): DesignIssue[] {
-  if (inviteOf(sessionItem(items)) !== null) return designErrors(items);
-  const at = items.findIndex((i) => (i as { type?: unknown } | null)?.type === "session");
-  return [...designErrors(items), { path: at >= 0 ? [at, "invite"] : [], message: NO_INVITE }];
+/**
+ * Validation errors only (warnings left out): what keeps a design from
+ * being deployed or previewed. `coderKind`: the study's kind of coders
+ * (`validateDesignItems`).
+ */
+export function designErrors(items: unknown[], coderKind?: CoderKind): DesignIssue[] {
+  return validateDesignItems(items, coderKind).filter((i) => !i.warning);
 }
 
 /** Every question in the tree (name -> type), and the key of the loop it is in (`unitLoops`; null: coder-level). */

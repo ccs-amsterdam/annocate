@@ -5,24 +5,16 @@ import {
   matchesUrlPattern,
   urlParamKey,
   own,
-  type Invite,
   type SessionItem,
 } from "@annotinder/contracts";
 import { HttpError } from "../shared/http.js";
-
-/**
- * Who codes, as the runtime runs it: a deployed design always chose
- * (contracts `deployErrors`); a preview of a design that hasn't yet runs
- * as a crowd (one link).
- */
-export const runtimeInvite = (item: SessionItem | null | undefined): Invite => inviteOf(item) ?? { mode: "crowd" };
 
 // A new session's `$session` values (docs/architecture.md §6-7): the URL
 // parameters the design declares, `source`, and who the coder is (`coder`):
 // per the coder unit assignment, their value in the units' `coder_set` (by
 // their link, the name they picked, or the expert coder whose email address
-// their login has), or a crowd's id from a URL parameter (or the login's
-// email). Fixed when the session starts.
+// their login has), or a crowd's id from a URL parameter. Fixed when the
+// session starts.
 
 /** What the design asks of a new session, and the coders (`coder_set`'s values). */
 export interface SessionRules {
@@ -38,7 +30,7 @@ export interface SessionLogin {
 
 /** Expert coders who sign in: their units are those of the coder with their address. */
 export const emailCoders = (rules: SessionRules) => {
-  const invite = runtimeInvite(rules.item);
+  const invite = inviteOf(rules.item);
   return invite.mode === "coders" && invite.link === "login";
 };
 
@@ -53,7 +45,7 @@ const fits = (value: string, pattern?: string) => !pattern || matchesUrlPattern(
  * `auth_required`), and where expert coders sign in only the address of a
  * coder with units (403 `email_not_allowed`). A link's coder that is no longer one: 403
  * `link_inactive`. The coder (also `$session.coder`): expert coders' value
- * in `coder_set`; a crowd's URL parameter, or with a required login the email.
+ * in `coder_set`; a crowd's URL parameter.
  */
 export function sessionValues(
   rules: SessionRules,
@@ -87,7 +79,7 @@ export function sessionValues(
   if (loginRequired(rules.item) && !email) throw new HttpError(401, "This study requires login", "auth_required");
   // Who the coder is ($session.coder): per the invitation
   let coderId: string | null = null;
-  const invite = runtimeInvite(rules.item);
+  const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     // The coder: the one who signs in with the login's address, or the link's
     const values = rules.coders;
@@ -102,7 +94,7 @@ export function sessionValues(
     }
     if (coder !== undefined) coderId = coder;
   } else {
-    // A crowd: the coder's id from a URL parameter, else the login's email (where sign-in is required)
+    // A crowd: the coder's id from a URL parameter
     const param = invite.coderParam;
     const value = param ? read(param.param) : undefined;
     if (param && value === undefined && !param.optional)
@@ -110,7 +102,7 @@ export function sessionValues(
     if (param && value !== undefined) {
       if (!fits(value, param.pattern)) throw invalid(param.param);
       coderId = value;
-    } else if (invite.login && email) coderId = email.toLowerCase();
+    }
   }
   if (coderId) session.coder = coderId;
   return { coder: coderId, session };
@@ -128,7 +120,7 @@ export function previewSessionValues(rules: SessionRules, urlParams: Record<stri
     const value = given(urlParamKey(p)) ?? p.default ?? p.values?.[0]?.value;
     if (value !== undefined) session[p.name] = value;
   }
-  const invite = runtimeInvite(rules.item);
+  const invite = inviteOf(rules.item);
   if (invite.mode === "coders") {
     const coder = given("coder") ?? rules.coders[0];
     if (coder !== undefined) session.coder = coder;

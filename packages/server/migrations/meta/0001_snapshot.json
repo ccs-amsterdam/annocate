@@ -1,6 +1,6 @@
 {
-  "id": "59497546-91c4-4447-bb47-ac08d7ad482f",
-  "prevId": "eb6843b9-f44f-4280-a3d4-8e33807aef6c",
+  "id": "6f1f1851-712e-4195-a54b-4e906b08e150",
+  "prevId": "418fca31-7802-4569-a4d6-38e5f1f0efea",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1397,6 +1397,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "coder_kind": {
+          "name": "coder_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'crowd'"
+        },
         "archived": {
           "name": "archived",
           "type": "boolean",
@@ -1459,7 +1466,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "studies_coder_kind_check": {
+          "name": "studies_coder_kind_check",
+          "value": "\"studies\".\"coder_kind\" IN ('expert', 'crowd')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.unit_draft": {

@@ -149,12 +149,14 @@ CREATE TABLE "studies" (
 	"name" text NOT NULL,
 	"owner_id" integer,
 	"origin" text,
+	"coder_kind" text DEFAULT 'crowd' NOT NULL,
 	"archived" boolean DEFAULT false NOT NULL,
 	"reopen_minutes" integer DEFAULT 1440,
 	"redirect_urls" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created" timestamp with time zone DEFAULT now() NOT NULL,
 	"suspended_at" timestamp with time zone,
-	CONSTRAINT "studies_public_id_key" UNIQUE("public_id")
+	CONSTRAINT "studies_public_id_key" UNIQUE("public_id"),
+	CONSTRAINT "studies_coder_kind_check" CHECK ("studies"."coder_kind" IN ('expert', 'crowd'))
 );
 --> statement-breakpoint
 CREATE TABLE "unit_draft" (

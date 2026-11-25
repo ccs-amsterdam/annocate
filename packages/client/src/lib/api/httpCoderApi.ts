@@ -14,12 +14,17 @@ import {
   type VariableValue,
 } from "@annotinder/contracts";
 
-/** A failed server request, with the server's machine-readable `code` if any (contracts `CoderErrorCode`). */
+/**
+ * A failed server request, with the server's machine-readable `code` if any
+ * (contracts `CoderErrorCode`). `canLogIn`: with `coder_has_session`,
+ * whether signing in here is offered.
+ */
 export class CoderApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly code?: string,
+    readonly canLogIn?: boolean,
   ) {
     super(message);
   }
@@ -28,9 +33,10 @@ export class CoderApiError extends Error {
 async function toError(res: Response, path: string): Promise<CoderApiError> {
   const text = await res.text();
   try {
-    const body = JSON.parse(text) as { error?: unknown; code?: unknown };
+    const body = JSON.parse(text) as { error?: unknown; code?: unknown; canLogIn?: unknown };
     const message = typeof body.error === "string" ? body.error : text;
-    return new CoderApiError(message, res.status, typeof body.code === "string" ? body.code : undefined);
+    const code = typeof body.code === "string" ? body.code : undefined;
+    return new CoderApiError(message, res.status, code, typeof body.canLogIn === "boolean" ? body.canLogIn : undefined);
   } catch {
     return new CoderApiError(`Request to ${path} failed (${res.status}): ${text}`, res.status);
   }

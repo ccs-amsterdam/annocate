@@ -25,6 +25,7 @@ export const INITIAL_SNAPSHOT: StudyManagerSnapshot = {
   currentFrozen: false,
   login: null,
   canLogIn: false,
+  signIn: "none",
   reopen: null,
   newUnits: null,
   unsaved: 0,

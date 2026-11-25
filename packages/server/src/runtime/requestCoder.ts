@@ -1,17 +1,18 @@
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
-import { own } from "@annotinder/contracts";
+import { own, type SignIn } from "@annotinder/contracts";
 import type { Server } from "../context.js";
 import { SESSION_COOKIE, setSessionCookie } from "../researcher/login.js";
 import { deviceDetails } from "../shared/devices.js";
 import type { User } from "../shared/accounts.js";
 import { HttpError } from "../shared/http.js";
+import { crowdSignInAllowed } from "../shared/limits.js";
 import { linkInfo } from "../shared/links.js";
 import { userForSession } from "../shared/sessions.js";
 import { isPreviewId, type Proof } from "./registry.js";
 import type { DeploymentRuntime } from "./runtime.js";
 import { coderKey, newDeviceId, possibleCoderKeys, readDevice, writeDevice } from "./session.js";
-import type { ResolvedCoder } from "./types.js";
+import type { ResolveCoderRequest, ResolvedCoder } from "./types.js";
 
 // A coder request, step by step (coder.ts): the deployment's runtime, the
 // version the client works with, and the coder the request is from.
@@ -88,15 +89,35 @@ export function versionGuard(c: Context, runtime: DeploymentRuntime): void {
 }
 
 /**
+ * Whether this study's coders may sign in where they don't have to
+ * (docs/coder-identity.md §5): expert coders always, a crowd where the
+ * study's owner's plan has it on (`crowdSignIn`). Read when first asked, at
+ * most once per request.
+ */
+function optionalSignIn(server: Server, runtime: DeploymentRuntime): () => Promise<boolean> {
+  let allowed: Promise<boolean> | undefined;
+  return () => (allowed ??= runtime.crowd ? crowdSignInAllowed(server.db, runtime.studyId) : Promise.resolve(true));
+}
+
+/** What a session says about signing in (contracts `SessionResponse`): how it stands in the study, and whether this session is offered it. */
+export interface SignInOffer {
+  signIn: SignIn;
+  canLogIn: boolean;
+}
+
+/**
  * The coder a request is from: the device's session in this deployment
  * (docs/coder-identity.md §4), started from its link on the first request.
- * `canLogIn`: the link offers a login the session hasn't used.
+ * `signInOffer`: what the session says about signing in, read when asked
+ * (`GET /session`). A coder id that has a session elsewhere (409
+ * `coder_has_session`) is told whether signing in here is offered
+ * (`canLogIn`).
  */
 export async function resolveRequestCoder(
   server: Server,
   c: Context,
   runtime: DeploymentRuntime,
-): Promise<ResolvedCoder & { canLogIn: boolean }> {
+): Promise<ResolvedCoder & { signInOffer: () => Promise<SignInOffer> }> {
   const deploymentId = c.req.param("deployment")!;
   const linkSecret = c.req.header("x-link-secret");
   const urlParams = urlParamsOf(c);
@@ -107,7 +128,10 @@ export async function resolveRequestCoder(
   const existingDevice = readDevice(c);
   const device = existingDevice ?? newDeviceId();
   const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParams));
-  const resolved = await runtime.resolveCoder({
+  const signIn = optionalSignIn(server, runtime);
+  // The coder chose to sign in: counts only where their study's coders may
+  const useLogin = c.req.header("x-use-login") === "1" && (await signIn());
+  const resolved = await resolve({
     coderKey: key,
     linkSecret,
     urlParams,
@@ -118,15 +142,34 @@ export async function resolveRequestCoder(
     // chose to (`x-use-login`), and is read only when it matters: to link a
     // session to its email once, or to find the email's session on a new device.
     login: loginOf(server, c),
-    useLogin: c.req.header("x-use-login") === "1",
+    useLogin,
     beforeNewSession: () => countNewSession(server, c),
-    // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.
+    // A login that counts links a session started on this study's link to its email, once.
     linkable: ownLink,
     pickedName: pickedName(c.req.header("x-coder-name")),
   });
   // Only once the coder was accepted (a link may be invalid or used up).
   if (device !== existingDevice) writeDevice(c, device);
-  return { ...resolved, canLogIn: !!server.login && ownLink && resolved.coder.email === null };
+  return { ...resolved, signInOffer };
+
+  /** `canLogIn`: the request has the study's link, which offers a login the session hasn't used. */
+  async function signInOffer(): Promise<SignInOffer> {
+    if (isPreviewId(deploymentId)) return { signIn: "none", canLogIn: false };
+    if (runtime.loginRequired) return { signIn: "required", canLogIn: false };
+    if (!server.login || !(await signIn())) return { signIn: "none", canLogIn: false };
+    return { signIn: "optional", canLogIn: ownLink && resolved.coder.email === null };
+  }
+
+  /** Resolves the coder; "already started on another device" says whether signing in here is offered. */
+  async function resolve(request: ResolveCoderRequest): Promise<ResolvedCoder> {
+    try {
+      return await runtime.resolveCoder(request);
+    } catch (error) {
+      if (!(error instanceof HttpError) || error.code !== "coder_has_session") throw error;
+      const canLogIn = !!server.login && (await signIn());
+      throw new HttpError(409, error.message, error.code, undefined, { canLogIn });
+    }
+  }
 }
 
 /** The page's query parameters (`x-url-params`): the coder id and the design's URL parameters. */

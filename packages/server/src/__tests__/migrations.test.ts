@@ -14,7 +14,10 @@ describe("migrations", () => {
     expect(await query(db, "SELECT relpersistence FROM pg_class WHERE relname = 'rate_limits'")).toEqual([
       { relpersistence: "u" },
     ]);
-    expect(await query(db, "SELECT name FROM plans")).toEqual([{ name: "Default" }]);
+    // The default plan of a fresh server: a crowd's coders can't sign in
+    expect(await query(db, "SELECT name, limits->'crowdSignIn' AS \"crowdSignIn\" FROM plans")).toEqual([
+      { name: "Default", crowdSignIn: false },
+    ]);
     expect(await query(db, "SELECT registration, default_plan_id AS plan FROM server_settings")).toEqual([
       { registration: { requests: true }, plan: 1 },
     ]);

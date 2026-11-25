@@ -1,3 +1,4 @@
+import type { CoderKind } from "@annotinder/contracts";
 import type { TabId } from "../../../admin/tabs";
 
 // The guide (docs/client.md §7, "Guide"): a section per page, each a few
@@ -15,7 +16,7 @@ export type GuideSample =
       /** The whole editor, or only its tree or its form. */
       view?: "full" | "tree" | "form";
       /** Who codes in the sample (default: a crowd). */
-      invite?: "coders" | "crowd";
+      coders?: CoderKind;
     }
   | { page: "units" };
 
@@ -54,11 +55,11 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         id: "modes",
         title: "Two modes: expert or crowd coding",
         text: [
-          "The first choice for a study is who codes. It decides how coders get in and how units are handed out, and a design can't be deployed without it.",
-          "It is at the top of the tree: Who codes.",
+          "The first choice for a study is who codes: you make it when you create the study. It decides how coders get in and how units are handed out.",
+          "You can change it in the study's Settings until the first deploy. How those coders get in is at the top of the tree: Who codes.",
         ],
         sample: { page: "design", view: "tree" },
-        showMe: { page: "Design", target: "who-codes", label: "Who codes: open it to choose" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: how the study's coders get in" },
       },
       {
         id: "coders",
@@ -67,18 +68,18 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           "For content analysis with trained coders. Each coder has their own units: the units' coder set (the coder_set column) says whose they are.",
           "Coders get a link each, pick their name from one link, or sign in. Their session stays open: they come back to their job, and you can add and redistribute units at any time.",
         ],
-        sample: { page: "design", select: "session", view: "form", invite: "coders" },
-        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Expert coders" },
+        sample: { page: "design", select: "session", view: "form", coders: "expert" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: how expert coders get in" },
       },
       {
         id: "crowd",
         title: "Crowd (one link)",
         text: [
           "For many one-time coders: annotation at scale, or an experiment. Everyone starts from one link, which a panel company can hand out.",
-          "Optionally take a coder id from the link, ask coders to sign in, or set a maximum. Whether coders divide the units or each code all is set on each unit loop.",
+          "Optionally take a coder id from the link, or set a maximum. Whether coders divide the units or each code all is set on each unit loop.",
         ],
         sample: { page: "design", select: "session", view: "form" },
-        showMe: { page: "Design", target: "who-codes", label: "Who codes: choose Crowd (one link)" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: a crowd's link" },
       },
       {
         id: "coder-questions",

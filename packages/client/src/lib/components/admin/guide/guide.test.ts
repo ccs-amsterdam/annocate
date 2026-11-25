@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deployErrors, designItems } from "@annotinder/contracts";
+import { designErrors, designItems } from "@annotinder/contracts";
 import { findItem } from "../../../codebook/tree";
 import { GUIDE_FLOW, GUIDE_SECTIONS, sectionIndexOf } from "./guideSteps";
 import { sampleClient, sampleDesign } from "./sampleStudy";
@@ -20,9 +20,9 @@ describe("the guide's steps", () => {
   });
 
   it("show items of the sample study, a design that could be deployed (with a crowd or expert coders)", () => {
-    for (const invite of ["crowd", "coders"] as const) {
-      const items = designItems(sampleDesign(invite));
-      expect(deployErrors(items)).toEqual([]);
+    for (const coderKind of ["crowd", "expert"] as const) {
+      const items = designItems(sampleDesign(coderKind));
+      expect(designErrors(items, coderKind)).toEqual([]);
       for (const s of steps) {
         if (s.sample?.page !== "design" || !s.sample.select || s.sample.select === "session") continue;
         expect(findItem(items, s.sample.select), s.sample.select).not.toBeNull();

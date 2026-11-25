@@ -1,14 +1,13 @@
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { codersOfKind, invitedKind } from "../../../admin/codersTable";
-import { useCodersQuery } from "../../../admin/queries";
-import { useCurrentInvite } from "../../../admin/studyInvite";
+import { codersOfKind } from "../../../admin/codersTable";
+import { useCodersQuery, useStudyQuery } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 
 /** The study's expert coders in a line, with the way to the Coders page (where they are added, changed and followed). */
 export function CodersSummary({ client, onOpenCoders }: { client: ResearcherApi; onOpenCoders: () => void }) {
-  const { invite } = useCurrentInvite(client);
+  const kind = useStudyQuery(client).data?.coderKind;
   const coders = useCodersQuery(client).data?.coders;
-  if (invitedKind(invite) !== "expert" || !coders) return null;
+  if (kind !== "expert" || !coders) return null;
   const experts = codersOfKind(coders, "expert");
   const withUnits = experts.filter((c) => (c.assignedDraft ?? 0) > 0).length;
   return (
