@@ -13,8 +13,8 @@ describe("template fence lines", () => {
   });
 
   it("stay fast on a long run of tabs (the line is matched in one piece)", () => {
-    const started = performance.now();
+    const started = Date.now();
     templateFences(":::" + "\t".repeat(50_000) + "\r\n" + ":::" + " \t".repeat(25_000) + "x\r");
-    expect(performance.now() - started).toBeLessThan(500);
+    expect(Date.now() - started).toBeLessThan(500);
   });
 });
