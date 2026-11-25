@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, KeyRound, LogIn, LogOut, Moon, ShieldAlert, Sun, UserCircle } from "lucide-react";
+import { ExternalLink, KeyRound, LogIn, LogOut, Moon, ShieldAlert, Sun, Trash2, UserCircle } from "lucide-react";
 import { useTheme } from "../../../context/theme";
 import { httpsUrl } from "../../../admin/format";
+import { DeleteAccountDialog } from "./DeleteAccountDialog";
 
 /**
  * The user menu of the top bar: who is logged in, their API keys, light or
- * dark mode, and logging in or out. A login without a second factor shows
+ * dark mode, logging in or out, and deleting the account. A login without a second factor shows
  * an orange shield, and the menu says what it is needed for and links to
  * the login provider's page to set one up (`TwoFactorNote`). `me` null: not logged in (`canLogIn`:
  * the server has a login). `dev`: a development server without login, where
@@ -31,6 +32,7 @@ export function AccountMenu({
   onLoggedOut?: () => void;
 }) {
   const [keysOpen, setKeysOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [theme, setTheme] = useTheme();
   const noSecondFactor = !!me && !dev && me.twoFactor.enabled && !me.twoFactor.used;
 
@@ -100,6 +102,16 @@ export function AccountMenu({
               <LogOut className="h-4 w-4" /> Log out
             </Button>
           )}
+          {me && !dev && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+              onClick={() => setDeleting(true)}
+            >
+              <Trash2 className="h-4 w-4" /> Delete account
+            </Button>
+          )}
           {!me && canLogIn && (
             <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={logIn}>
               <LogIn className="h-4 w-4" /> Log in
@@ -108,6 +120,16 @@ export function AccountMenu({
         </PopoverContent>
       </Popover>
       {keysOpen && <ApiKeysDialog client={client} onClose={() => setKeysOpen(false)} />}
+      {deleting && (
+        <DeleteAccountDialog
+          whose="own"
+          load={() => client.getAccountDeletion()}
+          remove={(confirm) => client.deleteAccount(confirm)}
+          // The account and its login session are gone: the start page, as nobody
+          onDeleted={() => window.location.assign("/")}
+          onClose={() => setDeleting(false)}
+        />
+      )}
     </>
   );
 }

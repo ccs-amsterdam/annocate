@@ -145,7 +145,12 @@ export function StudyList({ client, onSelectStudy, me = null, server, onMe, onOp
         />
       )}
       {studyToDelete && (
-        <DeleteStudyDialog client={client} study={studyToDelete} onClose={() => setStudyToDelete(null)} />
+        <DeleteStudyDialog
+          client={client}
+          study={studyToDelete}
+          onClose={() => setStudyToDelete(null)}
+          onDeleted={() => setStudyToDelete(null)}
+        />
       )}
     </div>
   );

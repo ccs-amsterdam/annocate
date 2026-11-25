@@ -1,43 +1,38 @@
 import type { StudyResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useDeleteStudyMutation } from "../../../admin/queries";
-import { Button } from "@/components/ui/button";
+import { studyNameConfirmed } from "../../../admin/confirmDeletion";
+import { ConfirmDeletionDialog } from "../ConfirmDeletionDialog";
 
-/** Deleting a study: asks first. */
+/** Deleting a study: says what goes, and asks to type the study's name. `onDeleted`: after it is deleted. */
 export function DeleteStudyDialog({
   client,
   study,
   onClose,
+  onDeleted,
 }: {
   client: ResearcherApi;
   study: StudyResponse;
   onClose: () => void;
+  onDeleted: () => void;
 }) {
   const deleteStudy = useDeleteStudyMutation(client);
   return (
-    <div className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/50 p-4 backdrop-blur-sm fade-in">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Delete Study</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Are you sure you want to delete <strong className="text-foreground">{study.name}</strong>? This will
-          permanently delete all its designVersions, units, and coder annotations.
-        </p>
-
-        {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
-
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={deleteStudy.isPending}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            disabled={deleteStudy.isPending}
-            onClick={() => deleteStudy.mutate(study.id, { onSuccess: onClose })}
-          >
-            {deleteStudy.isPending ? "Deleting..." : "Delete"}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDeletionDialog
+      title="Delete this study"
+      expected={study.name}
+      confirmed={(typed) => studyNameConfirmed(typed, study.name)}
+      onDelete={async (confirm) => {
+        await deleteStudy.mutateAsync({ id: study.id, confirm });
+        onDeleted();
+      }}
+      onClose={onClose}
+    >
+      <p>
+        This permanently deletes the study <strong className="text-foreground">{study.name}</strong>: its design
+        versions, units, coders and their answers, sessions and results downloads.
+      </p>
+      <p>It can&apos;t be undone.</p>
+    </ConfirmDeletionDialog>
   );
 }

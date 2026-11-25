@@ -3,6 +3,7 @@ import {
   researcherEndpoints,
   type AdminStudy,
   type AdminStudyUpdate,
+  type AccountDeletion,
   type AdminLogEntry,
   type AdminUser,
   type AdminUserCreate,
@@ -77,6 +78,14 @@ export class ServerApi {
   /** Withdraws an invitation: a user who hasn't logged in yet. */
   deleteInvitation(id: number): Promise<void> {
     return this.api.call("DELETE", this.path(adminEndpoints.deleteInvitation.path, { id }));
+  }
+  /** What deleting a user's account would delete, and what keeps it from being deleted. */
+  getUserDeletion(id: number): Promise<AccountDeletion> {
+    return this.api.call("GET", this.path(adminEndpoints.getUserDeletion.path, { id }));
+  }
+  /** Deletes a registered user's account for good; `confirm` is their email address. Sensitive. */
+  deleteUser(id: number, confirm: string): Promise<void> {
+    return this.api.call("DELETE", this.path(adminEndpoints.deleteUser.path, { id }), { confirm });
   }
   getWarnings(): Promise<ServerWarning[]> {
     return this.api.call("GET", adminEndpoints.getWarnings.path);

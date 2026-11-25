@@ -131,10 +131,13 @@ export function useUpdateStudyMutation(
   });
 }
 
-export function useDeleteStudyMutation(client: ResearcherApi): UseMutationResult<void, Error, number> {
+/** Deletes a study; `confirm` is its name, as the researcher typed it. */
+export function useDeleteStudyMutation(
+  client: ResearcherApi,
+): UseMutationResult<void, Error, { id: number; confirm: string }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => client.deleteStudy(id),
+    mutationFn: ({ id, confirm }) => client.deleteStudy(id, confirm),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: keys.studies });
     },

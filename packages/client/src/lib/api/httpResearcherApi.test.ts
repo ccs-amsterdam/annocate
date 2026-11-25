@@ -33,3 +33,34 @@ describe("lists of the researcher API", () => {
     expect(asked).toEqual(["/api/study/7/units", "/api/study/7/units?after=2", "/api/study/7/units?after=3"]);
   });
 });
+
+describe("deleting for good", () => {
+  const api = new HttpResearcherApi({ baseUrl: "/api" });
+
+  /** A server that answers 204; the requests it got. */
+  function deleting(): { url: string; method?: string; body?: unknown }[] {
+    const requests: { url: string; method?: string; body?: unknown }[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      requests.push({ url, method: init?.method, body: JSON.parse(String(init?.body)) });
+      return new Response(null, { status: 204 });
+    });
+    return requests;
+  }
+
+  it("sends what the researcher typed to confirm: a study's name, the account's email address", async () => {
+    const requests = deleting();
+    await api.deleteStudy(7, "News 2026");
+    await api.deleteAccount("ann@example.org");
+    expect(requests).toEqual([
+      { url: "/api/study/7", method: "DELETE", body: { confirm: "News 2026" } },
+      { url: "/api/me", method: "DELETE", body: { confirm: "ann@example.org" } },
+    ]);
+  });
+});
+
+describe("a study the researcher has no role in", () => {
+  it("is answered 404, like one that doesn't exist: no study", async () => {
+    server({});
+    expect(await new HttpResearcherApi({ baseUrl: "/api" }).getStudy(7)).toBeNull();
+  });
+});

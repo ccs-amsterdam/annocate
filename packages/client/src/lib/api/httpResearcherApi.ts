@@ -47,9 +47,13 @@ import {
   type UnitVersionsQuery,
   type AnnotationsQuery,
   type AuthOptions,
+  type AccountDeletion,
 } from "@annotinder/contracts";
 
-/** A failed researcher API request, with its HTTP status (401: not logged in, 403: no role in the study). */
+/**
+ * A failed researcher API request, with its HTTP status (401: not logged in,
+ * 404: no such study or no role in it, 403: a role too low for this).
+ */
 export class ResearcherApiError extends Error {
   constructor(
     readonly status: number,
@@ -60,10 +64,14 @@ export class ResearcherApiError extends Error {
     super(message);
   }
 
-  /** The server's message (`error` of the body), else the whole message. */
+  /**
+   * The server's message (`error` of the body), else the whole message. An
+   * internal error (500) comes with the request's id, to report it with.
+   */
   get reason(): string {
-    const error = (this.body as { error?: unknown } | undefined)?.error;
-    return typeof error === "string" ? error : this.message;
+    const { error, requestId } = (this.body ?? {}) as { error?: unknown; requestId?: unknown };
+    if (typeof error !== "string") return this.message;
+    return this.status === 500 && typeof requestId === "string" ? `${error} (request id ${requestId})` : error;
   }
 
   /** The machine-readable `code` of the error body, e.g. `design_conflict`. */
@@ -111,6 +119,10 @@ export interface ResearcherApi {
   /** A new API key: `key` is returned only this once. */
   createApiKey(label: string): Promise<ApiKeyCreated>;
   revokeApiKey(id: number): Promise<ApiKeyResponse>;
+  /** What deleting one's account would delete, and what keeps it from being deleted. */
+  getAccountDeletion(): Promise<AccountDeletion>;
+  /** Deletes one's account for good and logs out; `confirm` is its email address. Sensitive. */
+  deleteAccount(confirm: string): Promise<void>;
 
   listStudies(): Promise<StudyResponse[]>;
   getStudy(id?: number): Promise<StudyResponse | null>;
@@ -126,7 +138,8 @@ export interface ResearcherApi {
   /** A new study from a study export's bytes; `coders: false` leaves out coders and their answers. */
   importStudy(bytes: Uint8Array, options?: { name?: string; coders?: boolean }): Promise<StudyResponse>;
   updateStudy(id: number, body: StudyWrite): Promise<StudyResponse>;
-  deleteStudy(id: number): Promise<void>;
+  /** Deletes a study with all its data for good; `confirm` is its name. Sensitive. */
+  deleteStudy(id: number, confirm: string): Promise<void>;
   getStudyUsers(id: number): Promise<StudyUserResponse[]>;
   putStudyUsers(id: number, users: StudyUser[]): Promise<void>;
 
@@ -342,6 +355,14 @@ export class HttpResearcherApi implements ResearcherApi {
     return this.request(researcherEndpoints.revokeApiKey.path.replace(":id", String(id)), { method: "POST" });
   }
 
+  async getAccountDeletion(): Promise<AccountDeletion> {
+    return this.request(researcherEndpoints.getAccountDeletion.path);
+  }
+
+  async deleteAccount(confirm: string): Promise<void> {
+    await this.request(researcherEndpoints.deleteAccount.path, { method: "DELETE", body: JSON.stringify({ confirm }) });
+  }
+
   async listAnnotations(query: AnnotationsQuery = {}): Promise<AnnotationPage> {
     const params = new URLSearchParams();
     for (const [name, value] of Object.entries(query)) if (value !== undefined) params.set(name, String(value));
@@ -408,7 +429,7 @@ export class HttpResearcherApi implements ResearcherApi {
     try {
       return await this.request<StudyResponse>(researcherEndpoints.getStudy.path.replace(":id", String(targetId)));
     } catch (err) {
-      if (err instanceof Error && /\(404\)/.test(err.message)) return null;
+      if (err instanceof ResearcherApiError && err.status === 404) return null;
       throw err;
     }
   }
@@ -459,8 +480,11 @@ export class HttpResearcherApi implements ResearcherApi {
     });
   }
 
-  async deleteStudy(id: number): Promise<void> {
-    await this.request(researcherEndpoints.deleteStudy.path.replace(":id", String(id)), { method: "DELETE" });
+  async deleteStudy(id: number, confirm: string): Promise<void> {
+    await this.request(researcherEndpoints.deleteStudy.path.replace(":id", String(id)), {
+      method: "DELETE",
+      body: JSON.stringify({ confirm }),
+    });
   }
 
   async getStudyUsers(id: number): Promise<StudyUserResponse[]> {

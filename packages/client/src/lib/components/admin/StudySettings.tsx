@@ -4,7 +4,6 @@ import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcher
 import {
   useDesignVersionQuery,
   useDesignVersionsQuery,
-  useDeleteStudyMutation,
   useStudyQuery,
   useUpdateStudyMutation,
 } from "../../admin/queries";
@@ -14,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Download, Trash2 } from "lucide-react";
 import { downloadFile } from "../../admin/download";
 import { ReopenSetting } from "./session/ReopenSetting";
+import { DeleteStudyDialog } from "./studyList/DeleteStudyDialog";
 
 /**
  * Study settings (docs/client.md §7), on the Settings page: the study's name,
@@ -50,11 +50,9 @@ function StudyEditForm({
   onDeleted?: () => void;
 }) {
   const updateStudy = useUpdateStudyMutation(client);
-  const deleteStudy = useDeleteStudyMutation(client);
   const [name, setName] = useState(study.name);
   const [archived, setArchived] = useState(study.archived);
   const [reopenMinutes, setReopenMinutes] = useState(study.reopenMinutes);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [redirects, setRedirects] = useState<Record<string, string>>(study.redirectUrls ?? {});
   // The end items' redirect settings in the latest design version, and any URL already set
   const designVersions = useDesignVersionsQuery(client).data ?? [];
@@ -139,55 +137,47 @@ function StudyEditForm({
 
       <StudyExport client={client} />
 
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
-        <h3 className="flex items-center gap-1 text-sm font-semibold text-destructive">
-          Delete this study
-          <InfoTip label="About deleting">
-            Deleting this study permanently removes its design versions, units, coders and their answers.
-          </InfoTip>
-        </h3>
+      <StudyDeletion client={client} study={study} onDeleted={onDeleted} />
+    </div>
+  );
+}
 
-        {!showConfirmDelete ? (
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            className="mt-3 gap-1.5"
-            onClick={() => setShowConfirmDelete(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete Study
-          </Button>
-        ) : (
-          <div className="mt-3 flex items-center gap-2">
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              disabled={deleteStudy.isPending}
-              onClick={() => {
-                deleteStudy.mutate(study.id, {
-                  onSuccess: () => {
-                    onDeleted?.();
-                  },
-                });
-              }}
-            >
-              {deleteStudy.isPending ? "Deleting..." : "Confirm Delete"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowConfirmDelete(false)}
-              disabled={deleteStudy.isPending}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-        {deleteStudy.isError && <p className="mt-2 text-xs text-destructive">{deleteStudy.error.message}</p>}
-      </div>
+/** Deleting the study: a button that opens the dialog asking to confirm it. */
+function StudyDeletion({
+  client,
+  study,
+  onDeleted,
+}: {
+  client: ResearcherApi;
+  study: StudyResponse;
+  onDeleted?: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-destructive">Delete this study</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Permanently removes the study with its design versions, units, coders and their answers, sessions and results
+        downloads.
+      </p>
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        className="mt-3 gap-1.5"
+        onClick={() => setConfirming(true)}
+      >
+        <Trash2 className="h-4 w-4" />
+        Delete Study
+      </Button>
+      {confirming && (
+        <DeleteStudyDialog
+          client={client}
+          study={study}
+          onClose={() => setConfirming(false)}
+          onDeleted={() => onDeleted?.()}
+        />
+      )}
     </div>
   );
 }

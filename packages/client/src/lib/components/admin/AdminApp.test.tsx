@@ -15,6 +15,8 @@ const stubClient: ResearcherApi = {
   importStudy: () => new Promise(() => {}),
   createStudy: () => new Promise(() => {}),
   deleteStudy: () => new Promise(() => {}),
+  getAccountDeletion: () => new Promise(() => {}),
+  deleteAccount: () => new Promise(() => {}),
   getStudy: () => new Promise(() => {}),
   updateStudy: () => new Promise(() => {}),
   getStudyUsers: () => new Promise(() => {}),

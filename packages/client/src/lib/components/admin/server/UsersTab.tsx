@@ -16,6 +16,7 @@ import type { ServerApi } from "../../../api/serverApi";
 import { formatWhen } from "../../../admin/format";
 import { LIMITS, limitText, selectClass, usePlans, useInvalidate } from "./shared";
 import { Table, ErrorLine } from "./ui";
+import { DeleteAccountDialog } from "../account/DeleteAccountDialog";
 
 // The server admin's Users page: accounts, their roles and limits, and adding users.
 
@@ -30,6 +31,7 @@ export function UsersTab({ server, migrating }: { server: ServerApi; migrating: 
   });
   const withdraw = useMutation({ mutationFn: (id: number) => server.deleteInvitation(id), onSuccess: invalidate });
   const [limitsOf, setLimitsOf] = useState<AdminUser | null>(null);
+  const [deleting, setDeleting] = useState<AdminUser | null>(null);
   const planName = (id: number | null) => plans.data?.find((p) => p.id === id)?.name;
 
   return (
@@ -101,37 +103,25 @@ export function UsersTab({ server, migrating }: { server: ServerApi; migrating: 
             <td className="p-2 tabular-nums">{u.studies}</td>
             <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(u.lastLogin)}</td>
             <td className="p-2 text-right whitespace-nowrap">
-              {!u.registered && (
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => confirm(`Withdraw the invitation of ${u.email}?`) && withdraw.mutate(u.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> Withdraw
-                </Button>
-              )}
-              {u.registered && (
-                <Button
-                  size="xs"
-                  variant={u.blockedAt ? "outline" : "ghost"}
-                  onClick={() => {
-                    if (
-                      u.blockedAt ||
-                      confirm(
-                        `Block ${u.email}? They are logged out, and can't log in or use API keys until unblocked.`,
-                      )
-                    ) {
-                      update.mutate({ id: u.id, body: { blocked: !u.blockedAt } });
-                    }
-                  }}
-                >
-                  <Ban className="h-3.5 w-3.5" /> {u.blockedAt ? "Unblock" : "Block"}
-                </Button>
-              )}
+              <UserActions
+                user={u}
+                onWithdraw={() => withdraw.mutate(u.id)}
+                onBlock={(blocked) => update.mutate({ id: u.id, body: { blocked } })}
+                onDelete={() => setDeleting(u)}
+              />
             </td>
           </tr>
         ))}
       </Table>
+      {deleting && (
+        <DeleteAccountDialog
+          whose="user"
+          load={() => server.getUserDeletion(deleting.id)}
+          remove={(confirm) => server.deleteUser(deleting.id, confirm)}
+          onDeleted={() => (setDeleting(null), invalidate())}
+          onClose={() => setDeleting(null)}
+        />
+      )}
       {limitsOf && (
         <LimitsDialog
           user={limitsOf}
@@ -143,6 +133,48 @@ export function UsersTab({ server, migrating }: { server: ServerApi; migrating: 
         />
       )}
     </div>
+  );
+}
+
+/**
+ * What an admin can do with a user: withdraw an invitation not claimed yet;
+ * block (or unblock) a registered user, or delete their account.
+ */
+function UserActions({
+  user,
+  onWithdraw,
+  onBlock,
+  onDelete,
+}: {
+  user: AdminUser;
+  onWithdraw: () => void;
+  onBlock: (blocked: boolean) => void;
+  onDelete: () => void;
+}) {
+  if (!user.registered)
+    return (
+      <Button
+        size="xs"
+        variant="ghost"
+        onClick={() => confirm(`Withdraw the invitation of ${user.email}?`) && onWithdraw()}
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Withdraw
+      </Button>
+    );
+  const blockWarning = `Block ${user.email}? They are logged out, and can't log in or use API keys until unblocked.`;
+  return (
+    <>
+      <Button
+        size="xs"
+        variant={user.blockedAt ? "outline" : "ghost"}
+        onClick={() => (user.blockedAt || confirm(blockWarning)) && onBlock(!user.blockedAt)}
+      >
+        <Ban className="h-3.5 w-3.5" /> {user.blockedAt ? "Unblock" : "Block"}
+      </Button>
+      <Button size="xs" variant="ghost" onClick={onDelete}>
+        <Trash2 className="h-3.5 w-3.5" /> Delete
+      </Button>
+    </>
   );
 }
 

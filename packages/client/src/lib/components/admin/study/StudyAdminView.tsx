@@ -119,7 +119,8 @@ export function StudyAdminView({
 
 /** Why a study can't be shown. */
 function noStudyMessage(error: Error | null): string {
-  if (error === null) return "This study doesn't exist (any more).";
+  // The server answers 404 both for no such study and for one the researcher has no role in
+  if (error === null) return "This study doesn't exist (any more), or you don't have access to it.";
   if (!(error instanceof ResearcherApiError)) return `The study couldn't be loaded: ${error.message}`;
   if (error.status === 403) return "You don't have access to this study.";
   return `The study couldn't be loaded: ${error.reason}`;
