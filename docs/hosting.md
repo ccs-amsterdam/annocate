@@ -294,7 +294,10 @@ container is replaced: update at a quiet hour.
 Everything that matters is in the database: studies, units, answers,
 accounts, sessions. Besides it, a server is its `.env` (and your proxy's
 configuration). Results downloads (`ANNOTINDER_FILES_DIR`, inside the
-container by default) are a cache and need no backup.
+container by default) are a cache and need no backup. That folder is the
+server's file store: once units can hold files of their own (images, audio),
+those are data, and the folder (or the object store that replaces it) must be
+backed up with the database.
 
 Three layers, each against a different accident:
 
@@ -355,6 +358,18 @@ restic forget --tag annotinder --keep-daily 14 --keep-weekly 8 --keep-monthly 12
 # Tell the backup check that this ran (Monitoring): only reached when both commands worked
 curl -fsS -m 10 --retry 3 "<the check's ping address>" > /dev/null
 ```
+
+**Cloudflare R2 as the store** (S3-compatible; you pay for storage only, the
+first 10 GB free; not run for this guide). Create the bucket with
+**jurisdiction EU** (chosen at creation, it keeps the data in the EU), make an
+R2 API token with *Object Read & Write* on that bucket only, and use its key
+pair as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` with
+`RESTIC_REPOSITORY=s3:https://<account-id>.eu.r2.cloudflarestorage.com/<bucket>`
+(the address the bucket's settings show). restic encrypts before uploading,
+so R2 only ever holds data it can't read; R2 encrypts at rest as well. A
+bucket lock rule (retention) keeps a break-in from deleting the copies; make
+it at least as long as the oldest copy you keep, or `restic forget` can't
+remove expired copies until it ends.
 
 - **Put the restic password and the access key in the password manager
   now.** Without the password the copies are noise; the server must not be
