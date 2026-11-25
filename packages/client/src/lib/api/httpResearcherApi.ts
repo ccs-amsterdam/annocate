@@ -88,6 +88,8 @@ export class ResearcherApiError extends Error {
 
 export interface LoginUrlOptions {
   stepUp?: boolean;
+  /** Log in at the provider again, whatever session the browser has there (after setting up a second factor). */
+  fresh?: boolean;
   previous?: boolean;
   link?: boolean;
 }
@@ -347,7 +349,7 @@ export class HttpResearcherApi implements ResearcherApi {
   }
 
   loginUrl(returnTo: string, options: LoginUrlOptions = {}): string {
-    const extra = `${options.stepUp ? "&stepUp=1" : ""}${options.previous ? "&provider=previous" : ""}${options.link ? "&link=1" : ""}`;
+    const extra = `${options.stepUp ? "&stepUp=1" : ""}${options.fresh ? "&fresh=1" : ""}${options.previous ? "&provider=previous" : ""}${options.link ? "&link=1" : ""}`;
     return `${this.config.baseUrl}/auth/login?returnTo=${encodeURIComponent(returnTo)}${extra}`;
   }
 

@@ -138,6 +138,14 @@ export function login(server: Server): Hono<Env> {
     return { id: user.id, fresh: isFresh(user, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }) };
   }
 
+  /** Whether the browser's current login lacks a second factor that this server asks for. */
+  async function loginWithoutMfa(c: Context): Promise<boolean> {
+    if (server.insecure.disable2fa) return false;
+    const key = getCookie(c, SESSION_COOKIE);
+    const user = key ? await userForSession(server.db, key) : null;
+    return user !== null && !user.mfa;
+  }
+
   app.get("/auth/login", async (c) => {
     if (!oidc) return c.json({ error: "Login is not configured on this server" }, 404);
     const returnTo = safeReturnTo(c.req.query("returnTo"));
@@ -150,6 +158,7 @@ export function login(server: Server): Hono<Env> {
     const provider = usePrevious ? previousOidc() : oidc;
     if (!provider) return c.json({ error: "The previous login provider is no longer accepted" }, 404);
     const linkNow = linking && !stepUpToLink;
+    const freshLogin = linkNow || c.req.query("fresh") === "1" || (stepUp && (await loginWithoutMfa(c)));
     const { url, state } = await provider.start(
       redirectUri,
       {
@@ -159,8 +168,9 @@ export function login(server: Server): Hono<Env> {
         ...(stepUpToLink ? { thenLink: true } : {}),
         ...(linkNow ? { linkUserId: linking.id } : {}),
       },
-      // Whoever links must log in at the provider now, whatever session the browser has there
-      { ...(stepUp ? { maxAge: server.stepUpMaxAge } : {}), ...(linkNow ? { promptLogin: true } : {}) },
+      // A login at the provider now, whatever session the browser has there: whoever links, and
+      // after setting up a second factor (the provider's session still holds the login without one)
+      { ...(stepUp ? { maxAge: server.stepUpMaxAge } : {}), ...(freshLogin ? { promptLogin: true } : {}) },
     );
     await setSignedCookie(c, LOGIN_COOKIE, JSON.stringify(state), server.secret, {
       path: "/api/auth",

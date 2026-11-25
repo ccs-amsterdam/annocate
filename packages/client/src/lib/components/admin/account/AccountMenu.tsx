@@ -42,10 +42,11 @@ export function AccountMenu({
     else window.location.reload();
   }
 
-  function logIn() {
+  /** `fresh`: log in at the provider again (its session still holds a login without the second factor set up since). */
+  function logIn(options: { fresh?: boolean } = {}) {
     const url = new URL(window.location.href);
     url.searchParams.delete("loginError");
-    window.location.assign(client.loginUrl(url.pathname + url.search + url.hash));
+    window.location.assign(client.loginUrl(url.pathname + url.search + url.hash, options));
   }
 
   return (
@@ -72,7 +73,7 @@ export function AccountMenu({
               <div className="text-muted-foreground">Not logged in</div>
             )}
           </div>
-          {me && noSecondFactor && <TwoFactorNote me={me} onLogIn={logIn} />}
+          {me && noSecondFactor && <TwoFactorNote me={me} onLogIn={() => logIn({ fresh: true })} />}
           <div className="my-1 border-t border-border" />
           <div className="flex items-center justify-between px-2 py-1 text-xs">
             Theme
@@ -113,7 +114,7 @@ export function AccountMenu({
             </Button>
           )}
           {!me && canLogIn && (
-            <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={logIn}>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2" onClick={() => logIn()}>
               <LogIn className="h-4 w-4" /> Log in
             </Button>
           )}
@@ -145,10 +146,6 @@ function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void })
       {me.twoFactor.adminOff && (
         <p className="mt-1">Your server admin access is off until you log in with a second factor.</p>
       )}
-      <p className="mt-1 text-muted-foreground">
-        You logged in without one (an authenticator app or a passkey). It is needed for API keys, deleting answers or a
-        study, and admin roles.
-      </p>
       {setupUrl ? (
         <a
           href={setupUrl}
@@ -165,8 +162,8 @@ function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void })
         Then{" "}
         <button type="button" onClick={onLogIn} className="font-medium text-primary underline-offset-2 hover:underline">
           log in again
-        </button>{" "}
-        (a login during which you set it up doesn&apos;t count yet: log in once more).
+        </button>
+        .
       </p>
     </div>
   );

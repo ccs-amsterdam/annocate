@@ -287,6 +287,23 @@ describe("researcher login", () => {
     expect((await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) })).status).toBe(201);
   });
 
+  it("asks the provider for a new login after a second factor was set up (its session still holds the old login)", async () => {
+    app = newApp(["jane@uni.nl"]);
+    const b = browser();
+    const prompt = async (query: string) =>
+      new URL((await b.request(`/api/auth/login?returnTo=/x${query}`)).headers.get("location")!).searchParams.get(
+        "prompt",
+      );
+    // Logged in without a second factor: "log in again" (fresh=1) and a step-up both need a new login there
+    await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(5) });
+    expect(await prompt("&fresh=1")).toBe("login");
+    expect(await prompt("&stepUp=1")).toBe("login");
+    expect(await prompt("")).toBeNull();
+    // With a second factor, a step-up only asks for a recent login (max_age), not always a new one
+    await b.logIn({ ...verified, auth_time: secondsAgo(20 * 60) });
+    expect(await prompt("&stepUp=1")).toBeNull();
+  });
+
   it("API keys never do sensitive actions: no new keys, no deleting answers or studies, no admin roles", async () => {
     app = newApp(["jane@uni.nl"]);
     const b = browser();

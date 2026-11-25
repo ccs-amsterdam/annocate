@@ -54,7 +54,11 @@ Otherwise: 403 `step_up_required`, and the client sends the researcher to log
 in again with `?stepUp=1`. The server asks the provider for `max_age` and
 checks the new token's 2FA claim and `auth_time` (`loginError=step_up_failed`
 if they don't hold). With `AUTH_INSECURE_DISABLE_2FA` only `auth_time` is
-checked.
+checked. When the current login has no second factor, the step-up also asks
+for `prompt=login`: the provider's own session still holds that login, also
+after the user set up a second factor, and would hand it back unasked. The
+account menu's "log in again" after setting one up does the same
+(`?fresh=1`).
 
 **Weaker security** (teaching, low-sensitivity servers). Two requirements can
 be turned off; never on a server with sensitive research data. Both are
