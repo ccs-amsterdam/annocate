@@ -141,7 +141,7 @@ function FixedKind({
         {title}
       </span>
       <span className="text-[11px] text-muted-foreground">
-        {short}. Fixed since the first deploy: coders started, and their links and units follow from it.
+        {short}. Fixed since the first deploy.
       </span>
       {!fits && (
         <Button

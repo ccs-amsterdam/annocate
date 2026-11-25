@@ -29,7 +29,7 @@ export function GuideDialog({ onGoTo }: { onGoTo: (page: TabId) => void }) {
     <nav aria-label="Guide" className="flex flex-col gap-3 text-sm">
       {GUIDE_SECTIONS.map((sec, s) => (
         <div key={sec.page} className="flex flex-col gap-0.5">
-          <span className="px-2 text-xs font-semibold text-muted-foreground">{sec.title}</span>
+          <span className="px-2 text-xs font-semibold text-primary">{sec.title}</span>
           {sec.steps.map((st, i) => {
             const current = s === guide.section && i === guide.step;
             return (
@@ -43,7 +43,7 @@ export function GuideDialog({ onGoTo }: { onGoTo: (page: TabId) => void }) {
                 }}
                 className={cn(
                   "rounded-md px-2 py-1 text-left transition-colors",
-                  current ? "bg-wood/15 font-medium text-foreground" : "text-muted-foreground hover:bg-muted",
+                  current ? "bg-leaf/15" : "text-muted-foreground hover:bg-muted",
                 )}
               >
                 {st.title}

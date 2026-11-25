@@ -24,7 +24,7 @@ export function DisplaySettings({
     <section className="flex flex-col gap-4">
       <label className={labelClass}>
         <span className="flex items-center gap-1.5">
-          Layouts
+          Question auto-layout behavior
           <HelpButton topic="answer-layouts#fixed-or-responsive" label="Help: fixed or responsive layouts" />
         </span>
         <select
@@ -33,12 +33,12 @@ export function DisplaySettings({
           onChange={(e) => set("layouts", e.target.value === "responsive" ? "responsive" : undefined)}
         >
           <option value="fixed">Fixed: every coder sees the same layout</option>
-          <option value="responsive">Responsive: adapt to the screen and the coder&apos;s keys</option>
+          <option value="responsive">Responsive: adjust to coder device and settings</option>
         </select>
         <span className="text-[11px] font-normal text-muted-foreground">
           {responsive
-            ? "Questions with an auto layout use more columns on wider screens, and follow the coder's keys: with the numpad, buttons in three columns; typing to filter, buttons instead of a dropdown. Layouts you chose for a question stay as they are. Each coder's display is recorded with their session."
-            : "Auto layouts follow the options only, the same on every device, so every coder sees the same question. Coders can't use the numpad keys."}
+            ? "Adjust layout to coder's device. Can enhance readability and enables the 'numpad' keyboard shortcut setting"
+            : "Keep the answer layout the same across coders. Good for consistency, but can harm readability and customization"}
         </span>
       </label>
       <label className={labelClass}>
@@ -57,11 +57,11 @@ export function DisplaySettings({
         </span>
       </label>
       <fieldset className="flex flex-col gap-1 text-xs">
-        <legend className="mb-1 text-xs font-semibold">Answering with keys</legend>
+        <legend className="mb-1 text-xs font-semibold">Coders can enable keyboard shortcuts</legend>
         {(
           [
-            ["coderQuestions", "Questions about the coder (outside unit loops)"],
-            ["unitQuestions", "Questions about units"],
+            ["coderQuestions", "On questions about the coder"],
+            ["unitQuestions", "On questions about units"],
           ] as const
         ).map(([key, label]) => (
           <label key={key} className="flex items-center gap-2">
@@ -77,8 +77,8 @@ export function DisplaySettings({
           </label>
         ))}
         <span className="text-[11px] font-normal text-muted-foreground">
-          Coders who turn on answer shortcuts can choose answers with keys here. Untick where that could affect the
-          answers, e.g. a survey that must be read; moving with the arrows and the Ctrl commands still work.
+          keyboard shortcuts are optional, and turned off by default. They are mainly usefull for experienced coders.
+          You can turn them off if you think it can harm or bias annotations.
         </span>
       </fieldset>
     </section>

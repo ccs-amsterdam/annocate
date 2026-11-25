@@ -61,7 +61,7 @@ export function KeyboardMenu() {
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
           {DEFAULT_SHORTCUTS.map(([keys, what]) => (
             <div key={keys} className="contents">
-              <dt className="font-mono whitespace-pre text-foreground">{keys}</dt>
+              <dt className="font-mono text-foreground">{keys}</dt>
               <dd className="text-muted-foreground">{what}</dd>
             </div>
           ))}

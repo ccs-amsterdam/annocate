@@ -29,11 +29,6 @@ export function AgreementView({ questions, labels }: { questions: QuestionAgreem
   const loops = [...new Set(questions.map((q) => q.loop))];
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Over units two or more coders answered. Krippendorff&apos;s alpha: 1 is full agreement, 0 what chance gives;
-        from 0.8 it is commonly taken as reliable, from 0.667 for tentative conclusions. Spans: per label, each word
-        labelled or not.
-      </p>
       {loops.map((loop) => (
         <section key={loop} className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-muted-foreground">{labels.loopTitle(loop)}</h3>
