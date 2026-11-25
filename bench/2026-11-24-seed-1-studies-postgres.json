@@ -1,0 +1,160 @@
+{
+  "date": "2026-11-24T23:01:50.106Z",
+  "commit": "5fc3dbe",
+  "uncommittedChanges": true,
+  "node": "v22.23.4",
+  "machine": {
+    "cores": 4,
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "memoryGB": 16,
+    "platform": "linux x64"
+  },
+  "loadGenerator": "same machine",
+  "size": {
+    "studies": 1,
+    "units": 10000,
+    "sessions": 2000,
+    "unitsPerSession": 250,
+    "templates": 4,
+    "rederive": false
+  },
+  "createSeconds": 15.9,
+  "rows": {
+    "studies": 1,
+    "units": 10000,
+    "sessions": 2004,
+    "answers": 1004010,
+    "finishedUnits": 501003
+  },
+  "seedSeconds": 555.7,
+  "coder": {
+    "finishedUnits": 250,
+    "coder: session": {
+      "ms": 101,
+      "errors": 0
+    },
+    "coder: summary": {
+      "ms": 101.4,
+      "errors": 0
+    },
+    "coder: next units": {
+      "ms": 57.5,
+      "errors": 0
+    }
+  },
+  "reads": {
+    "study list": {
+      "status": 200,
+      "firstMs": 9,
+      "secondMs": 6,
+      "kB": 0
+    },
+    "overview": {
+      "status": 200,
+      "firstMs": 4446,
+      "secondMs": 4373,
+      "kB": 1
+    },
+    "deployment status": {
+      "status": 200,
+      "firstMs": 5007,
+      "secondMs": 5500,
+      "kB": 0
+    },
+    "coders": {
+      "status": 200,
+      "firstMs": 1160,
+      "secondMs": 1289,
+      "kB": 621
+    },
+    "results answers": {
+      "status": 200,
+      "firstMs": 1572,
+      "secondMs": 7,
+      "kB": 1
+    },
+    "results agreement": {
+      "status": 200,
+      "firstMs": 54562,
+      "secondMs": 186,
+      "kB": 5358
+    },
+    "results units": {
+      "status": 200,
+      "firstMs": 2269,
+      "secondMs": 14,
+      "kB": 750
+    },
+    "results coders": {
+      "status": 200,
+      "firstMs": 1594,
+      "secondMs": 9,
+      "kB": 173
+    },
+    "annotations page": {
+      "status": 200,
+      "firstMs": 26,
+      "secondMs": 30,
+      "kB": 372
+    },
+    "results export": {
+      "status": 200,
+      "firstMs": 23848,
+      "secondMs": 82,
+      "kB": 0
+    },
+    "study export": {
+      "status": 200,
+      "firstMs": 33862,
+      "secondMs": 34530,
+      "kB": 14878
+    }
+  },
+  "serverMemoryMB": 1891,
+  "database": {
+    "kind": "postgres",
+    "sizeMB": 632.4,
+    "largestTables": [
+      {
+        "table": "annotation_values",
+        "sizeMB": 461.7,
+        "rows": 1004037
+      },
+      {
+        "table": "unit_codings",
+        "sizeMB": 80.8,
+        "rows": 501003
+      },
+      {
+        "table": "unit_serves",
+        "sizeMB": 64.3,
+        "rows": 501008
+      },
+      {
+        "table": "unit_values",
+        "sizeMB": 8.5,
+        "rows": 20000
+      },
+      {
+        "table": "unit_draft",
+        "sizeMB": 2.1,
+        "rows": 20000
+      },
+      {
+        "table": "unit_version_fields",
+        "sizeMB": 2.1,
+        "rows": 20000
+      },
+      {
+        "table": "units",
+        "sizeMB": 2.1,
+        "rows": 10000
+      },
+      {
+        "table": "unit_versions",
+        "sizeMB": 1.2,
+        "rows": 10000
+      }
+    ]
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "date": "2026-11-24T22:16:59.772Z",
+  "commit": "989dbad",
+  "uncommittedChanges": true,
+  "node": "v22.23.4",
+  "machine": {
+    "cores": 4,
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "memoryGB": 16,
+    "platform": "linux x64"
+  },
+  "loadGenerator": "same machine",
+  "scenario": {
+    "preset": "smoke",
+    "about": "does it run (CI): 20 coders, a shared queue and own units",
+    "groups": [
+      {
+        "mode": "shared",
+        "studies": 1,
+        "units": 1000,
+        "coders": 10
+      },
+      {
+        "mode": "all",
+        "studies": 1,
+        "units": 200,
+        "coders": 5
+      },
+      {
+        "mode": "experts",
+        "studies": 1,
+        "units": 1000,
+        "coders": 5
+      }
+    ],
+    "thinkMs": 500,
+    "durationS": 20,
+    "batch": 5,
+    "seed": 1
+  },
+  "setup": {
+    "seconds": 3.566,
+    "studies": 3,
+    "units": 2200,
+    "unitsPerSecond": 617
+  },
+  "run": {
+    "seconds": 20.7,
+    "coders": 20,
+    "codersStarted": 20,
+    "codersOutOfUnits": 0,
+    "unitsSubmitted": 642
+  },
+  "endpoints": {
+    "health probe": {
+      "n": 197,
+      "errors": 0,
+      "p50": 2.4,
+      "p95": 14.2,
+      "p99": 55.6,
+      "max": 63,
+      "perSecond": 9.54
+    },
+    "session": {
+      "n": 20,
+      "errors": 0,
+      "p50": 30.9,
+      "p95": 135.7,
+      "p99": 135.7,
+      "max": 135.7,
+      "perSecond": 0
+    },
+    "coder answers": {
+      "n": 20,
+      "errors": 0,
+      "p50": 11.6,
+      "p95": 41.9,
+      "p99": 41.9,
+      "max": 41.9,
+      "perSecond": 0
+    },
+    "next": {
+      "n": 139,
+      "errors": 0,
+      "p50": 19.5,
+      "p95": 50.5,
+      "p99": 103.5,
+      "max": 106.7,
+      "perSecond": 7.13
+    },
+    "submit": {
+      "n": 642,
+      "errors": 0,
+      "p50": 14.6,
+      "p95": 51.5,
+      "p99": 97.1,
+      "max": 158.1,
+      "perSecond": 36.2
+    }
+  },
+  "errors": {},
+  "errorCount": 0,
+  "server": {
+    "rssStartMB": 157,
+    "rssMaxMB": 171,
+    "rssEndMB": 171,
+    "cpuSeconds": 4.69,
+    "cpuShareOfOneCore": 0.23
+  },
+  "database": {
+    "kind": "postgres",
+    "sizeMB": 14.7,
+    "largestTables": [
+      {
+        "table": "unit_values",
+        "sizeMB": 1.9,
+        "rows": 4400
+      },
+      {
+        "table": "annotation_values",
+        "sizeMB": 0.9,
+        "rows": 1304
+      },
+      {
+        "table": "unit_version_fields",
+        "sizeMB": 0.5,
+        "rows": 4400
+      },
+      {
+        "table": "unit_draft",
+        "sizeMB": 0.5,
+        "rows": 4400
+      },
+      {
+        "table": "unit_serves",
+        "sizeMB": 0.4,
+        "rows": 695
+      },
+      {
+        "table": "unit_versions",
+        "sizeMB": 0.3,
+        "rows": 2200
+      },
+      {
+        "table": "units",
+        "sizeMB": 0.3,
+        "rows": 2200
+      },
+      {
+        "table": "unit_codings",
+        "sizeMB": 0.3,
+        "rows": 642
+      }
+    ]
+  },
+  "thresholds": [
+    {
+      "name": "errors",
+      "limit": 0,
+      "value": 0,
+      "pass": true
+    },
+    {
+      "name": "submitP95",
+      "limit": 1000,
+      "value": 51.5,
+      "pass": true
+    },
+    {
+      "name": "nextP95",
+      "limit": 2000,
+      "value": 50.5,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

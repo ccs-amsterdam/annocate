@@ -19,6 +19,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r run typecheck",
+    "bench": "pnpm --filter @annotinder/server bench",
+    "bench:seed": "pnpm --filter @annotinder/server bench:seed",
     "test:e2e": "pnpm --filter @annotinder/e2e e2e"
   },
   "devDependencies": {

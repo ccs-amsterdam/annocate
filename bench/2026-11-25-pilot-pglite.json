@@ -1,0 +1,143 @@
+{
+  "date": "2026-11-25T03:07:34.226Z",
+  "commit": "a5b6b06",
+  "uncommittedChanges": true,
+  "node": "v22.23.4",
+  "machine": {
+    "cores": 4,
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "memoryGB": 16,
+    "platform": "linux x64"
+  },
+  "loadGenerator": "same machine",
+  "scenario": {
+    "preset": "pilot",
+    "about": "the lab pilot: 5 studies, 50 coders at once, coding five times faster than people do",
+    "groups": [
+      {
+        "mode": "shared",
+        "studies": 2,
+        "units": 2000,
+        "coders": 24
+      },
+      {
+        "mode": "experts",
+        "studies": 2,
+        "units": 2000,
+        "coders": 16
+      },
+      {
+        "mode": "all",
+        "studies": 1,
+        "units": 500,
+        "coders": 10
+      }
+    ],
+    "thinkMs": 2000,
+    "durationS": 90,
+    "batch": 5,
+    "seed": 1
+  },
+  "setup": {
+    "seconds": 27.039,
+    "studies": 5,
+    "units": 8500,
+    "unitsPerSecond": 314
+  },
+  "run": {
+    "seconds": 92.5,
+    "arrivalSeconds": 10,
+    "coders": 50,
+    "codersStarted": 50,
+    "codersOutOfUnits": 0,
+    "unitsSubmitted": 2029
+  },
+  "endpoints": {
+    "health probe": {
+      "n": 792,
+      "errors": 0,
+      "p50": 4.8,
+      "p95": 62.5,
+      "p99": 125.4,
+      "max": 319.9,
+      "perSecond": 8.56
+    },
+    "session": {
+      "n": 50,
+      "errors": 0,
+      "p50": 35,
+      "p95": 99.2,
+      "p99": 187.2,
+      "max": 187.2,
+      "perSecond": 0
+    },
+    "coder answers": {
+      "n": 50,
+      "errors": 0,
+      "p50": 11.9,
+      "p95": 49.7,
+      "p99": 57.7,
+      "max": 57.7,
+      "perSecond": 0
+    },
+    "next": {
+      "n": 435,
+      "errors": 0,
+      "p50": 36.1,
+      "p95": 136.2,
+      "p99": 307.7,
+      "max": 408.4,
+      "perSecond": 4.65
+    },
+    "submit": {
+      "n": 2029,
+      "errors": 0,
+      "p50": 23.2,
+      "p95": 103.3,
+      "p99": 273.1,
+      "max": 445.7,
+      "perSecond": 23.45
+    }
+  },
+  "errors": {},
+  "errorCount": 0,
+  "server": {
+    "rssStartMB": 640,
+    "rssMaxMB": 654,
+    "rssEndMB": 654,
+    "cpuSeconds": 39.8,
+    "cpuShareOfOneCore": 0.43
+  },
+  "database": {
+    "kind": "pglite",
+    "sizeMB": 88.8
+  },
+  "thresholds": [
+    {
+      "name": "errors",
+      "limit": 0,
+      "value": 0,
+      "pass": true
+    },
+    {
+      "name": "submitP95",
+      "limit": 250,
+      "value": 103.3,
+      "pass": true
+    },
+    {
+      "name": "nextP95",
+      "limit": 500,
+      "value": 136.2,
+      "pass": true
+    },
+    {
+      "name": "probeMax",
+      "limit": 500,
+      "value": 319.9,
+      "pass": true
+    }
+  ],
+  "serverStopped": false,
+  "pass": true
+}

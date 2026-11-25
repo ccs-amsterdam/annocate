@@ -1,0 +1,135 @@
+{
+  "date": "2026-11-24T22:14:28.770Z",
+  "commit": "989dbad",
+  "uncommittedChanges": false,
+  "node": "v22.23.4",
+  "machine": {
+    "cores": 4,
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "memoryGB": 16,
+    "platform": "linux x64"
+  },
+  "loadGenerator": "same machine",
+  "scenario": {
+    "preset": "smoke",
+    "about": "does it run (CI): 20 coders, a shared queue and own units",
+    "groups": [
+      {
+        "mode": "shared",
+        "studies": 1,
+        "units": 1000,
+        "coders": 10
+      },
+      {
+        "mode": "all",
+        "studies": 1,
+        "units": 200,
+        "coders": 5
+      },
+      {
+        "mode": "experts",
+        "studies": 1,
+        "units": 1000,
+        "coders": 5
+      }
+    ],
+    "thinkMs": 500,
+    "durationS": 20,
+    "batch": 5,
+    "seed": 1
+  },
+  "setup": {
+    "seconds": 5.749,
+    "studies": 3,
+    "units": 2200,
+    "unitsPerSecond": 383
+  },
+  "run": {
+    "seconds": 20.6,
+    "coders": 20,
+    "codersStarted": 20,
+    "codersOutOfUnits": 0,
+    "unitsSubmitted": 621
+  },
+  "endpoints": {
+    "health probe": {
+      "n": 177,
+      "errors": 0,
+      "p50": 6.1,
+      "p95": 60.8,
+      "p99": 88.7,
+      "max": 100.2,
+      "perSecond": 8.51
+    },
+    "session": {
+      "n": 20,
+      "errors": 0,
+      "p50": 37.8,
+      "p95": 114.2,
+      "p99": 114.2,
+      "max": 114.2,
+      "perSecond": 0
+    },
+    "coder answers": {
+      "n": 20,
+      "errors": 0,
+      "p50": 17.7,
+      "p95": 47.9,
+      "p99": 47.9,
+      "max": 47.9,
+      "perSecond": 0
+    },
+    "next": {
+      "n": 134,
+      "errors": 0,
+      "p50": 38.8,
+      "p95": 95.7,
+      "p99": 118.6,
+      "max": 118.7,
+      "perSecond": 6.91
+    },
+    "submit": {
+      "n": 621,
+      "errors": 0,
+      "p50": 24,
+      "p95": 75.6,
+      "p99": 117.7,
+      "max": 146.7,
+      "perSecond": 35.12
+    }
+  },
+  "errors": {},
+  "errorCount": 0,
+  "server": {
+    "rssStartMB": 480,
+    "rssMaxMB": 483,
+    "rssEndMB": 483,
+    "cpuSeconds": 11.86,
+    "cpuShareOfOneCore": 0.57
+  },
+  "database": {
+    "kind": "pglite",
+    "sizeMB": 60.9
+  },
+  "thresholds": [
+    {
+      "name": "errors",
+      "limit": 0,
+      "value": 0,
+      "pass": true
+    },
+    {
+      "name": "submitP95",
+      "limit": 1000,
+      "value": 75.6,
+      "pass": true
+    },
+    {
+      "name": "nextP95",
+      "limit": 2000,
+      "value": 95.7,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

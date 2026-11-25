@@ -1,173 +1,45 @@
-// Load test (docs/hosting.md "Capacity"): one study with UNITS units shared
-// by a crowd (two coders per unit), CODERS simulated coders at once.
-// Each starts a session, answers a coder-level question, then fetches
-// batches of BATCH units and submits them, with THINK_MS (+-50%) per unit,
-// for DURATION seconds. Prints latencies per request and the errors.
+// Load test against a server that is already running (docs/hosting.md
+// "Capacity"): STUDIES studies with UNITS units each, CODERS simulated
+// coders spread over them. Each coder starts a session, answers a question
+// about themselves, then fetches batches of BATCH units and submits them,
+// with THINK_MS (+-50%) per unit, for DURATION seconds. Prints the mode it
+// measured, the latencies and requests per second per kind of request, and
+// the errors.
+//
+// MODE: how the units reach the coders.
+//   shared   a crowd shares the units (a shared queue on the loop: two coders per unit)
+//   all      a crowd, every coder codes all units
+//   experts  every coder has their own units (a link each)
+// The script fails if the server stores or runs another mode than asked.
 //
 // Against a server with development auth (never a reachable one), e.g.
-//   DATABASE_URL=postgres://... AUTH_DEV_MODE=1 ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
-//   BASE=http://localhost:8797 CODERS=300 THINK_MS=10000 node packages/server/scripts/load-test.mjs
-// STUDY and SECRET reuse a study (and its invite) from an earlier run.
+//   DATABASE_URL=postgres://... AUTH_DEV_MODE=1 HOST=localhost ANNOTINDER_RATE_LIMITS=off PORT=8797 pnpm --filter @annotinder/server exec tsx src/index.ts
+//   BASE=http://localhost:8797 MODE=shared CODERS=300 THINK_MS=10000 node packages/server/scripts/load-test.mjs
+// `pnpm bench <preset>` (bench.mjs) starts the server itself and runs fixed scenarios.
+import { MODES } from "./bench/names.mjs";
+import { runScenario } from "./bench/run.mjs";
+import { formatSummary } from "./bench/stats.mjs";
+
+const number = (name, fallback) => Number(process.env[name] ?? fallback);
 
 const BASE = process.env.BASE ?? "http://localhost:8797";
-const UNITS = Number(process.env.UNITS ?? 10000);
-const CODERS = Number(process.env.CODERS ?? 300);
-const BATCH = Number(process.env.BATCH ?? 5);
-const DURATION = Number(process.env.DURATION ?? 120) * 1000;
-const THINK_MS = Number(process.env.THINK_MS ?? 1000);
-const DEV = { "content-type": "application/json", "x-dev-role": "ADMIN", "x-dev-email": "load@example.com" };
+const MODE = process.env.MODE ?? "shared";
+if (!MODES.includes(MODE)) throw new Error(`MODE must be one of ${MODES.join(", ")}, not "${MODE}"`);
 
-async function api(method, path, body) {
-  const res = await fetch(`${BASE}/api${path}`, {
-    method,
-    headers: DEV,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${await res.text()}`);
-  return res.status === 204 ? null : res.json();
-}
+const scenario = {
+  groups: [{ mode: MODE, studies: number("STUDIES", 1), units: number("UNITS", 10000), coders: number("CODERS", 300) }],
+  thinkMs: number("THINK_MS", 1000),
+  durationS: number("DURATION", 120),
+  batch: number("BATCH", 5),
+  seed: number("SEED", 1),
+};
 
-const value = (v) => ({ done: true, skip: false, values: [{ value: v }] });
-const timing = { firstMs: 800, totalMs: 1200, hiddenMs: 0, edits: 1 };
-
-async function setUp() {
-  const t0 = Date.now();
-  const study = await api("POST", "/study", { name: `Load ${new Date().toISOString()}` });
-  for (let i = 0; i < UNITS; i += 200) {
-    const units = [];
-    for (let j = i; j < Math.min(UNITS, i + 200); j++) {
-      units.push({
-        externalId: `u${j}`,
-        data: { headline: `Headline ${j}`, text: `Some text of unit ${j}. `.repeat(20) },
-      });
-    }
-    await api("POST", `/study/${study.id}/units`, { units });
-  }
-  const items = [
-    {
-      type: "question",
-      name: "age",
-      variable: { type: "nominal", question: "Your age?", options: [{ value: "young" }, { value: "old" }] },
-    },
-    {
-      type: "unit_loop",
-      label: "Headlines",
-      layout: { template: "# $unit.headline\n\n$unit.text" },
-      children: [
-        {
-          type: "question",
-          name: "sentiment",
-          variable: { type: "nominal", question: "Sentiment?", options: [{ value: "pos" }, { value: "neg" }] },
-        },
-        {
-          type: "question",
-          name: "topic",
-          variable: { type: "nominal", question: "Topic?", options: [{ value: "a" }, { value: "b" }, { value: "c" }] },
-        },
-      ],
-    },
-  ];
-  // A crowd sharing the units: two coders per unit
-  const session = { invite: { mode: "crowd", share: { codersPerUnit: { min: 2, max: 2 } } } };
-  const design = await api("POST", `/study/${study.id}/design`, { session, items });
-  await api("PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
-  const [invite] = await api("GET", `/study/${study.id}/links`);
-  console.log(`setup: study ${study.id}, ${UNITS} units in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-  return { studyId: study.id, secret: invite.secret };
-}
-
-const stats = new Map(); // name -> latencies (ms)
-const errors = new Map(); // "name status" -> count
-function record(name, ms) {
-  if (!stats.has(name)) stats.set(name, []);
-  stats.get(name).push(ms);
-}
-
-function coderClient(studyId, secret) {
-  let cookie = "";
-  return async function call(name, method, path, body) {
-    const t = performance.now();
-    const res = await fetch(`${BASE}/api/d/${studyId}${path}`, {
-      method,
-      headers: {
-        "content-type": "application/json",
-        "x-annotinder": "1",
-        "x-link-secret": secret,
-        ...(cookie ? { cookie } : {}),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const setCookie = res.headers.get("set-cookie");
-    if (setCookie) cookie = setCookie.split(";")[0];
-    const text = await res.text();
-    record(name, performance.now() - t);
-    if (!res.ok) {
-      const key = `${name} ${res.status} ${text.slice(0, 80)}`;
-      errors.set(key, (errors.get(key) ?? 0) + 1);
-      return null;
-    }
-    return text ? JSON.parse(text) : null;
-  };
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function coder(studyId, secret, until, n) {
-  const call = coderClient(studyId, secret);
-  // Coders don't all arrive at once
-  await sleep(Math.random() * 10_000);
-  const session = await call("session", "GET", "/session");
-  if (!session) return 0;
-  const loop = session.progress[0].set;
-  await call("coder vars", "POST", "/variables/coder", {
-    variables: { age: value(n % 2 ? "young" : "old") },
-    timings: { age: timing },
-  });
-  let done = 0;
-  while (Date.now() < until) {
-    const batch = await call("next", "GET", `/loop/${encodeURIComponent(loop)}/next?count=${BATCH}`);
-    if (!batch) break;
-    if (batch.units.length === 0) break;
-    for (const unit of batch.units) {
-      await sleep(THINK_MS * (0.5 + Math.random()));
-      await call("submit", "POST", "/variables/unit", {
-        unitId: unit.id,
-        loop,
-        variables: {
-          sentiment: value(Math.random() < 0.5 ? "pos" : "neg"),
-          topic: value("abc"[Math.floor(Math.random() * 3)]),
-        },
-        timings: { sentiment: timing, topic: timing },
-      });
-      done++;
-      if (Date.now() >= until) break;
-    }
-  }
-  return done;
-}
-
-function pct(sorted, p) {
-  return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length * p) / 100))];
-}
-
-const { studyId, secret } = process.env.STUDY
-  ? { studyId: Number(process.env.STUDY), secret: process.env.SECRET }
-  : await setUp();
-const start = Date.now();
-const until = start + DURATION;
-const done = await Promise.all(Array.from({ length: CODERS }, (_, i) => coder(studyId, secret, until, i)));
-const seconds = (Date.now() - start) / 1000;
-
+const result = await runScenario(BASE, scenario);
+const { run } = result;
 console.log(
-  `\n${CODERS} coders, batch ${BATCH}, think ~${THINK_MS}ms, ${seconds.toFixed(0)}s: ${done.reduce((a, b) => a + b, 0)} units submitted`,
+  `\nmode ${MODE}: ${run.coders} coders (${run.codersOutOfUnits} ran out of units), batch ${scenario.batch}, ` +
+    `think ~${scenario.thinkMs} ms, ${run.seconds} s: ${run.unitsSubmitted} units submitted`,
 );
-console.log("request        n      p50     p95     p99     max  (ms)");
-for (const [name, list] of stats) {
-  const s = [...list].sort((a, b) => a - b);
-  const f = (x) => x.toFixed(0).padStart(7);
-  console.log(
-    `${name.padEnd(12)} ${String(s.length).padStart(6)} ${f(pct(s, 50))} ${f(pct(s, 95))} ${f(pct(s, 99))} ${f(s[s.length - 1])}`,
-  );
-}
-for (const [key, n] of errors) console.log(`error x${n}: ${key}`);
-console.log(JSON.stringify({ studyId, secret }));
+console.log(formatSummary(result.endpoints));
+for (const [kind, count] of Object.entries(result.errors)) console.log(`error x${count}: ${kind}`);
+process.exit(result.errorCount === 0 ? 0 : 1);

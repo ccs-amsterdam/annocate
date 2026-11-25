@@ -1202,25 +1202,184 @@ Run one process until that list is dealt with.
 
 ## Capacity
 
-`packages/server/scripts/load-test.mjs` simulates coders on one study. Setup:
-a 4-core machine, Postgres 16, one server process, 10,000 units shared by a
-crowd (two coders per unit), batches of 5.
+In short: the launch workload (50 studies, 500 coders at once, a million
+answers) fits on one machine with 4 cores and 8 GB, app and database
+together, with room to spare for coding. What needs watching is not the
+number of coders but one researcher opening the results or an export of a
+single very large study.
 
-| Coders | Time per unit | Next batch p50 / p99 | Submit p50 / p99 |
-| --- | --- | --- | --- |
-| 300 | ~10 s (realistic) | 25 / 85 ms | 12 / 38 ms |
-| 300 | ~1 s (stress) | 0.6 / 1.1 s | 0.6 / 1.2 s |
+### The benchmark
 
-Requests waiting for a shared queue's lock are picked together, one read for
-all (`architecture.md` §11, item 11). Under stress the one server process is
-busy (about 160 submitted units per second); 300 coders at 10 s per unit need
-30. When the queue runs out, a unit gets at most one coder more than its
-maximum (coders past others' leases); units leased by coders who left come
-back when the lease expires (15 minutes). Studies without a shared queue don't take that lock.
+`pnpm bench <preset>` (`packages/server/scripts/bench.mjs`) starts the
+server on a fresh PGlite database, or on the Postgres of `DATABASE_URL`
+(give it a database of its own: the studies stay in it), creates the
+preset's studies and lets simulated coders code: each starts a session,
+answers a question about themselves, then fetches units five at a time and
+submits them one by one, waiting the time per unit (+-50%) in between. The
+studies are of three kinds, as coders meet them: a crowd sharing a queue
+(two coders per unit), a crowd where everyone codes all units, and experts
+with their own units and a link each. Coders arrive at ten a second.
 
-**Sizing**, an estimate from the code that the benchmarks of the release plan
-(B6-04) still have to confirm: 50 studies, 500 coders at once and a million
-answers fit on one machine with 4 cores, 8 GB memory and 40 GB disk, app and
-database together. The first limits are not the number of requests but single
-heavy actions: importing or exporting a very large study (memory), and the
-status and results pages of a very large crowd study.
+It prints, and writes to `bench/<date>-<preset>-<database>.json` (with the
+scenario, the commit and the machine): per kind of request the p50, p95,
+p99 and highest latency and the requests per second, the errors, a probe
+that calls `GET /api/health` every 100 ms (the server does nothing for it,
+so a slow answer means the one server process was busy), and the server
+process's memory and processor time. `SEED`, `DURATION`, `THINK_MS` and
+`BATCH` override a preset. The run fails (exit 1) on an error, on a server
+that stops, or over the preset's limits.
+
+| Preset | Studies | Coders | Time per unit | Runs for | Limits |
+| --- | --- | --- | --- | --- | --- |
+| `smoke` | 3 (2,200 units) | 20 | 0.5 s | 20 s | no errors (for CI, on PGlite) |
+| `pilot` | 5 (8,500 units) | 50 | 2 s | 90 s | no errors, submit p95 < 250 ms, next p95 < 500 ms, probe < 500 ms |
+| `public` | 4 (32,000 units) | 500 | 10 s | 5 min | **the launch criteria**: no errors, submit p95 < 100 ms, next p95 < 250 ms, probe < 250 ms |
+| `many-studies` | 50 (92,500 units) | 500 | 10 s | 5 min | the launch criteria |
+| `stress` | 4 (42,000 units) | 500 | 1 s | 2 min | no errors (finds where it saturates) |
+| `large-queue` | 1 shared queue of 50,000 units | 300 | 2 s | 3 min | no errors (what a long queue costs) |
+
+`pnpm bench:seed` (`scripts/bench-seed.mjs`) makes a large existing data
+set: studies and a few real coders through the API, then those coders
+copied in SQL into many sessions with many finished units. It then times
+the researcher's pages and exports on the first study, and a coder coming
+back to their session. `STUDIES`, `UNITS`, `SESSIONS` and
+`UNITS_PER_SESSION` set the shape; the default is 50 studies of 2,000 units
+with a million answers in all.
+
+`scripts/load-test.mjs` runs one scenario against a server that is already
+running (`BASE`, `MODE=shared | all | experts`, `CODERS`, `UNITS`, ...).
+
+### What was measured
+
+On 24 November 2026, on a development container, **not on the VM**: 4
+cores (shared with the simulated coders and with Postgres), 16 GB, Node 22,
+one server process run from source, and **Postgres 16.15** with its default
+settings (`shared_buffers` 128 MB), on the same machine. The results are in
+`bench/2026-11-24-*.json`. Latencies in ms.
+
+| Preset | Units submitted per second | Next batch p50 / p95 / p99 | Submit p50 / p95 / p99 | Probe, highest | App: share of one core | App: memory at most | Errors |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `pilot` | 23.7 | 14 / 30 / 58 | 13 / 26 / 41 | 134 | 0.18 | 216 MB | 0 |
+| `public` | 47.0 | 26 / 62 / 91 | 12 / 36 / 57 | 38 | 0.36 | 280 MB | 0 |
+| `many-studies` | 47.1 | 13 / 27 / 43 | 10 / 21 / 30 | 40 | 0.27 | 233 MB | 0 |
+| `stress` | 188.9 | 888 / 1,296 / 1,525 | 1,322 / 1,952 / 2,206 | 134 | 0.89 | 378 MB | 0 |
+| `large-queue` | 126.7 | 277 / 799 / 956 | 157 / 641 / 865 | 185 | 0.92 | 356 MB | 0 |
+
+- **The launch workload passes its criteria** with a wide margin, with 4 or
+  with 50 studies live. 500 coders at 10 s per unit are 47 submitted units
+  and 9 fetched batches a second; the app used about a third of one core for
+  it, Postgres about a fifth (sampled from the processes' processor time
+  during `many-studies`: a rough figure).
+- **It saturates at about 190 submitted units a second** (230 requests),
+  four times the launch workload. The limit is the one server process: it
+  used 0.89 of a core, on a machine it shared with the 500 simulated
+  coders. Past that point requests wait (seconds), but none failed.
+- **A shared queue of 50,000 units** costs more per request: it saturated
+  at about 125 units a second, with a fetch taking 0.3 s at the median. The
+  health probe stayed under 0.2 s, so other studies were still served.
+- **Arriving all at once is the heavier moment.** A first `public` run let
+  the 500 coders arrive within 10 s (50 new sessions a second): no errors,
+  but starting a session took 0.15 s at the median and 0.66 s at p95, and
+  fetching a batch 0.26 s at p95. With ten arrivals a second (the table) a
+  session starts in 15 ms.
+- Uploading units through the API (200 per request) ran at 400 to 800
+  units a second.
+
+The same presets on **PGlite** (the database inside the server process,
+one connection, in WebAssembly: development and tests) only show that
+things work. Never read capacity from them:
+
+| Preset, on PGlite | Units submitted per second | Next batch p50 / p95 / p99 | Submit p50 / p95 / p99 | Probe, highest | App: share of one core | App: memory at most | Errors |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `smoke` | 35.1 | 39 / 96 / 119 | 24 / 76 / 118 | 100 | 0.57 | 483 MB | 0 |
+| `pilot` | 23.6 | 29 / 83 / 138 | 18 / 73 / 131 | 146 | 0.44 | 601 MB | 0 |
+
+**A large existing data set** (Postgres 16, a million answers; first call
+after a start, then the same call again; ms):
+
+| Read | 50 studies, 21,000 answers in the one read | 1 study with all 1,004,000 answers (2,004 coders, 10,000 units) |
+| --- | --- | --- |
+| Overview | 81, then 72 | 4,446, then 4,373 |
+| Deployment status | 79, then 101 | 5,007, then 5,500 |
+| Coders | 40, then 33 | 1,160, then 1,289 |
+| Results: answers | 117, then 6 | 1,572, then 7 |
+| Results: agreement | 170, then 10 | **54,562**, then 186 |
+| Results: units | 139, then 17 | 2,269, then 14 |
+| Results: coders | 59, then 9 | 1,594, then 9 |
+| Annotations, one page | 40 | 26 |
+| Results export (written once) | 736, then 19 | **23,848**, then 82 |
+| Study export (`.annotinder.gz`) | 1,034 (0.5 MB) | **33,862** (15 MB) |
+| A coder comes back: session, summary, next units | 70, 85, 46 (100 finished units) | 101, 101, 58 (250 finished units) |
+| App memory after these reads | 237 MB | **1,891 MB** |
+| Database size | 787 MB | 632 MB |
+
+- With the answers spread over 50 studies, every page of a study answers
+  within about a second, and coders don't notice the size at all.
+- **One study with a million answers is the first limit**: agreement takes
+  close to a minute the first time, the exports half a minute, the overview
+  and the status 4 to 5 s on every call, and the app's memory goes to
+  1.9 GB. Not measured: whether coders wait while the server computes these
+  (the probe didn't run during the reads).
+- Sizes: the answers table is 0.46 GB per million answers with its indexes;
+  the finished units and the hand-out log add 0.15 GB per 500,000 finished
+  units; 100,000 units of about 500 characters are 0.13 GB.
+
+The runs were repeated on 25 November after the API's renames
+(`bench/2026-11-25-*.json`), while other jobs kept the machine busy (the
+later files' `machine.loadAverage`: 10 to 21 on 4 cores). Every preset still
+ran without errors; at the launch workload the latencies were two to three
+times higher, and `public` missed one launch criterion (the probe's highest answer: 343 ms). These
+show that the scripts follow the API, not what the server can do.
+
+### Sizing
+
+Measured above: the app's processor share and memory under coding, the
+database's size, the reads. **Extrapolated**: everything about the VM. The
+database's memory was not measured (it ran with 128 MB of `shared_buffers`
+and the machine's file cache), nor HTTPS and Caddy, nor an import of a
+very large study, nor several server processes.
+
+| | The lab pilot | The public server |
+| --- | --- | --- |
+| The load | 5 studies, 50 coders at once, some 100,000 answers | 50 studies, 500 coders at once, a million answers |
+| Requests | 5 units a second at 10 s per unit (measured at 24: 0.18 of a core) | 47 units and 9 batches a second (measured) |
+| App | under 0.1 of a core, 200 to 300 MB | 0.3 to 0.4 of a core, 300 MB while coding; **2 GB while a researcher reads the results of a very large study** |
+| Postgres | under 0.1 of a core; 1 GB memory is plenty | about 0.2 of a core; 2 GB memory (`shared_buffers` 1 GB holds the whole database) |
+| Database on disk | under 0.2 GB | 0.8 GB per million answers with their units; 2 to 4 GB with three questions per unit and growth |
+| The machine | **2 cores, 4 GB, 40 GB disk** | **4 cores, 8 GB, 80 GB disk** |
+
+- **Cores** are not what coding needs (under one core in all, at launch
+  load): the second pair is for a researcher's heavy read or an export next
+  to the coders, for Postgres' own background work, for the dumps and for
+  Caddy.
+- **Memory**: 8 GB for the public server is the app at its measured worst
+  (2 GB; set Node's `--max-old-space-size` to what the container may use,
+  3 GB), Postgres (2 GB) and the file cache. On the pilot's 4 GB the same
+  read of a very large study would not fit: a pilot has no such study.
+- **Disk** is for the dumps, not for the database: a few GB of database,
+  and every kept dump again ([Backups](#backups)).
+- `PGPOOL_MAX` (20) was enough at every load measured; Postgres'
+  `max_connections` (100) is above it.
+- Several server processes are not needed for capacity at this size
+  ([Several server processes](#several-server-processes)).
+
+### On the VM, before launch
+
+The numbers above come from a shared development container with Postgres
+16. On the real VM, with the release's image and Postgres 18:
+
+1. `pnpm bench smoke`, then with `DATABASE_URL` pointing at an **empty
+   database of its own** on the VM's Postgres (never the live one: the
+   benchmark needs development auth and adds studies): `pnpm bench public`
+   and `pnpm bench many-studies`. Both must pass the launch criteria.
+2. `pnpm bench stress` and `pnpm bench large-queue`: where it saturates on
+   this machine, and that nothing fails there.
+3. `pnpm bench:seed`, and once with `STUDIES=1 UNITS=10000 SESSIONS=2000
+   UNITS_PER_SESSION=250`: the reads on a large study, and the app's memory
+   after them against the container's limit.
+4. Keep the JSON files (`bench/`) and replace the tables above with them.
+
+Better still, run the simulated coders from another machine
+(`scripts/load-test.mjs` with `BASE`, against a server started for the
+test with development auth on a private address): here they took part of
+the 4 cores.

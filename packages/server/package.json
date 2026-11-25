@@ -18,7 +18,9 @@
     "db:reset": "tsx src/reset.ts",
     "db:generate": "drizzle-kit generate",
     "keys": "tsx src/keys.ts",
-    "identities": "tsx src/identities.ts"
+    "identities": "tsx src/identities.ts",
+    "bench": "node scripts/bench.mjs",
+    "bench:seed": "node scripts/bench-seed.mjs"
   },
   "dependencies": {
     "@annotinder/contracts": "workspace:*",
