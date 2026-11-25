@@ -45,6 +45,8 @@ export interface LoginState {
   provider: "current" | "previous";
   /** A login for a sensitive action: it must come with a fresh second factor (`max_age`). */
   stepUp?: boolean;
+  /** A step-up login at the previous provider that linking asked for: after it, linking goes on. */
+  thenLink?: boolean;
   /** Linking this login to the account of the user logged in at the start (docs/security.md "Changing providers"). */
   linkUserId?: number;
 }
@@ -92,12 +94,13 @@ export class Oidc {
   /**
    * Where to send the browser, and what to remember until the callback.
    * `maxAge` (seconds): the provider must have authenticated the user that
-   * recently, else it asks again (step-up).
+   * recently, else it asks again (step-up). `promptLogin`: it asks again
+   * whatever session the browser has there (`prompt=login`).
    */
   async start(
     redirectUri: string,
     login: Omit<LoginState, "state" | "nonce" | "verifier">,
-    maxAge?: number,
+    { maxAge, promptLogin }: { maxAge?: number; promptLogin?: boolean } = {},
   ): Promise<{ url: URL; state: LoginState }> {
     const verifier = client.randomPKCECodeVerifier();
     const state: LoginState = { ...login, state: client.randomState(), nonce: client.randomNonce(), verifier };
@@ -109,6 +112,7 @@ export class Oidc {
       state: state.state,
       nonce: state.nonce,
       ...(maxAge !== undefined ? { max_age: String(maxAge) } : {}),
+      ...(promptLogin ? { prompt: "login" } : {}),
     });
     return { url, state };
   }

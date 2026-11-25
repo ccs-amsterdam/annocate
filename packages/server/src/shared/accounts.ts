@@ -1,7 +1,13 @@
-import { createHash, randomBytes } from "node:crypto";
-import { and, asc, count, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, gt, inArray, isNotNull, isNull, lt, ne, not, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import type { AccountRole, ApiKeyCreated, ApiKeyResponse, Limits, ServerSettings } from "@annotinder/contracts";
+import type {
+  AccountDeletion,
+  AccountRole,
+  ApiKeyCreated,
+  ApiKeyResponse,
+  Limits,
+  ServerSettings,
+} from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import {
   apiKeys,
@@ -16,6 +22,8 @@ import {
   users,
 } from "../db/schema/index.js";
 import { accountRole } from "../db/sql.js";
+import { randomToken, sha256Hex } from "./crypto.js";
+import { HttpError } from "./http.js";
 
 // Users, their identities and roles, limits, and API keys (contracts
 // account.ts, docs/accounts.md). A user is who logs in with an identity (the
@@ -31,8 +39,6 @@ export interface User {
 }
 
 const KEY_PREFIX = "atk_";
-
-const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 
 function toApiKeyResponse(row: typeof apiKeys.$inferSelect): ApiKeyResponse {
   return {
@@ -163,7 +169,7 @@ export interface LoginIdentity {
  * their (new) email: its roles and plan move to them. Records the login
  * (`email_verified`, `has_mfa`, `last_login_at`, `reactivated_at` after a year away: a year
  * without logging in makes a user dormant). `admins` (`ANNOTINDER_ADMINS`)
- * get the admin role.
+ * get the admin role, if the provider confirmed their address.
  */
 export async function loginUser(db: Db, login: LoginIdentity, admins: readonly string[]): Promise<User> {
   const email = login.email.trim().toLowerCase();
@@ -196,7 +202,8 @@ export async function loginUser(db: Db, login: LoginIdentity, admins: readonly s
       .update(identities)
       .set({ lastLoginAt: sql`now()` })
       .where(identity);
-    if (admins.includes(email)) await setServerRole(tx, userId, "admin", "ANNOTINDER_ADMINS");
+    // An address the provider didn't confirm names no admin, whatever AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION lets log in
+    if (login.emailVerified && admins.includes(email)) await setServerRole(tx, userId, "admin", "ANNOTINDER_ADMINS");
     return (await userById(tx, userId))!;
   });
 }
@@ -290,10 +297,10 @@ export async function resetIdentities(db: Db): Promise<{ users: number; unclaima
  * and never allowed sensitive actions (researcher/auth.ts).
  */
 export async function createApiKey(db: Db, userId: number, label: string): Promise<ApiKeyCreated> {
-  const key = KEY_PREFIX + randomBytes(32).toString("base64url");
+  const key = KEY_PREFIX + randomToken();
   const [row] = await db
     .insert(apiKeys)
-    .values({ userId, label, keyHash: hashKey(key), prefix: key.slice(0, KEY_PREFIX.length + 6) })
+    .values({ userId, label, keyHash: sha256Hex(key), prefix: key.slice(0, KEY_PREFIX.length + 6) })
     .returning();
   return { ...toApiKeyResponse(row!), key };
 }
@@ -323,7 +330,7 @@ export async function userForKey(db: Db, key: string): Promise<User | null> {
     .from(users)
     .where(
       and(
-        eq(apiKeys.keyHash, hashKey(key)),
+        eq(apiKeys.keyHash, sha256Hex(key)),
         isNull(apiKeys.revokedAt),
         eq(users.id, apiKeys.userId),
         isNull(users.blockedAt),
@@ -331,6 +338,97 @@ export async function userForKey(db: Db, key: string): Promise<User | null> {
     )
     .returning(userFields);
   return row ?? null;
+}
+
+// ---- deleting an account -----------------------------------------------------
+
+/** The server's admin role given to a user (also one the safeguards turned off, or a blocked user's). */
+const adminRole = and(isNull(roles.studyId), isNotNull(roles.userId), eq(roles.role, "admin"));
+
+/** Whether a user holds the server's admin role. */
+export async function holdsAdminRole(db: Db, userId: number): Promise<boolean> {
+  return (await db.$count(roles, and(adminRole, eq(roles.userId, userId)))) > 0;
+}
+
+/**
+ * What deleting a user's account would do (contracts `AccountDeletion`).
+ * Studies only they have a role in go with them. Studies others work in
+ * never vanish with someone's account, and no study is left without an
+ * ADMIN: those keep the account until they are sorted out.
+ */
+export async function accountDeletion(db: Db, userId: number): Promise<AccountDeletion | null> {
+  const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+  if (!user) return null;
+  const others = alias(roles, "others");
+  /** Someone else has a role in the study: another user, or an email domain. */
+  const sharedWithOthers = exists(
+    db
+      .select({ one: sql`1` })
+      .from(others)
+      .where(and(eq(others.studyId, studies.id), sql`${others.userId} IS DISTINCT FROM ${userId}`)),
+  );
+  const owned = await db
+    .select({ id: studies.id, name: studies.name, shared: sql<boolean>`${sharedWithOthers}` })
+    .from(studies)
+    .where(eq(studies.ownerId, userId))
+    .orderBy(asc(studies.id));
+  const anotherAdmin = exists(
+    db
+      .select({ one: sql`1` })
+      .from(others)
+      .where(and(eq(others.studyId, studies.id), eq(others.role, "ADMIN"), ne(others.userId, userId))),
+  );
+  const onlyAdminOf = await db
+    .select({ id: studies.id, name: studies.name })
+    .from(studies)
+    .innerJoin(roles, and(eq(roles.studyId, studies.id), eq(roles.userId, userId), eq(roles.role, "ADMIN")))
+    .where(and(sql`${studies.ownerId} IS DISTINCT FROM ${userId}`, not(anotherAdmin)))
+    .orderBy(asc(studies.id));
+  const named = ({ id, name }: { id: number; name: string }) => ({ id, name });
+  return {
+    email: user.email,
+    studies: owned.filter((study) => !study.shared).map(named),
+    blocking: [
+      ...owned.filter((study) => study.shared).map((study) => ({ ...named(study), reason: "shared" as const })),
+      ...onlyAdminOf.map((study) => ({ ...named(study), reason: "last_admin" as const })),
+    ],
+    lastAdmin:
+      (await holdsAdminRole(db, userId)) && (await db.$count(roles, and(adminRole, ne(roles.userId, userId)))) === 0,
+  };
+}
+
+/**
+ * Deletes a user's account once they typed their email address (`confirm`):
+ * the user with their logins, sessions, roles, API keys and security log,
+ * and the studies only they have a role in, with all their data. Refused
+ * (409) while `accountDeletion` says something keeps the account. Returns
+ * what went; the caller drops the deleted studies' runtimes.
+ */
+export async function deleteAccount(
+  db: Db,
+  userId: number,
+  confirm: string,
+): Promise<{ email: string; studies: { id: number; name: string }[] }> {
+  return db.transaction(async (tx) => {
+    const deletion = await accountDeletion(tx, userId);
+    if (!deletion) throw new HttpError(404, "User not found");
+    if (confirm.trim().toLowerCase() !== deletion.email)
+      throw new HttpError(400, "Type the account's email address to confirm", "confirmation_mismatch");
+    if (deletion.blocking.length > 0) {
+      const names = deletion.blocking.map((study) => `'${study.name}'`).join(", ");
+      throw new HttpError(
+        409,
+        `Others work in studies of this account, or it is their only ADMIN: sort out ${names} first`,
+        "account_has_studies",
+      );
+    }
+    if (deletion.lastAdmin)
+      throw new HttpError(409, "This is the server's only admin: make another user admin first", "last_admin");
+    const studyIds = deletion.studies.map((study) => study.id);
+    if (studyIds.length > 0) await tx.delete(studies).where(inArray(studies.id, studyIds));
+    await tx.delete(users).where(eq(users.id, userId));
+    return { email: deletion.email, studies: deletion.studies };
+  });
 }
 
 // ---- registration ------------------------------------------------------------
@@ -384,40 +482,60 @@ const LIMIT_KEYS = ["studies", "unitsPerStudy", "units", "codersPerStudy", "answ
 /** The more generous of two limits (null: no limit). */
 const generous = (a: number | null, b: number | null) => (a === null || b === null ? null : Math.max(a, b));
 
+/** Where limits come from besides a user's own plan and overrides: read once, for any number of users. */
+export interface LimitRules {
+  /** Every plan's limits, by its id. */
+  plans: Map<number, Limits>;
+  /** Email domains whose users get a plan. */
+  domainPlans: { domain: string; planId: number | null }[];
+  defaultPlanId: number | null;
+}
+
+export async function loadLimitRules(db: Db): Promise<LimitRules> {
+  const allPlans = await db.select({ id: plans.id, limits: plans.limits }).from(plans);
+  return {
+    plans: new Map(allPlans.map((plan) => [plan.id, plan.limits])),
+    domainPlans: await db.select().from(domainPlans),
+    defaultPlanId: (await getSettings(db)).defaultPlanId,
+  };
+}
+
 /**
  * A user's limits: their own plan, else the most generous of their email
  * domains' plans, else the default plan; then their personal overrides.
  */
-export async function effectiveLimits(db: Db, userId: number): Promise<Limits> {
-  const [user] = await db
-    .select({ email: users.email, planId: users.planId, limits: users.limits })
-    .from(users)
-    .where(eq(users.id, userId));
-  if (!user) return {};
-  const allPlans = new Map(
-    (await db.select({ id: plans.id, limits: plans.limits }).from(plans)).map((p) => [p.id, p.limits]),
-  );
-  let base: Limits | undefined = user.planId !== null ? allPlans.get(user.planId) : undefined;
-  if (!base) {
-    const rules = await db.select().from(domainPlans);
-    const matching = rules
-      .filter((r) => r.planId !== null && emailAtDomain(user.email, r.domain) && allPlans.has(r.planId))
-      .map((r) => allPlans.get(r.planId!)!);
-    if (matching.length > 0) {
-      base = {};
-      for (const key of LIMIT_KEYS) base[key] = matching.map((p) => p[key] ?? null).reduce((a, b) => generous(a, b));
-    }
-  }
-  if (!base) {
-    const { defaultPlanId } = await getSettings(db);
-    base = defaultPlanId !== null ? (allPlans.get(defaultPlanId) ?? {}) : {};
-  }
+export function limitsOf(user: { email: string; planId: number | null; limits: Limits }, rules: LimitRules): Limits {
+  const base =
+    (user.planId !== null ? rules.plans.get(user.planId) : undefined) ??
+    domainLimits(user.email, rules) ??
+    (rules.defaultPlanId !== null ? rules.plans.get(rules.defaultPlanId) : undefined) ??
+    {};
   const limits: Limits = {};
   for (const key of LIMIT_KEYS) {
     const own = user.limits[key];
     limits[key] = own !== undefined ? own : (base[key] ?? null);
   }
   return limits;
+}
+
+/** The most generous limits of the plans of an address's email domains; undefined if none has a plan. */
+function domainLimits(email: string, rules: LimitRules): Limits | undefined {
+  const matching = rules.domainPlans
+    .filter((rule) => rule.planId !== null && emailAtDomain(email, rule.domain) && rules.plans.has(rule.planId))
+    .map((rule) => rules.plans.get(rule.planId!)!);
+  if (matching.length === 0) return undefined;
+  const limits: Limits = {};
+  for (const key of LIMIT_KEYS) limits[key] = matching.map((plan) => plan[key] ?? null).reduce(generous);
+  return limits;
+}
+
+/** A user's limits (`limitsOf`), read from the database. */
+export async function effectiveLimits(db: Db, userId: number): Promise<Limits> {
+  const [user] = await db
+    .select({ email: users.email, planId: users.planId, limits: users.limits })
+    .from(users)
+    .where(eq(users.id, userId));
+  return user ? limitsOf(user, await loadLimitRules(db)) : {};
 }
 
 /** What a user's owned studies hold. */

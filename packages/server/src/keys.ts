@@ -27,7 +27,8 @@ if (!["create", "list", "revoke"].includes(command ?? "") || !values.email) {
 const db = await openDatabase();
 try {
   const user = await ensureUser(db, values.email);
-  // The account role (docs/accounts.md): a researcher creates studies, an admin manages the server.
+  // The account role (docs/accounts.md): a researcher creates studies, an admin manages the server
+  // (in the web client: a key acts as a researcher at most, researcher/auth.ts).
   if (values.role) {
     if (!["user", "researcher", "admin"].includes(values.role)) throw new Error("--role is user, researcher or admin");
     await setServerRole(db, user.id, values.role as "user" | "researcher" | "admin", "keys command");

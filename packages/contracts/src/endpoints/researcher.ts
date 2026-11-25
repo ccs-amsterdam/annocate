@@ -31,10 +31,12 @@ import {
   ResultsUnitsSchema,
 } from "../results.js";
 import {
+  AccountDeletionSchema,
   ApiKeyCreatedSchema,
   ApiKeyResponseSchema,
   ApiKeyWriteSchema,
   AuthOptionsSchema,
+  ConfirmDeletionSchema,
   MeResponseSchema,
   ResearcherRequestWriteSchema,
 } from "../account.js";
@@ -74,6 +76,15 @@ export const researcherEndpoints = {
   getAuthOptions: { method: "GET", path: "/auth/options", request: z.void(), response: AuthOptionsSchema },
   logout: { method: "POST", path: "/auth/logout", request: z.void(), response: z.void() },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
+  /** What deleting the user's account would delete, and what keeps it from being deleted. */
+  getAccountDeletion: { method: "GET", path: "/me/deletion", request: z.void(), response: AccountDeletionSchema },
+  /**
+   * Deletes the user's account, with the studies only they have a role in
+   * (`getAccountDeletion`): their logins, roles, API keys and security log
+   * go. Sensitive, as createApiKey; `confirm` is their email address. 409
+   * `account_has_studies` or `last_admin` while something keeps it.
+   */
+  deleteAccount: { method: "DELETE", path: "/me", request: ConfirmDeletionSchema, response: z.void() },
   /** Ask an admin to become a researcher (when the server takes requests). */
   requestResearcher: {
     method: "POST",
@@ -125,7 +136,11 @@ export const researcherEndpoints = {
   importStudy: { method: "POST", path: "/study/import", request: z.void(), response: StudyResponseSchema },
   getStudy: { method: "GET", path: "/study/:id", request: z.void(), response: StudyResponseSchema },
   updateStudy: { method: "PUT", path: "/study/:id", request: StudyWriteSchema, response: StudyResponseSchema },
-  deleteStudy: { method: "DELETE", path: "/study/:id", request: z.void(), response: z.void() },
+  /**
+   * Deletes the study with all its data. Sensitive, as createApiKey; `confirm`
+   * is the study's name, typed out (400 `confirmation_mismatch` otherwise).
+   */
+  deleteStudy: { method: "DELETE", path: "/study/:id", request: ConfirmDeletionSchema, response: z.void() },
   getStudyUsers: {
     method: "GET",
     path: "/study/:id/users",

@@ -174,6 +174,11 @@ describe("researcher login", () => {
     expect(warnings).toEqual(expect.arrayContaining(["email_verification_not_required", "unverified_roles"]));
     expect(warnings).not.toContain("2fa_not_required");
 
+    // An address named in ANNOTINDER_ADMINS is an admin only once the provider confirms it
+    const claimed = browser();
+    await claimed.logIn({ email: "boss@uni.nl", sub: "not-the-boss", email_verified: false, amr: ["mfa"] });
+    expect(await (await claimed.api("/api/me")).json()).toMatchObject({ email: "boss@uni.nl", role: "user" });
+
     // Turned off again: unverified addresses can't log in
     app = newApp(["boss@uni.nl"]);
     expect(await browser().logIn({ email: "ann@other.nl", sub: "ann", amr: ["mfa"] })).toBe(
@@ -327,22 +332,10 @@ describe("researcher login", () => {
         { email: "bob@uni.nl", role: "ADMIN" },
       ]),
     );
-    // Server admin role
-    const bob = (await (
-      await asKey("/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify({ email: "bob@uni.nl", role: "researcher" }),
-      })
-    ).json()) as { id: number };
-    await refused(
-      await asKey(`/api/admin/users/${bob.id}`, { method: "PUT", body: JSON.stringify({ role: "admin" }) }),
-    );
-    await refused(
-      await asKey("/api/admin/users", { method: "POST", body: JSON.stringify({ email: "eve@uni.nl", role: "admin" }) }),
-    );
-    expect(
-      (await asKey(`/api/admin/users/${bob.id}`, { method: "PUT", body: JSON.stringify({ role: "user" }) })).status,
-    ).toBe(200);
+    // The admin API: a key is a researcher at most, also this admin's
+    const adminApi = await asKey("/api/admin/users");
+    expect(adminApi.status).toBe(403);
+    expect(await adminApi.json()).toMatchObject({ code: "admin_required" });
   });
 
   it("makes users, researchers (open registration, domains) and admins (named by the server)", async () => {
@@ -394,6 +387,34 @@ describe("researcher login", () => {
     // Return addresses stay on this origin.
     expect(await browser().logIn(verified, "https://evil.example/")).toBe("/");
     expect(await browser().logIn(verified, "//evil.example/")).toBe("/");
+    // A tab, which browsers drop from a URL: `/\t/evil.example` would be `//evil.example`
+    expect(await browser().logIn(verified, "/\t/evil.example")).toBe("/");
+    expect(
+      (
+        await browser().request(`/api/auth/login?link=1&returnTo=${encodeURIComponent("/\t/evil.example")}`)
+      ).headers.get("location"),
+    ).toBe("/?loginError=link_failed");
+  });
+
+  it("renews the cookie when it extends the session: a researcher who keeps working stays logged in", async () => {
+    const b = browser();
+    await b.logIn(verified);
+    const sessionCookie = (res: Response) =>
+      res.headers.getSetCookie().find((c) => c.startsWith("annotinder_session="));
+    // Just logged in: nothing to extend
+    expect(sessionCookie(await b.api("/api/me"))).toBeUndefined();
+    // Ten days on, the session and its cookie have four days left
+    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
+    const renewed = sessionCookie(await b.api("/api/me"));
+    expect(renewed).toContain(`annotinder_session=${b.cookies.get("annotinder_session")}`);
+    expect(renewed).toContain("Max-Age=1209600");
+    expect(renewed).toContain("HttpOnly");
+    const [session] = await query<{ days: number }>(
+      db,
+      "SELECT round(extract(epoch FROM expires - now()) / 86400)::int AS days FROM sessions",
+    );
+    expect(session!.days).toBe(14);
+    expect(sessionCookie(await b.api("/api/me"))).toBeUndefined();
   });
 
   it("logs out: the session no longer works", async () => {
@@ -469,6 +490,62 @@ describe("changing providers (OIDC_PREVIOUS_*)", () => {
       { iss: OLD, sub: "old-jane" },
     ]);
     expect(await query(db, "SELECT count(*)::int AS n FROM users")).toEqual([{ n: 1 }]);
+  });
+
+  it("links only during a move, from a login at the previous provider, and one login per provider", async () => {
+    const linkStart = async (b: ReturnType<typeof browser>) =>
+      (await b.request("/api/auth/login?returnTo=/&link=1")).headers.get("location");
+    // Logged in at the current provider: nothing to link (a second login there would be someone else's)
+    const current = browser();
+    await current.logIn(verified);
+    expect(await linkStart(current)).toBe("/?loginError=link_failed");
+
+    // Linked already: no second identity at the current provider
+    const b = browser();
+    await logInAt(b, "provider=previous", old, { ...verified, email: "ann@uni.nl", sub: "old-ann" });
+    expect(await logInAt(b, "link=1", issuer, { ...verified, email: "ann@uni.nl", sub: "new-ann" })).toBe("/");
+    await logInAt(b, "provider=previous", old, { ...verified, email: "ann@uni.nl", sub: "old-ann" });
+    expect(await linkStart(b)).toBe("/?loginError=link_failed");
+    expect(await query(db, "SELECT sub FROM identities WHERE iss = $1 ORDER BY sub", [ISSUER])).toEqual([
+      { sub: "new-ann" },
+      { sub: "user-1" },
+    ]);
+
+    // No move going on: no linking, whoever is logged in
+    app = newApp();
+    const later = browser();
+    await later.logIn(verified);
+    expect(await linkStart(later)).toBe("/?loginError=link_failed");
+  });
+
+  it("linking needs a recent login: a stale session steps up at the previous provider first", async () => {
+    const b = browser();
+    await logInAt(b, "provider=previous", old, { ...verified, sub: "old-jane", auth_time: secondsAgo(20 * 60) });
+    // Not to the new provider yet: whoever holds this session must show they are its user
+    const start = await b.request("/api/auth/login?returnTo=/account&link=1");
+    const stepUp = new URL(start.headers.get("location")!);
+    expect(stepUp.origin).toBe(OLD);
+    expect(stepUp.searchParams.get("max_age")).toBe("600");
+    // A provider that didn't ask again: no linking
+    const stale = old.approve(stepUp.href, { ...verified, sub: "old-jane", auth_time: secondsAgo(20 * 60) });
+    expect(
+      (await b.request(`/api/auth/callback?code=${stale.code}&state=${stale.state}`)).headers.get("location"),
+    ).toBe("/account?loginError=step_up_failed");
+    expect(await query(db, "SELECT sub FROM identities WHERE iss = $1", [ISSUER])).toEqual([]);
+
+    // With a fresh login the server goes on to the new provider, which must authenticate whoever is there
+    const again = await b.request("/api/auth/login?returnTo=/account&link=1");
+    const fresh = old.approve(again.headers.get("location")!, { ...verified, sub: "old-jane" });
+    const on = (await b.request(`/api/auth/callback?code=${fresh.code}&state=${fresh.state}`)).headers.get("location")!;
+    expect(on).toBe("/api/auth/login?link=1&returnTo=%2Faccount");
+    const link = new URL((await b.request(on)).headers.get("location")!);
+    expect(link.origin).toBe(ISSUER);
+    expect(link.searchParams.get("prompt")).toBe("login");
+    const linked = issuer.approve(link.href, { ...verified, sub: "new-jane" });
+    expect(
+      (await b.request(`/api/auth/callback?code=${linked.code}&state=${linked.state}`)).headers.get("location"),
+    ).toBe("/account");
+    expect(await query(db, "SELECT sub FROM identities WHERE iss = $1", [ISSUER])).toEqual([{ sub: "new-jane" }]);
   });
 
   it("doesn't link a login that is someone else's account, nor without a session", async () => {

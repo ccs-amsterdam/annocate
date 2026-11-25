@@ -10,7 +10,7 @@ import { getCookie } from "hono/cookie";
 import { ensureUser, userForKey } from "../shared/accounts.js";
 import { userForSession } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
-import { isFresh, SESSION_COOKIE } from "./login.js";
+import { isFresh, SESSION_COOKIE, setSessionCookie } from "./login.js";
 import { idParam } from "../shared/request.js";
 
 // Researcher authentication (docs/api/researcher.md).
@@ -24,9 +24,11 @@ import { idParam } from "../shared/request.js";
 // their role in a study and their account role (user, researcher, admin)
 // come from `roles` (`studyRole()`, `accountRole()` in db/sql.ts).
 // Researchers work without a second factor (the provider's,
-// `OIDC_MFA_CLAIM`); server admin access needs one. API keys count as with
-// one, but never do sensitive actions (`requireSensitive`): those need a web
-// session with a recent login (step-up).
+// `OIDC_MFA_CLAIM`); server admin access needs one. API keys have no second
+// factor and no expiry: a key acts as a researcher at most, also an admin's
+// (the admin API needs a web session), and never does sensitive actions
+// (`requireSensitive`): those need a web session with a recent login
+// (step-up).
 // - Development only (`devMode`, AUTH_DEV_MODE=1): plain
 //   `x-dev-role` / `x-dev-email` headers (a registered user with that email),
 //   checked against nothing but the study's roles, and `x-dev-account-role`
@@ -36,11 +38,14 @@ import { idParam } from "../shared/request.js";
 const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 
 /** What still works in a suspended study besides reading: deleting it, or coders' data. */
-const SUSPENDED_ALLOWED = [
-  /^\/api\/study\/\d+$/,
-  /^\/api\/study\/\d+\/coders\/delete$/,
-  /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/,
+const SUSPENDED_ALLOWED: { method: string; path: RegExp }[] = [
+  { method: "DELETE", path: /^\/api\/study\/\d+$/ },
+  { method: "POST", path: /^\/api\/study\/\d+\/coders\/delete$/ },
+  { method: "POST", path: /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/ },
 ];
+
+const allowedWhileSuspended = (c: Context) =>
+  c.req.method === "GET" || SUSPENDED_ALLOWED.some((a) => a.method === c.req.method && a.path.test(c.req.path));
 
 /** Who a researcher request is from. */
 export interface Researcher {
@@ -50,7 +55,7 @@ export interface Researcher {
   accountRole: AccountRole;
   /** How the request authenticated: a web session, an API key, or development headers. */
   via: "session" | "key" | "dev";
-  /** The login used a second factor (API keys: yes, see above). */
+  /** The login used a second factor (API keys: counted as yes; they are never admins, see above). */
   mfa: boolean;
   /** Sessions: when the provider authenticated the user (step-up). */
   authTime: Date | null;
@@ -64,14 +69,17 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   const bearer = /^Bearer (.+)$/.exec(c.req.header("authorization") ?? "")?.[1];
   if (bearer) {
     const user = await userForKey(server.db, bearer.trim());
-    return user
-      ? { email: user.email, userId: user.id, accountRole: user.role, via: "key", mfa: true, authTime: null }
-      : null;
+    if (!user) return null;
+    // A key is no admin: an admin's key works as a researcher's
+    const accountRole = user.role === "admin" ? "researcher" : user.role;
+    return { email: user.email, userId: user.id, accountRole, via: "key", mfa: true, authTime: null };
   }
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {
     const user = await userForSession(server.db, session);
     if (user) {
+      // The session lasts longer from now: so does its cookie
+      if (user.extended) setSessionCookie(c, session);
       // Server admin access needs a login with a second factor (unless AUTH_INSECURE_DISABLE_2FA)
       const adminOff = user.role === "admin" && !user.mfa && !server.insecure.disable2fa;
       return {
@@ -92,6 +100,18 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
     return { email: user.email, userId: user.id, devRole, accountRole, via: "dev", mfa: true, authTime: null };
   }
   return null;
+}
+
+/**
+ * Who the request is from, counted against that user's rate limit (429
+ * `rate_limited` past it; docs/security.md "Rate limits"): whatever address
+ * or key they come from, one user's requests are one count. Null without
+ * (valid) credentials.
+ */
+async function authenticateCounted(c: Context, server: Server): Promise<Researcher | null> {
+  const researcher = await authenticate(c, server);
+  if (researcher) await server.rateLimiter?.count("researcher", researcher.userId);
+  return researcher;
 }
 
 /** The researcher's role in a study, if any. */
@@ -123,7 +143,7 @@ export function freshUntil(server: Server, researcher: Researcher): Date | null 
 
 /**
  * Checks a sensitive action (creating or revoking API keys, deleting
- * answers or coders' data, deleting a study, giving or taking admin roles):
+ * answers or coders' data, deleting a study, changing who is an admin):
  * never with an API key (403 `not_with_api_key`), and only with a recent
  * login, with a second factor unless `AUTH_INSECURE_DISABLE_2FA` (403
  * `step_up_required`: the client logs in again with
@@ -154,7 +174,7 @@ export function requireSensitive(server: Server) {
  */
 export function requireResearcher(server: Server, { role }: { role?: AccountRole } = {}) {
   return async (c: Context<Env>, next: Next) => {
-    const researcher = await authenticate(c, server);
+    const researcher = await authenticateCounted(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
     if (role && !accountRoleAtLeast(researcher.accountRole, role)) {
       if (role === "admin" && researcher.adminOff)
@@ -174,12 +194,13 @@ export function requireResearcher(server: Server, { role }: { role?: AccountRole
 
 /**
  * Middleware: an authenticated researcher with at least `minRole` in the study
- * of the `:studyId` path param. 401 without (valid) credentials, 404 for an
- * unknown study, 403 without the role.
+ * of the `:studyId` path param. 401 without (valid) credentials; 404 for an
+ * unknown study and for one the researcher has no role in (the same answer:
+ * ids don't tell which studies exist); 403 with a role that is too low.
  */
 export function requireStudyUser(server: Server, minRole: Role) {
   return async (c: Context<Env>, next: Next) => {
-    const researcher = await authenticate(c, server);
+    const researcher = await authenticateCounted(c, server);
     if (!researcher) return c.json({ error: "Unauthorized" }, 401);
 
     const studyId = idParam(c, "studyId");
@@ -187,17 +208,16 @@ export function requireStudyUser(server: Server, minRole: Role) {
       .select({ suspendedAt: studies.suspendedAt })
       .from(studies)
       .where(eq(studies.id, studyId));
-    if (!study) return c.json({ error: "Study not found" }, 404);
+    const role = study ? await roleIn(server, researcher, studyId) : null;
+    if (!role) return c.json({ error: "Study not found" }, 404);
+    if (ROLE_RANK[role] < ROLE_RANK[minRole]) return c.json({ error: "Forbidden" }, 403);
     // Suspended by a server admin: reading, and deleting data or the study, still work.
-    if (study.suspendedAt && c.req.method !== "GET" && !SUSPENDED_ALLOWED.some((p) => p.test(c.req.path))) {
+    if (study!.suspendedAt && !allowedWhileSuspended(c)) {
       return c.json(
         { error: "A server admin suspended this study: it can't be changed", code: "study_suspended" },
         403,
       );
     }
-
-    const role = await roleIn(server, researcher, studyId);
-    if (!role || ROLE_RANK[role] < ROLE_RANK[minRole]) return c.json({ error: "Forbidden" }, 403);
     c.set("researcher", researcher);
     c.set("studyUser", { email: researcher.email, role });
     c.set("studyId", studyId);

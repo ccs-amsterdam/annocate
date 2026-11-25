@@ -22,8 +22,10 @@ import { HttpError } from "./http.js";
 import type { StudyRow } from "./studies.js";
 import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./links.js";
-import { assignmentChecks, putSetGroup } from "./sets.js";
+import { assignmentChecks } from "./deployChecks.js";
+import { putSetGroup } from "./sets.js";
 import { saveUnits } from "./units.js";
+import { firstDuplicate } from "./lists.js";
 
 // Recipes (contracts recipe.ts, docs/examples.md): a new study's units, its
 // columns with a role and first design version in one document; deploying it makes its
@@ -68,8 +70,7 @@ async function saveRecipeUnits(
   const unitIds = new Map<string, number>();
   const dataFields = declared.filter((f) => !isSetType(f.type));
   if (recipe.units.length === 0) return { dataFields, unitIds };
-  const ids = recipe.units.map((u) => u.id);
-  const twice = ids.find((id, i) => ids.indexOf(id) !== i);
+  const twice = firstDuplicate(recipe.units.map((u) => u.id));
   if (twice !== undefined) throw invalid(`Unit id '${twice}' is used twice`);
   const added = addedFields(
     recipe.units.map((u) => u.data as UnitData),
@@ -111,7 +112,7 @@ async function saveRecipeSets(
     return found;
   };
   const groups = recipe.sets.map((g) => g.column);
-  const twice = groups.find((g, i) => groups.indexOf(g) !== i);
+  const twice = firstDuplicate(groups);
   if (twice !== undefined) throw invalid(`Column '${twice}' is defined twice`);
   for (const group of recipe.sets) {
     if (dataFields.some((f) => f.name === group.column))
@@ -161,7 +162,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
 
   const declared = recipe.design.units?.fields ?? [];
   const names = declared.map((f) => f.name);
-  const declaredTwice = names.find((n, i) => names.indexOf(n) !== i);
+  const declaredTwice = firstDuplicate(names);
   if (declaredTwice !== undefined) throw invalid(`Unit field '${declaredTwice}' is declared twice`);
   const { dataFields, unitIds } = await saveRecipeUnits(tx, study.id, recipe, declared);
   const setFields = await saveRecipeSets(tx, study.id, recipe, declared, dataFields, unitIds);

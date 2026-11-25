@@ -1,14 +1,32 @@
 import { Hono, type Context } from "hono";
-import { ApiKeyWriteSchema, ResearcherRequestWriteSchema, type MeResponse } from "@annotinder/contracts";
+import { deleteCookie } from "hono/cookie";
+import {
+  ApiKeyWriteSchema,
+  ConfirmDeletionSchema,
+  ResearcherRequestWriteSchema,
+  type MeResponse,
+} from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { identities, researcherRequests } from "../db/schema/index.js";
 import { freshUntil, requireResearcher, requireSensitive } from "./auth.js";
 import { HttpError } from "../shared/http.js";
-import { createApiKey, effectiveLimits, getSettings, listApiKeys, revokeApiKey, usage } from "../shared/accounts.js";
+import {
+  accountDeletion,
+  createApiKey,
+  deleteAccount,
+  effectiveLimits,
+  getSettings,
+  listApiKeys,
+  revokeApiKey,
+  usage,
+} from "../shared/accounts.js";
+import { SESSION_COOKIE } from "./login.js";
 import { idParam, parseJson } from "../shared/request.js";
+import { forgetDeletedStudy } from "../shared/studies.js";
+import { securityLog } from "../shared/securityLog.js";
 
-/** The authenticated user: their account (role, limits), becoming a researcher, and their API keys. */
+/** The authenticated user: their account (role, limits), becoming a researcher, deleting it, and their API keys. */
 export function me(server: Server): Hono<Env> {
   const { db } = server;
   const app = new Hono<Env>();
@@ -70,17 +88,32 @@ export function me(server: Server): Hono<Env> {
     return c.json(await meResponse(c));
   });
 
+  app.get("/me/deletion", signedIn, async (c) => c.json(await accountDeletion(db, userId(c))));
+
+  // Deleting one's account: sensitive, and confirmed by typing its email address. Studies
+  // only this user has a role in go with it; others' studies keep it (shared/accounts.ts).
+  app.delete("/me", signedIn, requireSensitive(server), async (c) => {
+    const { confirm } = await parseJson(c, ConfirmDeletionSchema);
+    const deleted = await deleteAccount(db, userId(c), confirm);
+    for (const study of deleted.studies) await forgetDeletedStudy(server, study.id);
+    deleteCookie(c, SESSION_COOKIE, { path: "/" });
+    return c.body(null, 204);
+  });
+
   app.get("/me/keys", signedIn, async (c) => c.json(await listApiKeys(db, userId(c))));
 
   // Sensitive: only in a web session with a recent second factor (step-up), never with an API key
   app.post("/me/keys", signedIn, requireSensitive(server), async (c) => {
     const body = await parseJson(c, ApiKeyWriteSchema);
-    return c.json(await createApiKey(db, userId(c), body.label), 201);
+    const key = await createApiKey(db, userId(c), body.label);
+    await securityLog(db, userId(c), "api_key_created", { keyId: key.id, label: key.label });
+    return c.json(key, 201);
   });
 
   app.post("/me/keys/:id/revoke", signedIn, requireSensitive(server), async (c) => {
     const key = await revokeApiKey(db, userId(c), idParam(c, "id"));
     if (!key) return c.json({ error: "API key not found" }, 404);
+    await securityLog(db, userId(c), "api_key_revoked", { keyId: key.id, label: key.label });
     return c.json(key);
   });
 

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { Zip, ZipDeflate, strToU8 } from "fflate";
 import { asc, eq, sql, type SQL } from "drizzle-orm";
 import { RELEASE } from "@annotinder/contracts";
-import { rows, type Db } from "../db/index.js";
+import { rows, withoutTimeLimits, type Db } from "../db/index.js";
 import { designVersions, sessionDevices, studies } from "../db/schema/index.js";
 import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { listCoderDeletions } from "./coderDeletion.js";
@@ -215,10 +215,14 @@ export async function ensureResultsExport(
   const stored = await files.size(key);
   if (stored !== null) return { key, size: stored, filename };
 
-  const { size } = await db.transaction((tx) => files.put(key, exportZip(tx as unknown as Db, studyId, name, batch)), {
-    isolationLevel: "repeatable read",
-    accessMode: "read only",
-  });
+  const { size } = await db.transaction(
+    async (tx) => {
+      // Every answer of a large study takes longer to write out than a request's statements may
+      await withoutTimeLimits(tx);
+      return files.put(key, exportZip(tx as unknown as Db, studyId, name, batch));
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
   for (const other of await files.list(exportPrefix(studyId))) if (other !== key) await files.remove(other);
   await removeExportsOfDeletedStudies(db, files);
   return { key, size, filename };

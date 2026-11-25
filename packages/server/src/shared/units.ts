@@ -87,6 +87,21 @@ export async function draftUnits(db: Db, studyId: number, query: DraftUnitsQuery
     .orderBy(asc(t.id));
 }
 
+/** One field's values in the draft: per unit that has one, its value. */
+export async function draftFieldValues(
+  db: Db,
+  studyId: number,
+  field: string,
+): Promise<{ externalId: string; value: unknown }[]> {
+  return db
+    .select({ externalId: units.externalId, value: unitValues.value })
+    .from(units)
+    .innerJoin(unitDraft, eq(unitDraft.unitId, units.id))
+    .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
+    .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
+    .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, field)));
+}
+
 /** The advisory lock key of a study's units (`lockUnits`). */
 const UNITS_LOCK = 24026;
 
@@ -131,8 +146,22 @@ export function toUnitResponse(row: UnitRow): UnitResponse {
   return { id: row.id, externalId: row.externalId, data: row.data, coded: row.coded };
 }
 
-export function toUnitMeta(row: UnitRow): UnitMeta {
-  return { id: row.id, externalId: row.externalId, hash: row.hash, coded: row.coded };
+/**
+ * A study's draft units without their data, in id order: what a client
+ * compares with its own copy (`hash`). The hash is made in the database, so
+ * no unit's data comes to the server for it.
+ */
+export async function draftUnitMetas(db: Db, studyId: number): Promise<UnitMeta[]> {
+  return db
+    .select({
+      id: units.id,
+      externalId: units.externalId,
+      hash: unitDataHash(unitDraftData(units.id)),
+      coded: units.coded,
+    })
+    .from(units)
+    .where(and(eq(units.studyId, studyId), eq(units.inDraft, true)))
+    .orderBy(asc(units.id));
 }
 
 /**
@@ -226,8 +255,9 @@ export async function removeUnit(db: Db, studyId: number, unitId: number): Promi
   await db
     .delete(unitSetMembers)
     .where(and(eq(unitSetMembers.unitId, unitId), inArray(unitSetMembers.setId, draftSets)));
-  await db.delete(unitDraft).where(eq(unitDraft.unitId, unitId));
   const unit = and(eq(units.studyId, studyId), eq(units.id, unitId));
+  // Only this study's unit: an id of another study's unit removes nothing
+  await db.delete(unitDraft).where(inArray(unitDraft.unitId, db.select({ id: units.id }).from(units).where(unit)));
   const hasVersions = exists(
     db
       .select({ one: sql`1` })

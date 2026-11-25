@@ -20,7 +20,7 @@ import {
 import { eq, sql, type SQL } from "drizzle-orm";
 import { toSnakeCase } from "drizzle-orm/casing";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
-import { migrationsFolder, rows, type Db } from "../db/index.js";
+import { migrationsFolder, rows, withoutTimeLimits, type Db } from "../db/index.js";
 import { newPublicId } from "../db/publicId.js";
 import {
   annotationValues,
@@ -218,6 +218,8 @@ export async function exportStudy(
   const last = all[all.length - 1]!;
   return db.transaction(
     async (tx) => {
+      // A large study takes longer to read than a request's statements may
+      await withoutTimeLimits(tx);
       const [study] = await tx.select({ name: studies.name }).from(studies).where(eq(studies.id, studyId));
       const tables: StudyExportManifest["tables"] = [];
       for (const { table } of EXPORTED) {
@@ -422,9 +424,11 @@ export interface ImportOptions {
  * is checked first: what it holds must pass what a save and a deploy check,
  * and fit the importer's limits. Only then are ids taken (a sequence doesn't
  * give ids back when the transaction fails) and rows written. The caller
- * checks the number of studies.
+ * checks the number of studies. A large study takes long to write: the
+ * transaction's time limits are lifted.
  */
 export async function importStudy(tx: Db, bytes: Buffer, options: ImportOptions): Promise<StudyRow> {
+  await withoutTimeLimits(tx);
   const { manifest, rows: exported } = await readExport(bytes);
   const migrated = await migrateRows(manifest, exported);
   const withCoders = options.coders ?? true;

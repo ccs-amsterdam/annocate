@@ -7,7 +7,9 @@ import type { Db } from "../db/index.js";
 import { roles, users } from "../db/schema/index.js";
 import { roleApplies } from "../db/sql.js";
 import { userForEmail } from "../shared/accounts.js";
+import { firstDuplicate } from "../shared/lists.js";
 import { parseJson } from "../shared/request.js";
+import { securityLog } from "../shared/securityLog.js";
 
 // A study's users: roles in the study given to users (docs/accounts.md). An
 // email address without a user becomes an invitation (a shadow user), which
@@ -64,7 +66,7 @@ export function studyUsers(server: Server): Hono<Env> {
 
     const users = body.users.map((u) => ({ ...u, email: u.email.trim().toLowerCase() }));
     const emails = users.map((u) => u.email);
-    const twice = emails.find((e, i) => emails.indexOf(e) !== i);
+    const twice = firstDuplicate(emails);
     if (twice) return c.json({ error: `${twice} is in the list twice` }, 400);
 
     const studyId = c.get("studyId");
@@ -72,10 +74,12 @@ export function studyUsers(server: Server): Hono<Env> {
     await db.transaction(async (tx) => {
       const before = await rolesOf(tx, studyId);
       const wanted = new Map<number, Role>();
+      const emailOf = new Map(before.map((r) => [r.userId, r.email]));
       const restore = new Set<number>();
       for (const user of users) {
         const { id } = await userForEmail(tx, user.email);
         wanted.set(id, user.role);
+        emailOf.set(id, user.email);
         if (user.restore) restore.add(id);
       }
       // Giving or taking the study's ADMIN role is sensitive: not with an API key, and with a recent second factor
@@ -109,6 +113,17 @@ export function studyUsers(server: Server): Hono<Env> {
           .set({ grantedAt: sql`now()` })
           .where(and(userRolesOf(studyId), inArray(roles.userId, restored)));
       }
+
+      const roleBefore = new Map(before.map((r) => [r.userId, r.role]));
+      const changes = [...emailOf]
+        .map(([id, email]) => ({ email, from: roleBefore.get(id) ?? null, to: wanted.get(id) ?? null }))
+        .filter((change) => change.from !== change.to);
+      if (changes.length + restored.length > 0)
+        await securityLog(tx, researcher.userId, "study_users_changed", {
+          studyId,
+          changes,
+          ...(restored.length > 0 ? { restored: restored.map((id) => emailOf.get(id)) } : {}),
+        });
     });
     return c.body(null, 204);
   });

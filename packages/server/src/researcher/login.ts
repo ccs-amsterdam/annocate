@@ -2,11 +2,12 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, getSignedCookie, setCookie, setSignedCookie } from "hono/cookie";
 import type { LoginError } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { identities, users } from "../db/schema/index.js";
 import type { LoginState } from "../oidc.js";
 import { loginUser } from "../shared/accounts.js";
 import { createSession, deleteSession, SESSION_TTL_MS, userForSession } from "../shared/sessions.js";
+import { isSecure } from "../shared/cookies.js";
 import { securityLog } from "../shared/securityLog.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
 
@@ -21,17 +22,30 @@ import { CLIENT_HEADER } from "../runtime/session.js";
 //
 // Moving to another provider (docs/accounts.md "Changing providers"): with
 // `OIDC_PREVIOUS_*` set, `?provider=previous` logs in with the old one until
-// `OIDC_PREVIOUS_UNTIL`, and `?link=1` (logged in) adds the current
-// provider's identity to the logged-in user (account linking).
+// `OIDC_PREVIOUS_UNTIL`, and `?link=1` adds the current provider's identity
+// to the logged-in user (account linking). Linking decides who can log in
+// as this user from now on, so it is a sensitive action: only during the
+// move, from a session of the previous provider with a recent login (the
+// server asks for one first), for a user without an identity at the current
+// provider, and the current provider must authenticate whoever links
+// (`prompt=login`).
 
 export const SESSION_COOKIE = "annotinder_session";
 const LOGIN_COOKIE = "annotinder_login";
 const LOGIN_TTL_S = 10 * 60;
 
+/** Characters browsers drop from a URL (tab, newline) or that can't be in one: `/\t/evil.example` would become `//evil.example`. */
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/;
+
 /** Only paths on this origin: no open redirects. */
 function safeReturnTo(value: string | undefined): string {
-  return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : "/";
+  if (!value || CONTROL_CHARACTER.test(value)) return "/";
+  return value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : "/";
 }
+
+/** Issuers are compared without their trailing slashes (providers differ in how they write themselves). */
+const sameIssuer = (a: string, b: string) => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
 
 function parseLoginState(raw: string | false | undefined): LoginState | null {
   if (!raw) return null;
@@ -42,8 +56,19 @@ function parseLoginState(raw: string | false | undefined): LoginState | null {
   }
 }
 
-const secure = (c: Context) =>
-  new URL(c.req.url).protocol === "https:" || c.req.header("x-forwarded-proto") === "https";
+/**
+ * Gives the browser the session's key, for as long as the session lasts: at
+ * login, and again whenever the server extends the session.
+ */
+export function setSessionCookie(c: Context, key: string): void {
+  setCookie(c, SESSION_COOKIE, key, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "Lax",
+    secure: isSecure(c),
+    maxAge: SESSION_TTL_MS / 1000,
+  });
+}
 
 /** Clock difference with the provider we allow when checking `auth_time`. */
 const CLOCK_SKEW_MS = 60_000;
@@ -77,36 +102,65 @@ export function login(server: Server): Hono<Env> {
     }),
   );
 
+  /** Back to a page of the client, with what went wrong for it to show. Only ever a path on this origin. */
+  const backTo = (c: Context, path: string, error?: LoginError) => {
+    const url = new URL(path, publicUrl);
+    if (error) url.searchParams.set("loginError", error);
+    return c.redirect(url.pathname + url.search + url.hash);
+  };
+
+  /** Whether a user has a login at this provider already. */
+  const hasIdentityAt = async (userId: number, issuer: string) =>
+    (await server.db.$count(
+      identities,
+      and(eq(identities.userId, userId), sql`rtrim(${identities.iss}, '/') = ${issuer.replace(/\/+$/, "")}`),
+    )) > 0;
+
+  /**
+   * Who may link the current provider's login to their account, and whether
+   * their login is recent enough to do it now (else: step-up first). Null:
+   * linking is refused.
+   */
+  async function linkingUser(c: Context): Promise<{ id: number; fresh: boolean } | null> {
+    const old = previousOidc();
+    const key = getCookie(c, SESSION_COOKIE);
+    const user = key ? await userForSession(server.db, key) : null;
+    // Only while moving providers, and only for someone who logged in with the previous one
+    if (!oidc || !old || !user || !sameIssuer(user.issuer, old.issuer)) return null;
+    // One identity per provider: a second one would be someone else's login
+    if (await hasIdentityAt(user.id, oidc.issuer)) return null;
+    return { id: user.id, fresh: isFresh(user, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }) };
+  }
+
   app.get("/auth/login", async (c) => {
     if (!oidc) return c.json({ error: "Login is not configured on this server" }, 404);
-    const stepUp = c.req.query("stepUp") === "1";
     const returnTo = safeReturnTo(c.req.query("returnTo"));
-    // Linking: the current provider's login is added to the logged-in user
-    let linkUserId: number | undefined;
-    if (c.req.query("link") === "1") {
-      const key = getCookie(c, SESSION_COOKIE);
-      const user = key ? await userForSession(server.db, key) : null;
-      if (!user) return c.redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}loginError=link_failed`);
-      linkUserId = user.id;
-    }
-    const usePrevious = c.req.query("provider") === "previous" && !linkUserId;
+    const linking = c.req.query("link") === "1" ? await linkingUser(c) : null;
+    if (c.req.query("link") === "1" && !linking) return backTo(c, returnTo, "link_failed");
+    // Linking with a login that isn't recent: first a step-up login at the previous provider, then back here
+    const stepUpToLink = !!linking && !linking.fresh;
+    const stepUp = c.req.query("stepUp") === "1" || stepUpToLink;
+    const usePrevious = stepUpToLink || (c.req.query("provider") === "previous" && !linking);
     const provider = usePrevious ? previousOidc() : oidc;
     if (!provider) return c.json({ error: "The previous login provider is no longer accepted" }, 404);
+    const linkNow = linking && !stepUpToLink;
     const { url, state } = await provider.start(
       redirectUri,
       {
         returnTo,
         provider: usePrevious ? "previous" : "current",
         ...(stepUp ? { stepUp } : {}),
-        ...(linkUserId ? { linkUserId } : {}),
+        ...(stepUpToLink ? { thenLink: true } : {}),
+        ...(linkNow ? { linkUserId: linking.id } : {}),
       },
-      stepUp ? server.stepUpMaxAge : undefined,
+      // Whoever links must log in at the provider now, whatever session the browser has there
+      { ...(stepUp ? { maxAge: server.stepUpMaxAge } : {}), ...(linkNow ? { promptLogin: true } : {}) },
     );
     await setSignedCookie(c, LOGIN_COOKIE, JSON.stringify(state), server.secret, {
       path: "/api/auth",
       httpOnly: true,
       sameSite: "Lax", // sent along when the provider redirects back
-      secure: secure(c),
+      secure: isSecure(c),
       maxAge: LOGIN_TTL_S,
     });
     return c.redirect(url.href);
@@ -117,11 +171,7 @@ export function login(server: Server): Hono<Env> {
     const raw = await getSignedCookie(c, server.secret, LOGIN_COOKIE);
     deleteCookie(c, LOGIN_COOKIE, { path: "/api/auth" });
     const state = parseLoginState(raw);
-    const back = (path: string, error?: LoginError) => {
-      const url = new URL(path, publicUrl);
-      if (error) url.searchParams.set("loginError", error);
-      return c.redirect(url.pathname + url.search + url.hash);
-    };
+    const back = (path: string, error?: LoginError) => backTo(c, path, error);
     // No (valid) login cookie: expired, or not started here.
     if (!state) return back("/", "login_failed");
 
@@ -137,14 +187,15 @@ export function login(server: Server): Hono<Env> {
       return back(state.returnTo, "email_unverified");
 
     if (state.linkUserId !== undefined) {
-      // Account linking: this identity joins the user who was logged in (not if it is someone else's already)
+      // Account linking: this identity joins the user who was logged in. Not
+      // if it is someone's already, nor if the user has a login here (the
+      // issuer is the token's now, not the configured one).
       const [owner] = await server.db
         .select({ userId: identities.userId })
         .from(identities)
         .where(and(eq(identities.iss, result.iss), eq(identities.sub, result.sub)));
-      if (owner && owner.userId !== state.linkUserId) return back(state.returnTo, "link_failed");
-      if (!owner)
-        await server.db.insert(identities).values({ iss: result.iss, sub: result.sub, userId: state.linkUserId });
+      if (owner || (await hasIdentityAt(state.linkUserId, result.iss))) return back(state.returnTo, "link_failed");
+      await server.db.insert(identities).values({ iss: result.iss, sub: result.sub, userId: state.linkUserId });
       await securityLog(server.db, state.linkUserId, "identity_linked", { issuer: result.iss });
     }
     const user = await loginUser(server.db, result, server.admins);
@@ -157,16 +208,12 @@ export function login(server: Server): Hono<Env> {
       ...(result.emailVerified ? {} : { emailVerified: false }),
       ...(state.stepUp ? { stepUp: true } : {}),
     });
-    setCookie(c, SESSION_COOKIE, await createSession(server.db, user.id, login), {
-      path: "/",
-      httpOnly: true,
-      sameSite: "Lax",
-      secure: secure(c),
-      maxAge: SESSION_TTL_MS / 1000,
-    });
+    setSessionCookie(c, await createSession(server.db, user.id, login));
     // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
     if (state.stepUp && !isFresh(login, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
       return back(state.returnTo, "step_up_failed");
+    // The step-up was for linking: on to the current provider
+    if (state.thenLink) return c.redirect(`/api/auth/login?link=1&returnTo=${encodeURIComponent(state.returnTo)}`);
     return back(state.returnTo);
   });
 

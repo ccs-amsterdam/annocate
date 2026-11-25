@@ -1,11 +1,13 @@
 import { Hono } from "hono";
-import { StudyWriteSchema } from "@annotinder/contracts";
-import { eq } from "drizzle-orm";
+import { ConfirmDeletionSchema, StudyWriteSchema } from "@annotinder/contracts";
+import { and, eq } from "drizzle-orm";
 import { studies } from "../db/schema/index.js";
 import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
-import { toStudyResponse } from "../shared/studies.js";
+import { forgetDeletedStudy, toStudyResponse } from "../shared/studies.js";
+import { HttpError } from "../shared/http.js";
 import { parseJson } from "../shared/request.js";
+import { securityLog } from "../shared/securityLog.js";
 
 export function study(server: Server): Hono<Env> {
   const { db } = server;
@@ -39,10 +41,16 @@ export function study(server: Server): Hono<Env> {
     return c.json(toStudyResponse(row!));
   });
 
-  // Deleting the study cascades to all of its rows (src/db/schema).
+  // Deleting the study cascades to all of its rows (src/db/schema). It can't be undone, so it
+  // is sensitive and the request carries the study's name, typed by whoever deletes it.
   app.delete("/study/:studyId", requireStudyUser(server, "ADMIN"), requireSensitive(server), async (c) => {
-    await db.delete(studies).where(eq(studies.id, c.get("studyId")));
-    server.deployments.drop(c.get("studyId"));
+    const studyId = c.get("studyId");
+    const { confirm } = await parseJson(c, ConfirmDeletionSchema);
+    const named = and(eq(studies.id, studyId), eq(studies.name, confirm.trim()));
+    const [deleted] = await db.delete(studies).where(named).returning({ name: studies.name });
+    if (!deleted) throw new HttpError(400, "Type the study's name to confirm", "confirmation_mismatch");
+    await forgetDeletedStudy(server, studyId);
+    await securityLog(db, c.get("researcher").userId, "study_deleted", { studyId, name: deleted.name });
     return c.body(null, 204);
   });
 

@@ -7,11 +7,16 @@ import {
   type UnitDataValue,
 } from "@annotinder/contracts";
 import type { Server, Env } from "../context.js";
-import { and, eq } from "drizzle-orm";
-import { unitDraft, unitFieldNames, units, unitValues } from "../db/schema/index.js";
 import { requireStudyUser } from "./auth.js";
 import { designVersionItems } from "../shared/designVersions.js";
-import { dropDraftFields, getUnitFields, latestDesignVersion, setUnitFields } from "../shared/units.js";
+import {
+  draftFieldValues,
+  dropDraftFields,
+  getUnitFields,
+  latestDesignVersion,
+  setUnitFields,
+} from "../shared/units.js";
+import { firstDuplicate } from "../shared/lists.js";
 import { parseJson } from "../shared/request.js";
 
 // The design's unit fields (docs/architecture.md §8.4).
@@ -32,7 +37,7 @@ export function unitsFields(server: Server): Hono<Env> {
     const studyId = c.get("studyId");
     const { fields } = body;
     const names = fields.map((f) => f.name);
-    const twice = names.find((n, i) => names.indexOf(n) !== i);
+    const twice = firstDuplicate(names);
     if (twice !== undefined) return c.json({ error: `Field '${twice}' is given twice` }, 400);
     const before = await getUnitFields(db, studyId);
     for (const f of fields) {
@@ -50,13 +55,7 @@ export function unitsFields(server: Server): Hono<Env> {
     for (const f of fields) {
       const old = before.find((b) => b.name === f.name);
       if (!old || old.type === f.type) continue;
-      const rows = await db
-        .select({ externalId: units.externalId, value: unitValues.value })
-        .from(units)
-        .innerJoin(unitDraft, eq(unitDraft.unitId, units.id))
-        .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
-        .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
-        .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, f.name)));
+      const rows = await draftFieldValues(db, studyId, f.name);
       const misfit = rows.find((r) => {
         const type = typeOfValue(r.value as UnitDataValue);
         return type !== null && type !== f.type;

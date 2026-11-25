@@ -5,7 +5,7 @@ import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { createSession } from "../shared/sessions.js";
 import { createApiKey, ensureUser, setServerRole } from "../shared/accounts.js";
-import { emptyDb } from "./testDb.js";
+import { emptyDb, query } from "./testDb.js";
 
 // The researcher API the way a script (R, Python) or another system uses it:
 // an API key, the endpoint registry from the contracts, and every response
@@ -180,6 +180,11 @@ describe("authentication", () => {
     // Not someone else's key
     await keyFor("other@uni.nl");
     expect((await call(await sessionFor("other@uni.nl"), "revokeApiKey", { id: listed[0].id })).status).toBe(404);
+    // Keys made and revoked are in the user's security log
+    expect(await query(db, "SELECT event, details FROM security_log ORDER BY id")).toEqual([
+      { event: "api_key_created", details: { keyId: created.data.id, label: "laptop" } },
+      { event: "api_key_revoked", details: { keyId: created.data.id, label: "laptop" } },
+    ]);
   });
 });
 
@@ -191,7 +196,8 @@ describe("studies and roles", () => {
 
     expect((await call(alice, "listStudies")).data.studies.map((j) => j.id)).toEqual([studyId]);
     expect((await call(bob, "listStudies")).data.studies).toEqual([]);
-    expect((await call(bob, "getStudy", { id: studyId, studyId })).status).toBe(403);
+    // A study that isn't theirs and one that isn't there look the same
+    expect((await call(bob, "getStudy", { id: studyId, studyId })).status).toBe(404);
     expect((await call(alice, "getStudy", { id: 999, studyId: 999 })).status).toBe(404);
 
     // Alice gives Bob read access (emails don't depend on case): he can download, not deploy.

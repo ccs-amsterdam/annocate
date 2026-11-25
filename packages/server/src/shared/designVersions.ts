@@ -10,7 +10,9 @@ import {
   type TopLevelItem,
   type UnitsSpec,
 } from "@annotinder/contracts";
-import type { designVersions } from "../db/schema/index.js";
+import { eq } from "drizzle-orm";
+import type { Db } from "../db/index.js";
+import { deployments, designVersions } from "../db/schema/index.js";
 
 /** A row of `design_versions`: a version of the design. */
 export type DesignVersionRow = typeof designVersions.$inferSelect;
@@ -97,4 +99,14 @@ export function toDesignVersion(row: DesignVersionRow): DesignVersion {
     session: designVersionSession(row),
     public: designVersionPublic(row),
   };
+}
+
+/** The items of the design version a study has deployed (`designVersionItems`); null if it isn't deployed. */
+export async function deployedDesignItems(db: Db, studyId: number): Promise<TopLevelItem[] | null> {
+  const [deployed] = await db
+    .select({ items: designVersions.items, session: designVersions.session })
+    .from(deployments)
+    .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
+    .where(eq(deployments.studyId, studyId));
+  return deployed ? designVersionItems(deployed) : null;
 }

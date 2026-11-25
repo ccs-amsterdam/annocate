@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { listResponse } from "../paging.js";
+import { AccountDeletionSchema, ConfirmDeletionSchema } from "../account.js";
 import {
   AdminStudySchema,
   AdminStudyUpdateSchema,
@@ -55,8 +56,21 @@ export const adminEndpoints = {
   },
   /** Invites by email (or changes the role of a user with that email). With role `admin`: sensitive. */
   createUser: { method: "POST", path: "/admin/users", request: AdminUserCreateSchema, response: AdminUserSchema },
-  /** An invitation not claimed yet (a shadow user): withdrawn. 409 for a registered user. */
+  /** An invitation not claimed yet (a shadow user): withdrawn. A registered user: `deleteUser`. */
   deleteInvitation: { method: "DELETE", path: "/admin/users/:id", request: z.void(), response: z.void() },
+  /** What deleting a user's account would delete, and what keeps it from being deleted. */
+  getUserDeletion: {
+    method: "GET",
+    path: "/admin/users/:id/deletion",
+    request: z.void(),
+    response: AccountDeletionSchema,
+  },
+  /**
+   * Deletes a registered user's account (the same route as `deleteInvitation`),
+   * as the researcher API's `deleteAccount` does for one's own: sensitive, and
+   * `confirm` is the user's email address. Not one's own account.
+   */
+  deleteUser: { method: "DELETE", path: "/admin/users/:id", request: ConfirmDeletionSchema, response: z.void() },
   /** Giving or taking the admin role is sensitive: a web session with a recent second factor, never an API key. */
   updateUser: { method: "PUT", path: "/admin/users/:id", request: AdminUserUpdateSchema, response: AdminUserSchema },
 

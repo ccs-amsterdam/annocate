@@ -83,6 +83,41 @@ export const MeResponseSchema = z.object({
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 
+/**
+ * Confirms a deletion that can't be undone: what goes, typed out by the
+ * person deleting it (an account's email address, a study's name). 400
+ * `confirmation_mismatch` if it isn't that.
+ */
+export const ConfirmDeletionSchema = z.object({ confirm: z.string().max(512) });
+export type ConfirmDeletion = z.infer<typeof ConfirmDeletionSchema>;
+
+const StudyNameSchema = z.object({ id: z.number(), name: z.string() });
+
+/**
+ * `GET /me/deletion`, `GET /admin/users/:id/deletion`: what deleting an
+ * account would do, for the dialog that asks to confirm it. An account can't
+ * be deleted while `blocking` has studies or `lastAdmin` is true (409).
+ */
+export const AccountDeletionSchema = z.object({
+  /** The address to type to confirm (`ConfirmDeletionSchema`). */
+  email: z.string(),
+  /** Studies deleted with the account, with all their data: those the user owns and nobody else has a role in. */
+  studies: z.array(StudyNameSchema),
+  /**
+   * Studies that keep the account from being deleted, until the user (or a
+   * server admin) sorts them out:
+   * - `shared`: the user owns it and others have a role in it: delete the
+   *   study, take the others' roles away, or have a server admin give it
+   *   another owner;
+   * - `last_admin`: someone else's study in which the user is the only
+   *   ADMIN: give another user that role first.
+   */
+  blocking: z.array(StudyNameSchema.extend({ reason: z.enum(["shared", "last_admin"]) })),
+  /** The server's only admin: another user must be made admin first. */
+  lastAdmin: z.boolean(),
+});
+export type AccountDeletion = z.infer<typeof AccountDeletionSchema>;
+
 /** `POST /me/researcher-request`: ask an admin to become a researcher. */
 export const ResearcherRequestWriteSchema = z.object({ message: z.string().max(2000).default("") });
 export type ResearcherRequestWrite = z.infer<typeof ResearcherRequestWriteSchema>;

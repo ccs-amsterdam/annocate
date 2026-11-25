@@ -7,7 +7,7 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { deploymentVersions, getDeployment, pendingChanges, putDeployment } from "../shared/deployments.js";
 import { checkLinkCount, syncLinks } from "../shared/links.js";
-import { assignmentChecks } from "../shared/sets.js";
+import { assignmentChecks } from "../shared/deployChecks.js";
 import { parseJson } from "../shared/request.js";
 
 export function deployment(server: Server): Hono<Env> {
