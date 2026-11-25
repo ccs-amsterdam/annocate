@@ -59,10 +59,10 @@ docker compose pull app && docker compose up -d
 scripts/smoke-test.sh https://annotinder.example.org
 ```
 
-`compose.yml` runs the app with Postgres and daily database dumps, listening
-on `127.0.0.1:8787` for a proxy that does HTTPS. The step-by-step guide
-(VM, login provider, Caddy, backups, monitoring, updates, and a public
-server behind the Cloudflare proxy) is in [docs/hosting.md](docs/hosting.md).
+`compose.yml` runs the published image with Postgres and daily database
+dumps, listening on `127.0.0.1:8787` for a reverse proxy that does HTTPS. The
+guide (the login provider, settings, the proxy, updates, backups, monitoring,
+the Cloudflare proxy, and capacity) is in [docs/hosting.md](docs/hosting.md).
 Who runs a server, and where, is for each server to say: the software and
 these docs make no statement about it.
 
@@ -77,7 +77,7 @@ these docs make no statement about it.
 
 ## Documentation
 
-- [docs/hosting.md](docs/hosting.md): running a server: settings, backups, monitoring, a public server, capacity.
+- [docs/hosting.md](docs/hosting.md): running a server with Docker Compose: settings, login provider, updates, backups, monitoring, Cloudflare, capacity.
 - [docs/plans/go-live.md](docs/plans/go-live.md): checklists for taking a server live.
 - [docs/legal/](docs/legal/README.md): drafts of a privacy statement, terms of use and a data processing agreement outline (not reviewed by a lawyer).
 - [docs/architecture.md](docs/architecture.md): how the server works: distribution, resuming, design updates, the database.

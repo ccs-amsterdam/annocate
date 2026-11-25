@@ -6,47 +6,46 @@ the maintainer.
 
 ## 1. Pilot server
 
-The step-by-step guide is `hosting.md`, "A server on one VM, step by step":
-from an empty Ubuntu 24.04 VM to AnnoTinder on HTTPS, with the lab's Keycloak.
-The owner's checklists for going live are in `plans/go-live.md`.
+The step-by-step guide is `hosting.md`, "Setting up": from the published
+image to AnnoTinder on HTTPS with a login provider. The owner's checklists
+for going live are in `plans/go-live.md`.
 
 Ready:
 
-- [x] The guide follows the lab's conventions: Caddy on the VM, the app in
-  `/opt/annotinder` owned by `sal`, `sudo docker compose`, ports on
-  `127.0.0.1` only.
-- [x] `compose.yml` has the app, Postgres 18 and a `db-backup` service with
-  daily dumps in `backups/`, as in the lab's Docker Compose standards. Tested
-  locally with the built image: the containers become healthy, the dumps are
-  written, and both the restore test of the guide and a full restore work.
+- [x] The guide is for any server with Docker: a reverse proxy on the machine
+  does HTTPS, the app listens on `127.0.0.1` only.
+- [x] `compose.yml` has the app (the published image of a release), Postgres
+  18 and a `db-backup` service with daily dumps in `backups/`. Tested locally
+  with the built image: the containers become healthy, the dumps are written,
+  and both the restore test of the guide and a full restore work.
 - [x] `.env.example` lists every setting, grouped into required and
   optional, with comments.
 - [x] `scripts/smoke-test.sh <url> [api key]` checks a running server
-  (`hosting.md`, step 8).
+  (`hosting.md`, "Smoke test").
 - [x] The e2e tests pass against real Postgres (16), not only PGlite.
 
 To do on the server (the guide's steps):
 
-1. **The hostname and DNS**, the VM (`setup-vm.sh --web --caddy`), and the
-   app folder (steps 1 to 3).
-2. **The Keycloak client** in the `idp` realm, with the redirect URI
-   `https://<host>/api/auth/callback` (step 4).
-3. **Settings** (step 5): `ANNOTINDER_PUBLIC_URL`, `ANNOTINDER_SECRET`,
+1. **The hostname and DNS**, the server with Docker and a proxy, and the
+   app folder ("Setting up", step 1).
+2. **The login client** at the provider, with the redirect URI
+   `https://<host>/api/auth/callback` (step 2).
+3. **Settings** (step 3): `ANNOTINDER_PUBLIC_URL`, `ANNOTINDER_SECRET`,
    `POSTGRES_PASSWORD`, the `OIDC_*` settings and `ANNOTINDER_ADMINS`. Never
    `AUTH_DEV_MODE` or `ANNOTINDER_DEMO`. Run one server process (previews
    and answer limits are per process, `architecture.md` §11).
-4. **The first build on the server** (step 6). The image has been built
-   here, but not yet on the VM.
-5. **Login with the real provider** (step 9). The automated tests use a mock
+4. **The first start on the server** (step 4), with the published image of
+   the release.
+5. **Login with the real provider** (step 7). The automated tests use a mock
    provider only. Check:
    - a researcher without a second factor (the orange shield, its link to
      `OIDC_ACCOUNT_URL`) and an admin with one (`OIDC_MFA_CLAIM`);
    - a step-up for a sensitive action (an API key);
    - logging out;
    - a coder signing in on a link whose invitation requires sign-in.
-6. **The smoke test with an API key**, and one full study (steps 8 and 9).
-7. **Backups:** add the VM to the nightly backup of `/opt` or copy the dumps
-   off the machine, and run the restore test once (`hosting.md`, "Backups").
+6. **The smoke test with an API key**, and one full study (steps 6 and 7).
+7. **Backups:** copy the dumps off the machine, and run the restore test once
+   (`hosting.md`, "Backups").
 8. **Coders who sign in, by hand.** Use a design with expert coders who sign in
    (one link), each coder with an email address (the Coders page). Each coder gets
    their own units, under their coder id; any other address gets 403 `email_not_allowed`.
@@ -102,8 +101,9 @@ Known limitations, documented rather than fixed:
 ## 4. Every release
 
 1. Bump `RELEASE` (contracts `version.ts`) and every `package.json`
-   version together (a server test checks they agree), and build the image
-   with `ANNOTINDER_COMMIT` (`hosting.md`, "Versions"). A breaking change
+   version together (a server test checks they agree), and tag the release
+   `v<release>`: CI builds the image with its commit and publishes it
+   (`hosting.md`, "Versions"). A breaking change
    to the design schema bumps `DESIGN_FORMAT_VERSION`.
 2. Migrations only add: change `server/src/db/schema/` and run
    `db:generate`; never edit a released migration.
@@ -119,9 +119,9 @@ Known limitations, documented rather than fixed:
    `bench/<date>-<preset>-<database>.json` in the repository. Never quote
    capacity from a PGlite run. `server/scripts/load-test.mjs` runs one
    scenario against a server that is already running.
-5. After updating a server (`hosting.md`, step 11): run
+5. After updating a server (`hosting.md`, "Updating"): run
    `scripts/smoke-test.sh` against it, and check the startup lines
-   (`sudo docker compose logs app`): the login provider, the admins, and
+   (`docker compose logs app`): the login provider, the admins, and
    where client addresses come from (`ANNOTINDER_TRUST_PROXY`). The server
    doesn't start on Postgres without `ANNOTINDER_SECRET` (32 characters or
    more) and `ANNOTINDER_PUBLIC_URL`, or with a `ANNOTINDER_TRUST_PROXY`

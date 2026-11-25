@@ -38,9 +38,9 @@ university VM, with Caddy, without Cloudflare.
 
 - [ ] **A hostname and DNS.** A name under the university's or the lab's
   domain, and someone who can add the record
-  ([hosting, step 1](../hosting.md#1-dns)).
+  ([hosting, "What you need"](../hosting.md#what-you-need)).
 - [ ] **A VM.** Ubuntu 24.04, 2 cores, 4 GB, 40 GB disk is enough for a
-  pilot ([the recommendation](../hosting.md#the-recommendation-in-short)).
+  pilot ([sizes](../hosting.md#what-you-need)).
   Ask IT at the same time: are there daily snapshots, where are they kept,
   and does the VM restart elsewhere when its hardware fails
   ([Staying up](../hosting.md#staying-up))?
@@ -50,21 +50,21 @@ university VM, with Caddy, without Cloudflare.
   [`../legal/README.md`](../legal/README.md). You don't need their final
   review to start a pilot inside the university, but they should know.
 
-**Setting up** (hosting, steps 1 to 9)
+**Setting up** (hosting, "Setting up", steps 1 to 7)
 
-- [ ] VM set up: firewall, Docker, Caddy, the `sal` account (step 2).
-- [ ] The login client in the lab's Keycloak (step 4).
-- [ ] `.env` filled in, with two generated secrets (step 5). The three
+- [ ] The server set up: Docker and a proxy for HTTPS (the lab's own VM standard).
+- [ ] The login client in the lab's Keycloak (step 2).
+- [ ] `.env` filled in, with two generated secrets (step 3). The three
   secrets (those two and the login client's) are also in the password
   manager. The startup log shows the right public address. (The server no
   longer starts without `ANNOTINDER_SECRET` and `ANNOTINDER_PUBLIC_URL`.)
 - [ ] **First admins**: two people, not one, in `ANNOTINDER_ADMINS`. Each
   has a verified address and a second factor at the login provider
-  (steps 5 and 9).
+  (steps 3 and 7).
 - [ ] Built and started; the smoke test passes, also with an API key
-  (steps 6 to 9).
+  (steps 4 to 7).
 - [ ] One whole study done by hand: create, deploy, code in a private
-  window, download, archive (step 9).
+  window, download, archive (step 7).
 - [ ] The checks of `release-checklist.md` §1 that the tests don't cover:
   login with the real provider, email coders, moving a study.
 
@@ -105,7 +105,7 @@ university VM, with Caddy, without Cloudflare.
   downloads; the server will be started again with an empty database at
   the first release (a database from before the release tag can't be
   updated, and study export files from before it can't be imported:
-  [hosting, step 11](../hosting.md#11-updating)); deleting a study asks
+  [hosting, "Updating"](../hosting.md#updating)); deleting a study asks
   for a fresh login and typing the study's name, and can't be undone; no
   sensitive data yet, unless the privacy officer agreed.
 - [ ] **Who to call.** Two people can log in to the VM. Both know where
@@ -141,7 +141,7 @@ matters: the first block takes the longest and blocks the rest.
 **2. The server**
 
 - [ ] A VM of 4 cores, 8 GB, 80 GB, with the provider's snapshots on
-  ([the recommendation](../hosting.md#the-recommendation-in-short)). If the
+  ([sizes](../hosting.md#what-you-need)). If the
   pilot's VM is reused: a new public address
   ([why](../hosting.md#3-only-cloudflare-may-reach-the-server)).
 - [ ] Set up as in part A. One app process, Postgres on the same VM.
@@ -157,7 +157,7 @@ matters: the first block takes the longest and blocks the rest.
 - [ ] List the domain's current DNS records, mail records above all.
 - [ ] Is DNSSEC on at the registrar? If so, turn it off a day or two before
   the switch
-  ([Bringing the domain to Cloudflare](../hosting.md#1-bringing-the-domain-to-cloudflare)).
+  ([Domain and DNS](../hosting.md#1-domain-and-dns)).
 - [ ] Add the domain to Cloudflare (Free), copy the records, switch the
   nameservers at the registrar, turn DNSSEC on again.
 - [ ] The `.nl` domain and `www` redirect to the one public address.
@@ -190,7 +190,7 @@ matters: the first block takes the longest and blocks the rest.
   server doesn't serve them.
 - [ ] Nothing, anywhere, says "hosted in the EU" as a general fact. With
   the Cloudflare proxy on the Free plan it would not be true
-  ([Cloudflare in front](../hosting.md#cloudflare-in-front)).
+  ([Behind the Cloudflare proxy](../hosting.md#behind-the-cloudflare-proxy)).
 - [ ] Mailboxes that are read: contact, privacy, security.
 - [ ] A one-page incident note: who decides, who tells the researchers,
   the university's procedure for data breaches (C8).
@@ -230,7 +230,7 @@ on the Free plan serves a visitor from its nearest data centre, anywhere.
 The law allows it with the right agreements; the university's policy may
 not. If not: an EU proxy company, or no proxy and the hosting provider's
 own protection. The lab's server is not affected (no Cloudflare).
-→ [hosting, "Cloudflare in front"](../hosting.md#cloudflare-in-front);
+→ [hosting, "Behind the Cloudflare proxy"](../hosting.md#behind-the-cloudflare-proxy);
 [`../legal/README.md`](../legal/README.md), decision 3.
 
 **C3. Where does the public server run?**
@@ -239,8 +239,9 @@ work: may it serve the whole world?) or an EU hosting provider (roughly
 €15 to €50 a month, a data processing agreement with the provider, and
 someone has to pay the bill for years). A mix makes sense as "runs at
 one, spare and backups at the other", not as two halves of one system.
-→ [hosting, "One VM, several processes or several VMs?"](../hosting.md#one-vm-several-processes-or-several-vms),
-[costs](../hosting.md#what-the-public-server-costs).
+→ The comparison of hosting options and the cost estimates were taken out of
+the hosting guide (the owner has read them); a standby for later:
+[hosting, "Staying up"](../hosting.md#staying-up).
 
 **C4. Which login provider for the public server?**
 Researchers log in at an outside provider, and the server depends on it:
@@ -352,7 +353,7 @@ cover some of them; those numbers are no longer used.
 | P-03 deleting a researcher account | **P-A2** | **Built** (`65d6387`, `4f7b3f3`). `GET /me/deletion` and `DELETE /me` with `{ confirm: <email> }` and a fresh login; **Delete account** in the account menu. An admin deletes a registered user the same way (`DELETE /admin/users/:id`; the admin log keeps the address and the studies that went). Studies only the user has a role in go with the account; it is refused (409) while they own a study others have a role in, are a study's only ADMIN, or are the server's only admin: `../accounts.md` §5 |
 | P-04 typing the name to delete a study | **P-A1** | **Built** (`65d6387`, `4f7b3f3`). `DELETE /study/:studyId` needs the study's ADMIN, a fresh second factor and `{ confirm: <the study's name> }`; one dialog, from the studies page and from a study's settings, says what goes and asks to type the name. It does not say how many coders and answers go |
 | Web basics (robots.txt, page metadata) | **P-A4** | Done: `packages/client/public/robots.txt` (the welcome page may be visited; `/code`, `/research` and `/api/` not) and, in `packages/client/index.html`, a description, theme colours and neutral social tags. No web app manifest: AnnoTinder is not installed as an app. Open in P-A4: the privacy officer's confirmation that no cookie banner is needed (C13) |
-| The hosting guide, the legal drafts, this file | **P-A5** | Done as drafts: `../hosting.md`, `../legal/`, `LICENSE` (MIT). The Redis question is answered in [hosting](../hosting.md#does-it-need-redis-or-another-key-value-store): Postgres only. Open: everything marked untested in the guide, and the owner's and the university's review of the legal texts |
+| The hosting guide, the legal drafts, this file | **P-A5** | Done as drafts: `../hosting.md`, `../legal/`, `LICENSE` (MIT). The Redis question is answered in the introduction of [hosting](../hosting.md): Postgres only. Open: everything marked untested in the guide, and the owner's and the university's review of the legal texts |
 | P-14 licence metadata | **B7-06** | `LICENSE` exists. Open: `"license": "MIT"` in the `package.json` files (none has it), `SECURITY.md`, a line on contributions in the README, a check of the dependencies' licences |
 | Backups off the machine, restore drill, monitoring, Cloudflare limits in the guide | **B7-07** | Written in `../hosting.md`. Open: the restore drill itself (B7-09), and hourly dumps in `scripts/db-backup.sh` (now a crontab line in the guide; see P-09) |
 

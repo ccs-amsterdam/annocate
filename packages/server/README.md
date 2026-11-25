@@ -113,6 +113,12 @@ changes: add a migration there when it is released. For something the schema can
 `pnpm --filter @annotinder/server exec drizzle-kit generate --custom --name <what>`
 makes an empty migration to write by hand.
 
+Migrations also upgrade **study exports** (`docs/hosting.md`, "Moving a
+study"), on a database holding only that study. So a migration must work on
+any subset of studies: insert no data rows depend on, assume no other
+studies or users. A new table with study data goes into `EXPORTED` or
+`NOT_EXPORTED` in `src/shared/studyExport.ts` (a test fails otherwise).
+
 ## Tests
 
 ```sh

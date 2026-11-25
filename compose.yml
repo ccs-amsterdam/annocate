@@ -1,11 +1,12 @@
 # AnnoTinder with Postgres and daily database dumps (docs/hosting.md).
 # The repository is the app's folder: settings in `.env` (from `.env.example`),
-# dumps in `backups/`. The app listens on 127.0.0.1:8787 only, for a proxy on
-# this machine that does HTTPS (Caddy). The app is the published image of the
-# release in ANNOTINDER_VERSION (.env), checked out as tag v<version>:
-#   sudo docker compose pull app && sudo docker compose up -d
-# Building it here instead (a change not released yet):
-#   sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
+# dumps in `backups/`. The app listens on 127.0.0.1:8787 only, for a reverse
+# proxy on this machine that does HTTPS. The app is the published image of the
+# release in ANNOTINDER_VERSION (.env); check out that release's tag
+# (git checkout v<version>) so this file matches it. To update:
+#   docker compose pull app && docker compose up -d
+# Building the image here instead (a change not released yet):
+#   ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
 
 # Container logs (`docker compose logs`) are files that Docker never trims by
 # itself: each service keeps at most 3 files of 10 MB.
@@ -29,7 +30,8 @@ services:
     environment:
       DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
       # Only reachable through the proxy on this machine (127.0.0.1 below): client addresses from
-      # X-Forwarded-For. Set ANNOTINDER_TRUST_PROXY=cloudflare in .env behind the Cloudflare proxy.
+      # X-Forwarded-For. Set ANNOTINDER_TRUST_PROXY=cloudflare in .env behind the Cloudflare proxy
+      # (docs/hosting.md, "Behind the Cloudflare proxy").
       ANNOTINDER_TRUST_PROXY: ${ANNOTINDER_TRUST_PROXY:-proxy}
     ports:
       - "127.0.0.1:8787:8787"

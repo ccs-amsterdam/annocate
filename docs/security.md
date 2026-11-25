@@ -7,11 +7,12 @@ sessions: `coder-identity.md`.
 ## 1. Login, second factor and step-up
 
 AnnoTinder follows the Societal Analytics Lab's Authentication standard
-(lab-infra `docs/auth.md`), shared with AmCAT.
+(lab-infra `docs/auth.md`), which it shares with AmCAT.
 
 **The login provider.** Researchers log in with an OpenID Connect provider
 (`OIDC_HOST`), ideally the institution's (with a helpdesk for account
-recovery); the lab's Keycloak works too (`hosting.md`). The server runs the
+recovery); Keycloak, Authentik, Zitadel and SURFconext work too
+(`hosting.md`, "Login provider"). The server runs the
 login itself (authorization code flow with PKCE) and keeps its own session in
 an httpOnly cookie. It checks each requirement itself:
 
