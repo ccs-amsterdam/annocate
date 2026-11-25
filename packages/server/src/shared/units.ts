@@ -2,6 +2,8 @@ import { DESIGN_FORMAT_VERSION } from "@annotinder/contracts";
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, notExists, or, sql } from "drizzle-orm";
 import {
   EMPTY_SESSION,
+  firstInvite,
+  type SessionSpec,
   type UnitChanges,
   type UnitData,
   type UnitField,
@@ -10,6 +12,7 @@ import {
 } from "@annotinder/contracts";
 import { row, rows, type Db } from "../db/index.js";
 import { lockUnits } from "../db/locks.js";
+import { studyCoderKind } from "./studies.js";
 import {
   annotationValues,
   designVersions,
@@ -164,10 +167,16 @@ export async function setUnitFields(db: Db, studyId: number, fields: UnitField[]
       formatVersion: latest?.formatVersion ?? DESIGN_FORMAT_VERSION,
       items: latest?.items ?? [],
       units: { fields },
-      session: latest?.session ?? EMPTY_SESSION,
+      session: latest?.session ?? (await firstSession(db, studyId)),
       public: latest?.public ?? null,
     });
   }
+}
+
+/** A study's first design session: for its kind of coders (expert coders start with a link each, as in the editor). */
+async function firstSession(db: Db, studyId: number): Promise<SessionSpec> {
+  const kind = await studyCoderKind(db, studyId);
+  return kind === "expert" ? { ...EMPTY_SESSION, invite: firstInvite(kind) } : EMPTY_SESSION;
 }
 
 /**

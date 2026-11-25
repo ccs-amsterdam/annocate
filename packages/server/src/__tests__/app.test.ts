@@ -186,6 +186,25 @@ describe("study routes", () => {
       expect(versions.map((v: { valid: boolean }) => v.valid)).toEqual([false, false, true]);
     });
 
+    it("units uploaded before any design start a design for the study's kind", async () => {
+      for (const [kind, invite] of [
+        ["expert", { mode: "coders", link: "per_coder" }],
+        ["crowd", undefined],
+      ] as const) {
+        const study = await createStudy(`First units (${kind})`, kind);
+        const upload = await app.request(`/api/study/${study.id}/units`, {
+          method: "POST",
+          headers: adminHeaders,
+          body: JSON.stringify({ units: [{ externalId: "u1", data: { text: "A text" } }] }),
+        });
+        expect(upload.status).toBeLessThan(300);
+        const { versions } = await json(await app.request(`/api/study/${study.id}/design`, { headers: adminHeaders }));
+        expect(versions).toHaveLength(1);
+        const first = await design(study.id, versions[0].id);
+        expect(first.session.invite).toEqual(invite);
+      }
+    });
+
     it("can be changed until the first deploy: the study's designs get the new kind's first invitation", async () => {
       const study = await createStudy("Changing", "crowd");
       const made = await postDesign(study.id, { invite: { mode: "crowd", maxCoders: 5 }, urlParams: [{ name: "w" }] });
