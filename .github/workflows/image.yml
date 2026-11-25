@@ -1,0 +1,82 @@
+# The Docker image (docs/hosting.md). Every push builds it and starts it
+# against Postgres; a release tag (v1.2.3) also publishes it to
+# ghcr.io/ccs-amsterdam/annotinder as 1.2.3 and 1.2, which servers pull.
+name: Image
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*.*.*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Build, start and (on a release tag) publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/annotinder
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: docker/setup-buildx-action@v3.10.0
+      - name: Short commit
+        id: commit
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Tags
+        id: meta
+        uses: docker/metadata-action@v5.7.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - name: Build
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: .
+          load: true
+          tags: annotinder:test
+          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # The image starts as in production (Postgres, a secret, a public URL) and is ready
+      - name: Start against Postgres
+        run: |
+          docker network create smoke
+          docker run -d --name db --network smoke -e POSTGRES_PASSWORD=smoke postgres:18.7-alpine
+          docker run -d --name app --network smoke -p 8787:8787 \
+            -e DATABASE_URL=postgres://postgres:smoke@db:5432/postgres \
+            -e ANNOTINDER_SECRET=smoke-test-secret-not-for-any-real-server \
+            -e ANNOTINDER_PUBLIC_URL=http://localhost:8787 \
+            annotinder:test
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8787/api/ready >/dev/null; then
+              curl -sf http://localhost:8787/api/info
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          exit 1
+      - name: Log in to ghcr.io
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ANNOTINDER_COMMIT=${{ steps.commit.outputs.sha }}
+          cache-from: type=gha

@@ -53,8 +53,9 @@ that need a real Postgres, against the scratch server in `TEST_DATABASE_URL`
 ### Running a server
 
 ```bash
-cp .env.example .env      # fill in the required settings
-ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+git checkout v0.9.0       # a release
+cp .env.example .env      # fill in the required settings (ANNOTINDER_VERSION=0.9.0)
+docker compose pull app && docker compose up -d
 scripts/smoke-test.sh https://annotinder.example.org
 ```
 

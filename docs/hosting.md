@@ -119,13 +119,14 @@ newer).
 ```bash
 sudo mkdir /opt/annotinder && sudo chown sal:sal /opt/annotinder && sudo chmod 750 /opt/annotinder
 sudo -u sal git clone https://github.com/ccs-amsterdam/annocate.git /opt/annotinder
+sudo -u sal git -C /opt/annotinder checkout v0.9.0      # the release to run
 ```
 
 The repository is the app's folder: `compose.yml` at the top, `.env` and
-`backups/` next to it (git ignores both). Until the server work is merged into
-the default branch, add `--branch claude/annotinder-server-architecture-psxrk6`
-to the clone. For a private repository use a read-only deploy key, or copy a
-checkout in and `sudo chown -R sal:sal /opt/annotinder`.
+`backups/` next to it (git ignores both). Check out a release tag, never a
+branch: the tag, `ANNOTINDER_VERSION` in `.env` and the image then match. For
+a private repository use a read-only deploy key, or copy a checkout in and
+`sudo chown -R sal:sal /opt/annotinder`.
 
 Rules for working in the folder:
 
@@ -212,15 +213,20 @@ same `.env`.
   `sudo docker compose logs app` then shows the setting to change, and the
   container restarts until it is there.
 
-### 6. Build and start
+### 6. Start
 
 ```bash
-cd /opt/annotinder && sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
+cd /opt/annotinder && sudo docker compose pull app && sudo docker compose up -d
 ```
 
-`ANNOTINDER_COMMIT` is recorded with each deployment, so a study says which
-version coders saw. The first build takes a few minutes; the server creates
-the database schema at its first start. Then check:
+The app is the published image of the release in `ANNOTINDER_VERSION`
+(`.env`, e.g. `0.9.0`): `ghcr.io/ccs-amsterdam/annotinder:0.9.0`, built and
+checked by CI when the release was tagged, with its commit inside (recorded
+with each deployment, so a study says which version coders saw). The server
+creates the database schema at its first start. To run a change that isn't
+released yet, build the image here instead:
+`sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build`
+(a few minutes, and memory the running app shares). Then check:
 
 - `sudo docker compose ps`: `app` and `db` are `healthy`, `db-backup` is up.
 - `sudo docker compose logs app` shows `researcher login: https://auth.societal-analytics.nl/realms/idp (second factor: amr:mfa), callback https://annotinder.example.org/api/auth/callback`
@@ -331,9 +337,15 @@ Before anyone else gets in:
 
 ```bash
 cd /opt/annotinder && sudo docker compose restart db-backup     # a fresh dump
-sudo -u sal git pull
-sudo ANNOTINDER_COMMIT=$(sudo -u sal git rev-parse --short HEAD) docker compose up -d --build
+sudo -u sal git fetch --tags && sudo -u sal git checkout v0.9.1  # the new release
+sudo -u sal sed -i 's/^ANNOTINDER_VERSION=.*/ANNOTINDER_VERSION=0.9.1/' .env
+sudo docker compose pull app && sudo docker compose up -d
 ```
+
+Read the release's entry in `CHANGELOG.md` first: a new minor version
+(0.10.0) can change what scripts or researchers see. Going back to the
+previous release is the same three steps with the old number (and the dump,
+below, if the update changed the database).
 
 The server applies new migrations at start. Run the smoke test afterwards (it
 prints the new commit). The server is away for some seconds while its
@@ -1090,7 +1102,7 @@ The same `compose.yml` works on any machine with Docker:
 
 1. Copy `.env.example` to `.env` and fill it in ([Settings](#settings)).
 2. Register AnnoTinder with your login provider ([Login provider](#login-provider)).
-3. `ANNOTINDER_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build`.
+3. `docker compose pull app && docker compose up -d` (the release in `ANNOTINDER_VERSION`).
 
 The app listens on `127.0.0.1:8787`. Put a TLS proxy in front that keeps the
 `Host` header and sets `X-Forwarded-Proto` and `X-Forwarded-For` (Caddy's
