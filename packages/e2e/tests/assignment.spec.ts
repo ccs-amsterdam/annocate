@@ -446,18 +446,19 @@ test("dividing units again keeps the units coders already coded", async ({ page,
   expect(column.sets.find((s) => s.name === "anna")!.unitIds).toContain(annaUnit);
 });
 
-test("expert coders without a coder set: how coders get in waits for one, and the first design is for expert coders", async ({
+test("the first design hasn't chosen who codes; expert coders without a coder set: how coders get in waits for one", async ({
   page,
   request,
 }) => {
-  const study = await api<StudyResponse>(request, "POST", "/study", { name: "No coder set yet", coderKind: "expert" });
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "No coder set yet" });
   await api(request, "POST", `/study/${study.id}/units`, { units: [{ externalId: "u1", data: { text: "A text" } }] });
-  // No design yet: the editor starts one for the study's expert coders, with a link each
+  // The upload's design has no invitation: Who codes offers the two kinds as cards, none chosen
   await page.goto(`/research/studies/${study.id}/design`);
+  await expect(page.getByText("who codes? Choose first")).toBeVisible();
   await page.getByRole("button", { name: /^Who codes/ }).click();
+  await expect(page.getByRole("radio", { name: /^Crowd/ })).toHaveAttribute("aria-checked", "false");
+  await page.getByRole("radio", { name: /^Expert coders/ }).click();
   await expect(page.getByText("expert coders, a link each").first()).toBeVisible();
-  // Who codes is the study's: said here, not chosen
-  await expect(page.getByRole("radio", { name: /Crowd/ })).toHaveCount(0);
   await expect(page.getByText(/A coder set is required/)).toBeVisible();
   await expect(page.getByLabel(/A link per coder/)).toBeDisabled();
   await expect(page.getByRole("button", { name: "Create coder set…" })).toBeVisible();

@@ -6,7 +6,7 @@ import type { Server, Env } from "../context.js";
 import { requireStudyUser } from "./auth.js";
 import { toDesignVersion, type DesignVersionRow } from "../shared/designVersions.js";
 import { idParam, parseJson } from "../shared/request.js";
-import { studyCoderKind } from "../shared/studies.js";
+import { studyCoderKind } from "../shared/coderKind.js";
 
 /** The 409 for a save based on an older revision (contracts `DesignConflictSchema`). */
 function conflict(row: DesignVersionRow): DesignConflict {

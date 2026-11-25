@@ -23,20 +23,24 @@ import { issuesAt } from "../issues";
 import { CoderSetDialog } from "./CoderSetDialog";
 import { useCoderKind } from "./coderKind";
 import { WHO_CODES } from "./whoCodes";
+import { WhoCodesCards } from "./WhoCodesCards";
+import { UnusedExpertsNotice } from "../coders/UnusedExpertsNotice";
 import { openGuide } from "../guide/guideStore";
 
 const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs font-normal";
 const labelClass = "flex flex-col gap-1 text-xs font-semibold";
 
 /**
- * How the study's coders get in (the Study entry's `invite`,
- * docs/architecture.md §6, docs/plans/unit-sets.md), for the study's kind
- * of coders: expert coders (the values of the units' `coder_set`, each with
- * their own units; a link each, one link where they pick their name, or one
- * where they sign in with their email address), or a crowd's one link (for
- * anyone: a survey, an experiment, or a crowd; an optional coder id from
- * the URL, a maximum of coders). Whether one link's coders divide the units
- * is each unit loop's. The kind itself is the study's (its Settings).
+ * Who codes, and how they get in (the Study entry's `invite`,
+ * docs/architecture.md §6, docs/plans/unit-sets.md): expert coders (the
+ * values of the units' `coder_set`, each with their own units; a link each,
+ * one link where they pick their name, or one where they sign in with their
+ * email address), or a crowd's one link (for anyone: a survey, an
+ * experiment, or a crowd; an optional coder id from the URL, a maximum of
+ * coders). Whether one link's coders divide the units is each unit loop's.
+ * The kind is chosen here (two cards; a new design has none) and can be
+ * changed until the study's first deploy, which fixes it: then only that
+ * kind's options are shown.
  */
 export function InvitationSettings({
   invite,
@@ -45,40 +49,91 @@ export function InvitationSettings({
   client,
   onChange,
 }: {
-  invite: Invite;
+  /** None: who codes isn't chosen yet. */
+  invite: Invite | null;
   groups: SetGroupResponse[];
   issues: DesignIssue[];
   /** To make the coder set (absent: read only). */
   client?: ResearcherApi;
   onChange: (invite: Invite) => void;
 }) {
-  // The study's kind of coders (outside a design editor: the invitation's)
-  const kind = useCoderKind() ?? inviteKind(invite);
-  // An invitation for the other kind (a design written elsewhere): the form starts from this kind's first one
-  const fits = inviteKind(invite) === kind;
-  const shown = fits ? invite : firstInvite(kind);
-
+  // The kind of coders the study's first deploy fixed (none: not deployed yet, or outside a design editor)
+  const fixed = useCoderKind();
   return (
     <div className="flex flex-col gap-4">
-      <StudyCoders kind={kind} />
-      {!fits && (
-        <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => onChange(shown)}>
-          Use {kind === "expert" ? "an invitation for expert coders" : "a crowd's invitation"}
-        </Button>
-      )}
-      {shown.mode === "coders" ? (
-        <CodersForm invite={shown} groups={groups} client={client} onChange={onChange} />
+      {fixed ? (
+        <FixedKind kind={fixed} invite={invite} onChange={onChange} />
       ) : (
-        <CrowdForm invite={shown} onChange={onChange} />
+        <KindChoice invite={invite} client={client} onChange={onChange} />
+      )}
+      {invite && (!fixed || inviteKind(invite) === fixed) && (
+        <InviteForm invite={invite} groups={groups} client={client} onChange={onChange} />
       )}
       <IssueList issues={issuesAt(issues, "invite")} />
     </div>
   );
 }
 
-/** Who codes in this study: said, not chosen here (the study's setting). */
-function StudyCoders({ kind }: { kind: CoderKind }) {
+type FormProps = { invite: Invite; groups: SetGroupResponse[]; client?: ResearcherApi; onChange: (i: Invite) => void };
+
+/** How a kind's coders get in: the options of the invitation's kind. */
+function InviteForm({ invite, groups, client, onChange }: FormProps) {
+  return invite.mode === "coders" ? (
+    <CodersForm invite={invite} groups={groups} client={client} onChange={onChange} />
+  ) : (
+    <CrowdForm invite={invite} onChange={onChange} />
+  );
+}
+
+/**
+ * Until the study's first deploy: expert coders or a crowd, as two cards
+ * (none chosen in a new design). Switching starts from that kind's first
+ * invitation; to a crowd while the study has expert coders, it says they
+ * aren't used, and offers to delete them.
+ */
+function KindChoice({
+  invite,
+  client,
+  onChange,
+}: {
+  invite: Invite | null;
+  client?: ResearcherApi;
+  onChange: (invite: Invite) => void;
+}) {
+  const kind = invite ? inviteKind(invite) : null;
+  return (
+    <>
+      <WhoCodesCards
+        value={kind}
+        long={kind === null}
+        learnMore={() => openGuide("Design", "modes")}
+        onChoose={(chosen) => chosen !== kind && onChange(firstInvite(chosen))}
+      />
+      <p className="text-[11px] text-muted-foreground">
+        {kind === null
+          ? "Choose who codes: the study can be deployed once you have."
+          : "You can change this until the study's first deploy, which fixes it."}
+      </p>
+      {kind === "crowd" && client && <UnusedExpertsNotice client={client} kind={kind} />}
+    </>
+  );
+}
+
+/**
+ * After the study's first deploy: who codes is said, not chosen. A design
+ * with another kind's invitation (or none) can take this kind's first one.
+ */
+function FixedKind({
+  kind,
+  invite,
+  onChange,
+}: {
+  kind: CoderKind;
+  invite: Invite | null;
+  onChange: (invite: Invite) => void;
+}) {
   const { icon: Icon, title, short } = WHO_CODES[kind];
+  const fits = invite !== null && inviteKind(invite) === kind;
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-2.5">
       <span className="flex items-center gap-1.5 text-sm font-semibold">
@@ -86,8 +141,19 @@ function StudyCoders({ kind }: { kind: CoderKind }) {
         {title}
       </span>
       <span className="text-[11px] text-muted-foreground">
-        {short}. Chosen for the study: it can be changed in the study&apos;s Settings until the first deploy.
+        {short}. Fixed since the first deploy: coders started, and their links and units follow from it.
       </span>
+      {!fits && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => onChange(firstInvite(kind))}
+        >
+          Use {kind === "expert" ? "an invitation for expert coders" : "a crowd's invitation"}
+        </Button>
+      )}
       <button
         type="button"
         onClick={() => openGuide("Design", "modes")}

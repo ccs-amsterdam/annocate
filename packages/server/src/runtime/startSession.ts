@@ -1,11 +1,11 @@
 import type { DeviceDetails } from "../shared/devices.js";
-import { inviteOf, linkMaxCoders, type CodersInvite } from "@annotinder/contracts";
+import { linkMaxCoders, type CodersInvite } from "@annotinder/contracts";
 import { and, asc, eq, gt, lt, sql } from "drizzle-orm";
 import { type Db } from "../db/index.js";
 import { annotationValues, sessionDevices, coderSessions, links } from "../db/schema/index.js";
 import { type CoderRow } from "../shared/coders.js";
 import { HttpError } from "../shared/http.js";
-import { emailCoders, sessionValues, type SessionLogin } from "./sessionValues.js";
+import { emailCoders, runtimeInvite, sessionValues, type SessionLogin } from "./sessionValues.js";
 import { coderOfEmail, crowdCoder, forgetCrowdCoders } from "../shared/studyCoders.js";
 import { nothingHere } from "./session.js";
 import { checkNewCoder } from "../shared/limits.js";
@@ -86,7 +86,7 @@ export async function findOrCreateCoder(
   const mine = signedIn ? await sessionOfLogin(db, studyId, request, signedIn) : undefined;
   if (mine) return { row: mine, deviceId: await addDevice(db, studyId, mine.id, coderKey, device) };
   const link = await openLink(db, studyId, request);
-  const invite = inviteOf(request.sessionRules?.item);
+  const invite = runtimeInvite(request.sessionRules?.item);
   let params = link.params;
   if (invite.mode === "coders" && invite.link === "pick_name") {
     const picked = await pickName(db, studyId, request, invite);

@@ -9,7 +9,7 @@ import { requireStudyUser } from "./auth.js";
 import { toDesignVersionMeta, toDesignVersion } from "../shared/designVersions.js";
 import { getUnitFields } from "../shared/units.js";
 import { parseJson } from "../shared/request.js";
-import { studyCoderKind } from "../shared/studies.js";
+import { studyCoderKind } from "../shared/coderKind.js";
 
 export function designVersions(server: Server): Hono<Env> {
   const { db } = server;

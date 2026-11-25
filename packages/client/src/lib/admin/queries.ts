@@ -46,6 +46,7 @@ import type {
   SetGroupWrite,
 } from "@annotinder/contracts";
 import { ResearcherApiError, type ResearcherApi } from "../api/httpResearcherApi";
+import { whoCodes, type WhoCodes } from "./whoCodes";
 
 // TanStack Query hooks over `ResearcherApi` for the researcher UI
 // (docs/client.md §7). Each hook takes the API client as an argument, not
@@ -130,13 +131,9 @@ export function useUpdateStudyMutation(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, body }) => client.updateStudy(id, body),
-    onSuccess: (study, { body }) => {
+    onSuccess: (study) => {
       queryClient.setQueryData(keys.study(study.id), study);
       void queryClient.invalidateQueries({ queryKey: keys.studies });
-      // Another kind of coders gave the study's designs that kind's invitation
-      if (body.coderKind === undefined) return;
-      void queryClient.invalidateQueries({ queryKey: keys.designVersions(study.id) });
-      void queryClient.invalidateQueries({ queryKey: [...keys.study(study.id), "designVersion"] });
     },
   });
 }
@@ -164,6 +161,22 @@ export function useDesignVersionQuery(client: ResearcherApi, id: number | null):
     queryFn: () => client.getDesignVersion(id as number),
     enabled: id !== null,
   });
+}
+
+/**
+ * Who codes in the study (admin/whoCodes.ts): the kind its first deploy
+ * fixed, before that the kind its draft (latest) design invites. Undefined
+ * until the study, and before the first deploy its design, are read.
+ */
+export function useWhoCodes(client: ResearcherApi): WhoCodes | undefined {
+  const study = useStudyQuery(client).data;
+  const versions = useDesignVersionsQuery(client).data;
+  const latestId = versions?.at(-1)?.id ?? null;
+  const latest = useDesignVersionQuery(client, study?.coderKind === null ? latestId : null).data;
+  if (!study) return undefined;
+  if (study.coderKind !== null) return whoCodes(study, null);
+  if (!versions || (latestId !== null && !latest)) return undefined;
+  return whoCodes(study, latest);
 }
 
 export function useCreateDesignVersionMutation(
@@ -520,8 +533,10 @@ function useDeployMutation(client: ResearcherApi): UseMutationResult<DeploymentR
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.links(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) });
-      // The coders' deployed units
+      // The coders' deployed units (and a crowd's first deploy deletes leftover expert coders)
       void queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) });
+      // The first deploy records who codes (the study's coderKind)
+      void queryClient.invalidateQueries({ queryKey: keys.study(client.studyId), exact: true });
       void queryClient.invalidateQueries({
         queryKey: ["admin", "study", client.studyId ?? "current", "designVersion"],
       });

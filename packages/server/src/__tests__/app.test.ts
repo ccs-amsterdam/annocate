@@ -28,14 +28,14 @@ beforeEach(async () => {
   app = createApp(db, { devMode: true });
 });
 
-async function createStudy(name = "Test study", coderKind?: "expert" | "crowd") {
+async function createStudy(name = "Test study") {
   const res = await app.request("/api/study", {
     method: "POST",
     headers: adminHeaders,
-    body: JSON.stringify({ name, coderKind }),
+    body: JSON.stringify({ name }),
   });
   expect(res.status).toBe(201);
-  return res.json() as Promise<{ id: number; name: string; coderKind: string }>;
+  return res.json() as Promise<{ id: number; name: string; coderKind: string | null }>;
 }
 
 describe("responses", () => {
@@ -141,107 +141,149 @@ describe("study routes", () => {
         { type: "question", name: "q1", variable: { type: "confirm", question: "?" } },
       ],
     };
-    const put = (studyId: number, body: object) =>
-      app.request(`/api/study/${studyId}`, { method: "PUT", headers: adminHeaders, body: JSON.stringify(body) });
+    const EXPERTS = { invite: { mode: "coders", link: "per_coder" } };
+    const CROWD = { invite: { mode: "crowd" } };
+    const call = (method: string, path: string, body?: object) =>
+      app.request(`/api/study/${path}`, { method, headers: adminHeaders, body: body && JSON.stringify(body) });
+    const read = async (path: string) => json(await call("GET", path));
     const postDesign = async (studyId: number, session?: object) =>
-      json(
-        await app.request(`/api/study/${studyId}/design`, {
-          method: "POST",
-          headers: adminHeaders,
-          body: JSON.stringify({ items: [loop], session }),
-        }),
-      );
-    const design = async (studyId: number, id: number) =>
-      json(await app.request(`/api/study/${studyId}/design/${id}`, { headers: adminHeaders }));
+      json(await call("POST", `${studyId}/design`, { items: [loop], session }));
     const deploy = (studyId: number, designVersionId: number) =>
-      app.request(`/api/study/${studyId}/deployment`, {
-        method: "PUT",
-        headers: adminHeaders,
-        body: JSON.stringify({ designVersionId, units: true }),
-      });
+      call("PUT", `${studyId}/deployment`, { designVersionId, units: true });
+    const coderKind = async (studyId: number) => (await read(`${studyId}`)).coderKind;
+    /** A study with two units, each an expert coder's (anna has an email address). */
+    const studyWithExperts = async (name: string) => {
+      const study = await createStudy(name);
+      const units = ["u1", "u2"].map((externalId) => ({ externalId, data: { text: "A text" } }));
+      expect((await call("POST", `${study.id}/units`, { units })).status).toBe(201);
+      const coders = [{ coder: "anna", email: "anna@example.org" }, { coder: "bob" }];
+      expect((await call("POST", `${study.id}/coders`, { coders })).status).toBe(201);
+      const ids = (await read(`${study.id}/units`)).units.map((u: { id: number }) => u.id);
+      const sets = [
+        { name: "anna", unitIds: [ids[0]] },
+        { name: "bob", unitIds: [ids[1]] },
+      ];
+      expect((await call("PUT", `${study.id}/sets/coder_set`, { sets })).status).toBe(200);
+      return study;
+    };
+    const coderIds = async (studyId: number) =>
+      (await read(`${studyId}/coders`)).coders.map((c: { coder: string }) => c.coder);
 
-    it("is chosen when the study is made: a crowd unless said", async () => {
-      expect((await createStudy("Open")).coderKind).toBe("crowd");
-      expect((await createStudy("Crowd", "crowd")).coderKind).toBe("crowd");
-      const experts = await createStudy("Experts", "expert");
-      expect(experts.coderKind).toBe("expert");
-      const read = await json(await app.request(`/api/study/${experts.id}`, { headers: adminHeaders }));
-      expect(read.coderKind).toBe("expert");
-      const other = await app.request("/api/study", {
+    it("isn't chosen when a study is made or changed: null until the first deploy", async () => {
+      const study = await createStudy("New");
+      expect(study.coderKind).toBeNull();
+      // Not an input of the study any more: ignored
+      const made = await app.request("/api/study", {
         method: "POST",
         headers: adminHeaders,
-        body: JSON.stringify({ name: "x", coderKind: "panel" }),
+        body: JSON.stringify({ name: "With a kind", coderKind: "expert" }),
       });
-      expect(other.status).toBe(400);
-    });
-
-    it("a design is valid only with an invitation for the study's kind", async () => {
-      const study = await createStudy("Experts", "expert");
-      // Written without an invitation (a crowd's), or with a crowd's
-      expect((await postDesign(study.id)).valid).toBe(false);
-      expect((await postDesign(study.id, { invite: { mode: "crowd" } })).valid).toBe(false);
-      const experts = await postDesign(study.id, { invite: { mode: "coders", link: "pick_name" } });
-      expect(experts.valid).toBe(true);
-      const { versions } = await json(await app.request(`/api/study/${study.id}/design`, { headers: adminHeaders }));
-      expect(versions.map((v: { valid: boolean }) => v.valid)).toEqual([false, false, true]);
-    });
-
-    it("units uploaded before any design start a design for the study's kind", async () => {
-      for (const [kind, invite] of [
-        ["expert", { mode: "coders", link: "per_coder" }],
-        ["crowd", undefined],
-      ] as const) {
-        const study = await createStudy(`First units (${kind})`, kind);
-        const upload = await app.request(`/api/study/${study.id}/units`, {
-          method: "POST",
-          headers: adminHeaders,
-          body: JSON.stringify({ units: [{ externalId: "u1", data: { text: "A text" } }] }),
-        });
-        expect(upload.status).toBeLessThan(300);
-        const { versions } = await json(await app.request(`/api/study/${study.id}/design`, { headers: adminHeaders }));
-        expect(versions).toHaveLength(1);
-        const first = await design(study.id, versions[0].id);
-        expect(first.session.invite).toEqual(invite);
-      }
-    });
-
-    it("can be changed until the first deploy: the study's designs get the new kind's first invitation", async () => {
-      const study = await createStudy("Changing", "crowd");
-      const made = await postDesign(study.id, { invite: { mode: "crowd", maxCoders: 5 }, urlParams: [{ name: "w" }] });
-      // The same kind again, or left out: nothing changes
-      expect((await json(await put(study.id, { name: "Changing", coderKind: "crowd" }))).coderKind).toBe("crowd");
-      expect((await json(await put(study.id, { name: "Renamed" }))).coderKind).toBe("crowd");
-      expect(await design(study.id, made.id)).toMatchObject({ revision: 1, session: { invite: { maxCoders: 5 } } });
-
-      const changed = await put(study.id, { name: "Renamed", coderKind: "expert" });
+      expect((await json(made)).coderKind).toBeNull();
+      const changed = await call("PUT", `${study.id}`, { name: "Renamed", coderKind: "expert" });
       expect(changed.status).toBe(200);
-      expect((await json(changed)).coderKind).toBe("expert");
-      expect(await design(study.id, made.id)).toMatchObject({
-        valid: true,
-        revision: 2,
-        session: { invite: { mode: "coders", link: "per_coder" }, urlParams: [{ name: "w" }] },
-      });
-      // And back
-      expect((await put(study.id, { name: "Renamed", coderKind: "crowd" })).status).toBe(200);
-      expect((await design(study.id, made.id)).session.invite).toEqual({ mode: "crowd" });
+      expect(await json(changed)).toMatchObject({ name: "Renamed", coderKind: null });
+      // Saving designs records nothing
+      await postDesign(study.id, EXPERTS);
+      expect(await coderKind(study.id)).toBeNull();
     });
 
-    it("is fixed by the first deploy: changing it is refused, anything else isn't", async () => {
-      const study = await createStudy("Deployed", "crowd");
-      const made = await postDesign(study.id);
-      expect((await deploy(study.id, made.id)).status).toBe(200);
-      const refused = await put(study.id, { name: "Other name", coderKind: "expert" });
-      expect(refused.status).toBe(409);
+    it("before the first deploy a design is valid with any invitation, or without one", async () => {
+      const study = await createStudy("Draft");
+      expect((await postDesign(study.id)).valid).toBe(true);
+      expect((await postDesign(study.id, CROWD)).valid).toBe(true);
+      expect((await postDesign(study.id, EXPERTS)).valid).toBe(true);
+      const { versions } = await read(`${study.id}/design`);
+      expect(versions.map((v: { valid: boolean }) => v.valid)).toEqual([true, true, true]);
+    });
+
+    it("deploying requires an invitation: a design that hasn't chosen who codes is refused", async () => {
+      const study = await createStudy("No invitation");
+      const none = await postDesign(study.id);
+      expect(none.session).toEqual({});
+      const refused = await deploy(study.id, none.id);
+      expect(refused.status).toBe(400);
       expect(await json(refused)).toEqual({
-        error: "Who codes (expert coders or a crowd) can't be changed after the study's first deploy",
-        code: "coder_kind_locked",
+        error: "Fix the design's issues before deploying it",
+        issues: [{ path: [0, "invite"], message: "Choose who codes first: expert coders or a crowd (one link)" }],
       });
-      // Nothing of the refused request was saved
-      const now = await json(await app.request(`/api/study/${study.id}`, { headers: adminHeaders }));
-      expect(now).toMatchObject({ name: "Deployed", coderKind: "crowd" });
-      expect((await design(study.id, made.id)).session).toEqual({});
-      // The kind it has is no change
-      expect((await put(study.id, { name: "Other name", coderKind: "crowd" })).status).toBe(200);
+      expect(await read(`${study.id}/deployment`)).toBeNull();
+      expect(await coderKind(study.id)).toBeNull();
+    });
+
+    it("the first deploy records the kind of coders the deployed design invites", async () => {
+      const crowd = await createStudy("A crowd");
+      expect((await deploy(crowd.id, (await postDesign(crowd.id, CROWD)).id)).status).toBe(200);
+      expect(await coderKind(crowd.id)).toBe("crowd");
+
+      const experts = await studyWithExperts("Experts");
+      // A draft for the other kind saved before doesn't count: the deployed design does
+      await postDesign(experts.id, CROWD);
+      const deployed = await deploy(experts.id, (await postDesign(experts.id, EXPERTS)).id);
+      expect(deployed.status, await deployed.clone().text()).toBe(200);
+      expect(await coderKind(experts.id)).toBe("expert");
+    });
+
+    it("is locked after the first deploy: a design for the other kind isn't valid, but saves", async () => {
+      const study = await createStudy("Locked");
+      const first = await postDesign(study.id, CROWD);
+      expect((await deploy(study.id, first.id)).status).toBe(200);
+
+      const other = await call("POST", `${study.id}/design`, { items: [loop], session: EXPERTS });
+      expect(other.status).toBe(201);
+      const saved = await json(other);
+      expect(saved).toMatchObject({ valid: false, session: EXPERTS });
+      const refused = await deploy(study.id, saved.id);
+      expect(refused.status).toBe(400);
+      expect((await json(refused)).issues).toEqual([
+        { path: [0, "invite"], message: expect.stringContaining("This study has a crowd since its first deploy") },
+      ]);
+      // The kind's own invitation deploys, and the kind stays
+      const again = await postDesign(study.id, { invite: { mode: "crowd", maxCoders: 5 } });
+      expect(again.valid).toBe(true);
+      expect((await deploy(study.id, again.id)).status).toBe(200);
+      expect(await coderKind(study.id)).toBe("crowd");
+      // A draft that hasn't chosen: no kind problem, but it can't be deployed
+      const none = await postDesign(study.id);
+      expect(none.valid).toBe(true);
+      expect((await deploy(study.id, none.id)).status).toBe(400);
+    });
+
+    it("units uploaded before any design start a design without an invitation", async () => {
+      const study = await createStudy("First units");
+      const units = [{ externalId: "u1", data: { text: "A text" } }];
+      expect((await call("POST", `${study.id}/units`, { units })).status).toBe(201);
+      const { versions } = await read(`${study.id}/design`);
+      expect(versions).toHaveLength(1);
+      expect((await read(`${study.id}/design/${versions[0].id}`)).session).toEqual({});
+    });
+
+    it("a crowd's first deploy deletes the expert coders made before, with their units in coder_set", async () => {
+      const study = await studyWithExperts("Crowd after all");
+      expect(await coderIds(study.id)).toEqual(["anna", "bob"]);
+      const design = await postDesign(study.id, CROWD);
+      // Saving the crowd's design deletes nothing
+      expect(await coderIds(study.id)).toEqual(["anna", "bob"]);
+      expect((await deploy(study.id, design.id)).status).toBe(200);
+      expect(await coderIds(study.id)).toEqual([]);
+      const columns = await read(`${study.id}/sets`);
+      const coderSet = columns.find((g: { name: string }) => g.name === "coder_set");
+      expect(coderSet?.sets ?? []).toEqual([]);
+      const stored = await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM coders WHERE study_id = $1", [
+        study.id,
+      ]);
+      expect(stored).toEqual([{ n: 0 }]);
+    });
+
+    it("expert coders stay at a first deploy with expert coders, and at every later deploy", async () => {
+      const study = await studyWithExperts("Experts stay");
+      const first = await postDesign(study.id, EXPERTS);
+      expect((await deploy(study.id, first.id)).status).toBe(200);
+      expect(await coderIds(study.id)).toEqual(["anna", "bob"]);
+      const next = await postDesign(study.id, { invite: { mode: "coders", link: "pick_name" } });
+      expect((await deploy(study.id, next.id)).status).toBe(200);
+      expect(await coderIds(study.id)).toEqual(["anna", "bob"]);
+      const anna = (await read(`${study.id}/coders`)).coders[0];
+      expect(anna).toMatchObject({ coder: "anna", email: "anna@example.org", assigned: 1 });
     });
   });
 
@@ -320,19 +362,14 @@ describe("codebook routes", () => {
 
     expect((await post("not a list")).status).toBe(400);
 
-    // An invitation for expert coders in a study with a crowd: saved, not valid, not deployed
-    const experts = await json(await post(validItems, { invite: { mode: "coders", link: "per_coder" } }));
-    expect(experts.valid).toBe(false);
-    const otherKind = await publish(experts.id);
-    expect(otherKind.status).toBe(400);
-    expect((await json(otherKind)).issues).toEqual([
-      { path: [0, "invite"], message: expect.stringContaining("This study has a crowd") },
-    ]);
-
-    // No invitation: a crowd's open link
+    // No invitation: saved without issues, but who codes isn't chosen, so not deployed
     const open = await json(await post(validItems, {}));
     expect(open.valid).toBe(true);
-    expect((await publish(open.id)).status).toBe(200);
+    const unchosen = await publish(open.id);
+    expect(unchosen.status).toBe(400);
+    expect((await json(unchosen)).issues).toEqual([
+      { path: [0, "invite"], message: "Choose who codes first: expert coders or a crowd (one link)" },
+    ]);
 
     const good = await json(await post(validItems));
     expect(good.valid).toBe(true);
@@ -561,7 +598,7 @@ async function deployConfirmLoop(studyId: number): Promise<number> {
     await app.request(`/api/study/${studyId}/design`, {
       method: "POST",
       headers: adminHeaders,
-      body: JSON.stringify(splitDesignItems([loop])),
+      body: JSON.stringify({ items: [loop], session: { invite: { mode: "crowd" } } }),
     }),
   );
   const deployed = await app.request(`/api/study/${studyId}/deployment`, {
@@ -684,8 +721,8 @@ describe("links, coder progress and overview", () => {
   const coders = { type: "session", invite: { mode: "coders", link: "per_coder" } };
 
   async function setup(names?: string[]) {
-    const session = names ? coders : undefined;
-    const study = await createStudy("Test study", names ? "expert" : "crowd");
+    const session = names ? coders : { type: "session", invite: { mode: "crowd" } };
+    const study = await createStudy("Test study");
     const store = new DbStore(db, study.id);
     const units = (await json(
       await app.request(`/api/study/${study.id}/units`, {
@@ -724,7 +761,7 @@ describe("links, coder progress and overview", () => {
         body: JSON.stringify({ designVersionId: codebook.id, units: true, confirmLinks }),
       });
     };
-    expect((await publish(session ? [session, loop] : [loop])).status).toBe(200);
+    expect((await publish([session, loop])).status).toBe(200);
     const resolve = async (coderKey: string, linkSecret: string) =>
       (await store.resolveCoder({ coderKey, linkSecret })).coder;
     const put = (sessionId: number, unitId: number, variables: Record<string, VariableValue>) =>

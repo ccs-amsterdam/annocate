@@ -30,7 +30,7 @@ import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
 import { anyUnitChanges, deployDraftUnits, unitChanges } from "./units.js";
-import { studyCoderKind } from "./studies.js";
+import { recordCoderKind, studyCoderKind } from "./coderKind.js";
 
 /** A study's deployment row, if it is deployed. */
 async function deploymentRow(db: Db, studyId: number) {
@@ -64,7 +64,7 @@ async function designVersion(db: Db, studyId: number, id?: number) {
 
 /**
  * Deploys: a design version, with the draft units and sets (`units`, always on
- * the first deploy) or the deployed ones. A new deployment version when the design version
+ * the first deploy, which also fixes who codes: `recordCoderKind`) or the deployed ones. A new deployment version when the design version
  * or the units change (docs/architecture.md §8.4), recorded with what
  * changed. Freezes the design version. Warns when a loop gains questions while
  * coders already finished units in it (those units count as unfinished
@@ -72,6 +72,8 @@ async function designVersion(db: Db, studyId: number, id?: number) {
  */
 export async function putDeployment(db: Db, studyId: number, body: DeploymentWrite): Promise<DeploymentResponse> {
   const previous = await deploymentRow(db, studyId);
+  // The first deploy fixes who codes, before the units are deployed: a crowd's leftover expert coders go
+  if (!previous) await recordFirstDeploy(db, studyId, body.designVersionId);
   const warnings = previous
     ? await designChangeWarnings(db, studyId, previous.designVersionId, body.designVersionId)
     : [];
@@ -117,6 +119,13 @@ export async function putDeployment(db: Db, studyId: number, body: DeploymentWri
     .set({ immutable: true })
     .where(and(eq(designVersions.studyId, studyId), eq(designVersions.id, body.designVersionId)));
   return { ...(await getDeployment(db, studyId))!, ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/** The first deploy records the kind of coders its design invites (`recordCoderKind`). */
+async function recordFirstDeploy(db: Db, studyId: number, designVersionId: number): Promise<void> {
+  const versionRow = await designVersion(db, studyId, designVersionId);
+  if (!versionRow) throw new HttpError(404, "Design version not found");
+  await recordCoderKind(db, studyId, designVersionItems(versionRow));
 }
 
 /** What deploying the drafts would change: the units, and the latest design version if it isn't deployed. */
@@ -298,7 +307,7 @@ async function buildSpec(
     reopenMinutes: study ? study.reopenMinutes : DEFAULT_REOPEN_MINUTES,
     redirectUrls: study?.redirectUrls ?? {},
     // The runtime works on the items with the session first
-    design: { ...toDesignVersion(versionRow, study?.coderKind ?? "crowd"), items: designVersionItems(versionRow) },
+    design: { ...toDesignVersion(versionRow, study?.coderKind ?? null), items: designVersionItems(versionRow) },
     sets: await runtimeSets(db, studyId, meta.liveUnits),
   };
 }

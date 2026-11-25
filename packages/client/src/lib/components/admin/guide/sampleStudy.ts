@@ -148,16 +148,17 @@ export function sampleDesign(coderKind: CoderKind = "crowd"): DesignVersion {
   };
 }
 
-const sampleStudy = (coderKind: CoderKind): StudyResponse => ({
+// Not deployed yet: who codes is the design's choice still
+const sampleStudy: StudyResponse = {
   id: STUDY_ID,
   publicId: "samplestudy1",
   name: "Sample: news headlines",
   archived: false,
-  coderKind,
+  coderKind: null,
   created: now,
   reopenMinutes: 1440,
   redirectUrls: {},
-});
+};
 
 // Expert coders: whose units are whose
 const groups: SetGroupResponse[] = [
@@ -172,8 +173,8 @@ const groups: SetGroupResponse[] = [
 
 /** What the sample's pages ask the API for; anything else gets nothing. */
 const sampleAnswers = (coderKind: CoderKind): Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown>> => ({
-  getStudy: () => sampleStudy(coderKind),
-  listStudies: () => [sampleStudy(coderKind)],
+  getStudy: () => sampleStudy,
+  listStudies: () => [sampleStudy],
   getDeployment: () => null,
   getDesignVersion: () => sampleDesign(coderKind),
   listDesignVersions: () => [sampleDesign(coderKind)],
@@ -192,7 +193,7 @@ const sampleAnswers = (coderKind: CoderKind): Partial<Record<keyof ResearcherApi
 });
 
 /**
- * A ResearcherApi for the sample, as a study with a crowd or with expert
+ * A ResearcherApi for the sample, its design inviting a crowd or expert
  * coders: answers from memory, never writes. Its pages are drawn inert, so
  * nothing should write; a write that slips through is refused.
  */

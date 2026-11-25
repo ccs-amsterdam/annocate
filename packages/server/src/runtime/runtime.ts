@@ -2,7 +2,6 @@ import {
   type AnswerTiming,
   CODER_SET,
   sessionItem,
-  inviteOf,
   loginRequired,
   type SubmitUnitResponse,
   type CoderUnitResponse,
@@ -19,7 +18,7 @@ import {
 import { HttpError } from "../shared/http.js";
 import type { DeviceDetails } from "../shared/devices.js";
 import type { Coder, Coding, ResolveCoderRequest, ResolvedCoder } from "./types.js";
-import { type SessionRules } from "./sessionValues.js";
+import { runtimeInvite, type SessionRules } from "./sessionValues.js";
 import { codingsSignature, loopAgreementVariables } from "./designItems.js";
 import { agreementKeys, Deployed, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./deployed.js";
 import { assignCondition } from "./experiments.js";
@@ -172,7 +171,7 @@ export class DeploymentRuntime {
    * are taken (where a name is the first device's that picks it).
    */
   async pickNames(): Promise<PickNamesResponse> {
-    const invite = inviteOf(this.sessionRules.item);
+    const invite = runtimeInvite(this.sessionRules.item);
     if (invite.mode !== "coders" || invite.link !== "pick_name")
       throw new HttpError(404, "This link has no names to pick", "link_not_found");
     const taken = new Set<string>();
@@ -184,7 +183,7 @@ export class DeploymentRuntime {
 
   /** Whether the deployed design invites a crowd (the study's kind of coders, fixed by its first deploy). */
   get crowd(): boolean {
-    return inviteOf(this.sessionRules.item).mode === "crowd";
+    return runtimeInvite(this.sessionRules.item).mode === "crowd";
   }
 
   /** Whether coders must sign in to start (expert coders who sign in). */
@@ -194,7 +193,7 @@ export class DeploymentRuntime {
 
   /** The URL parameter with a crowd's coder id, if any: part of a device's session key. */
   get coderParam(): string | null {
-    const invite = inviteOf(this.sessionRules.item);
+    const invite = runtimeInvite(this.sessionRules.item);
     return invite.mode === "crowd" ? (invite.coderParam?.param ?? null) : null;
   }
 

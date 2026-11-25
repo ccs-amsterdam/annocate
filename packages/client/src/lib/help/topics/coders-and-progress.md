@@ -50,7 +50,17 @@ units out of all, and coders given units.
 ## The Coders page
 
 The page lists the coders of the kind your design asks for under **Who
-codes**: your **expert coders**, or a **crowd's** coders.
+codes**: your **expert coders**, or a **crowd's** coders. Before the
+study's first deploy it follows the draft design; after it, the kind the
+first deploy fixed. While the design hasn't chosen, the page says so.
+
+Expert coders a design doesn't use are never out of sight: when the draft
+invites a crowd (or hasn't chosen) and the study has expert coders, a
+notice says _"3 expert coders (with email addresses) aren't used by this
+design"_, with **Delete them**. The same notice is in the design's **Who
+codes** when you switch it to a crowd. A first deploy as a crowd deletes
+them, with their email addresses; the Deploy page says so before you
+deploy.
 
 ### Expert coders
 
@@ -131,8 +141,9 @@ when they were last active. Sessions without a coder id (an anonymous
 link) have no coder: they are under **Sessions**.
 
 A crowd's coder id that is the id of one of your expert coders (possible
-only if the study had expert coders before) can't start: _"This coder id
-belongs to one of the study's expert coders"_.
+only if expert coders were added to the study after it was deployed as a
+crowd's) can't start: _"This coder id belongs to one of the study's
+expert coders"_.
 
 ## Sessions
 

@@ -63,9 +63,10 @@ describe("who codes and links", () => {
     expect(CrowdInviteSchema.safeParse({ mode: "crowd", login: true }).success).toBe(false);
   });
 
-  it("a design without an invitation invites a crowd with one open link", () => {
-    expect(inviteOf(item({}))).toEqual({ mode: "crowd" });
-    expect(inviteOf(null)).toEqual({ mode: "crowd" });
+  it("a design without an invitation hasn't chosen who codes", () => {
+    expect(inviteOf(item({}))).toBeNull();
+    expect(inviteOf(null)).toBeNull();
+    expect(inviteOf(item({ invite: { mode: "crowd" } }))).toEqual({ mode: "crowd" });
   });
 });
 
@@ -75,23 +76,23 @@ describe("the study's kind of coders and the invitation", () => {
   const crowd = item({ invite: { mode: "crowd", maxCoders: 5 } });
 
   it("an invitation is for one kind, and each kind has a first invitation", () => {
-    expect(inviteKind(inviteOf(experts))).toBe("expert");
-    expect(inviteKind(inviteOf(crowd))).toBe("crowd");
+    expect(inviteKind(experts.invite!)).toBe("expert");
+    expect(inviteKind(crowd.invite!)).toBe("crowd");
     expect(firstInvite("expert")).toEqual({ mode: "coders", link: "per_coder" });
     expect(firstInvite("crowd")).toEqual({ mode: "crowd" });
     expect(inviteKind(firstInvite("expert"))).toBe("expert");
   });
 
-  it("an invitation for the study's kind is fine", () => {
+  it("an invitation for the study's kind is fine, and so is a design that hasn't chosen", () => {
     expect(coderKindProblem(experts, "expert")).toBeNull();
     expect(coderKindProblem(crowd, "crowd")).toBeNull();
     expect(coderKindProblem(item({}), "crowd")).toBeNull();
+    expect(coderKindProblem(item({}), "expert")).toBeNull();
+    expect(coderKindProblem(null, "expert")).toBeNull();
   });
 
-  it("an invitation for the other kind is a problem, also when the design has none", () => {
-    expect(coderKindProblem(crowd, "expert")).toContain("This study has expert coders");
-    expect(coderKindProblem(item({}), "expert")).toContain("This study has expert coders");
-    expect(coderKindProblem(null, "expert")).toContain("This study has expert coders");
-    expect(coderKindProblem(experts, "crowd")).toContain("This study has a crowd");
+  it("an invitation for the other kind is a problem", () => {
+    expect(coderKindProblem(crowd, "expert")).toContain("This study has expert coders since its first deploy");
+    expect(coderKindProblem(experts, "crowd")).toContain("This study has a crowd since its first deploy");
   });
 });

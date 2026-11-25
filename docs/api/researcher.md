@@ -250,10 +250,12 @@ development headers the study has no study users, so any development role
 gets in.) The `name` is stored without spaces around it (`StudyNameSchema`:
 1 to 256 characters after trimming; also in `updateStudy`,
 `createStudyFromExample` and a recipe), since deleting a study is
-confirmed by typing its name. `coderKind`: who codes, `expert` (the
-researchers' expert coders) or `crowd` (left out: a crowd); the study's
-designs invite that kind (`docs/architecture.md` §6.1). It can be changed
-until the study's first deploy ([updateStudy](#updatestudy)).
+confirmed by typing its name. The response's `coderKind` is who codes:
+`expert` (the researchers' expert coders) or `crowd`, and `null` until the
+study's first deploy. It is not an input: the design's invitation chooses
+(`session.invite`), and the first deploy records the deployed design's
+kind and fixes it ([putDeployment](#putdeployment), `docs/architecture.md`
+§6.1).
 
 ### listExamples
 
@@ -267,8 +269,8 @@ shows and what to try (`docs/examples.md`).
 (201): a new study from an example, like `createStudy` (the same role, limits
 and ownership): its units and sets, its design deployed (which makes
 its links), and its example answers (coders named "Example coder n").
-The study's `origin` is the example's id, its `coderKind` the example's
-(`docs/examples.md`). 404 for an unknown example.
+The study's `origin` is the example's id, its `coderKind` the kind its
+deployed design invites (`docs/examples.md`). 404 for an unknown example.
 
 ### createStudyFromRecipe
 
@@ -276,9 +278,6 @@ The study's `origin` is the example's id, its `coderKind` the example's
 recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
 `createStudy` (the same role, limits and ownership), in one transaction:
 
-- `coderKind` (`expert` or `crowd`): who codes in the new study. Left out:
-  the kind the design's invitation is for (`session.invite`; a crowd
-  without one);
 - `units` (`{ id, data }`; the first unit's fields become the study's),
   `coders`: its expert coders (`[{ coder, email? }]`, as
   [createCoders](#createcoders)), and `sets`: role columns by the units' ids
@@ -287,15 +286,17 @@ recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
   the recipe's `coders` only (400 otherwise);
 - `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
-  `deploy: true` it is deployed, and must then pass validation. `units`:
+  `deploy: true` it is deployed, and must then pass validation and have
+  chosen who codes (`session.invite`); deploying records the study's
+  `coderKind` as usual. A draft's study has `coderKind: null`. `units`:
   the unit fields, declared (types, descriptions, in their order), as a
   design file has them; the units' values must fit them, and
   fields only the units have are added after them.
 
 A recipe has no links: deploying its design makes them. 400
 `recipe_invalid` for a unit id used twice, a set naming an unknown unit, a
-column defined twice, or a design to deploy that has issues (also an
-invitation that isn't for the recipe's `coderKind`) or fails the
+column defined twice, or a design to deploy that has issues (also one
+without an invitation: "Choose who codes first…") or fails the
 deploy's errors ([putDeployment](#putdeployment)); nothing is created then. Example studies are recipes too
 (`packages/server/examples/`), with example answers.
 
@@ -314,15 +315,9 @@ return links (`docs/architecture.md` §5); coders get them at once, without
 a deploy. `StudyResponseSchema` also has
 `suspendedAt` (a server admin suspended the study).
 
-`coderKind` (`expert` or `crowd`: who codes) can be changed only until the
-study's first deploy: afterwards a request with another kind is refused,
-409 `coder_kind_locked` ("Who codes (expert coders or a crowd) can't be
-changed after the study's first deploy"), and saves nothing. The kind the
-study has, or leaving it out, is no change. Changing it sets `session.invite`
-of every design version of the study (all drafts still) to the new kind's
-first invitation (`{ mode: "crowd" }`, or `{ mode: "coders", link:
-"per_coder" }`) and bumps their `revision`, so they stay valid designs of
-the study.
+`coderKind` can't be changed here (a `coderKind` in the body is ignored):
+it is `null` until the study's first deploy, which records the kind the
+deployed design invites; from then on it is fixed.
 
 ### deleteStudy
 
@@ -416,11 +411,14 @@ coders see about the study (`{ title }`, or null), `session` how a coder's
 session starts (the invitation `invite`, URL parameters `urlParams`,
 the normal end `end`; `{}` without; a URL parameter's key and `coderParam`
 can't be `link`, `transfer`, `login` or `source`: not `valid`). The
-invitation is for the study's kind of coders (its `coderKind`): `mode:
-"coders"` in a study with expert coders, `mode: "crowd"` or none in one
-with a crowd. One for the other kind is saved like any draft, but the
-version is not `valid`, and deploying it answers 400 with the issue
-("This study has expert coders, but the design invites a crowd: …") at
+invitation chooses who codes: `mode: "coders"` for expert coders, `mode:
+"crowd"` for a crowd; without one, who codes isn't chosen yet (a new
+design), which saves and previews (as a crowd) but can't be deployed.
+Before the study's first deploy any invitation is valid. After it the
+invitation is for the study's kind of coders (its `coderKind`): one for
+the other kind is saved like any draft, but the version is not `valid`,
+and deploying it answers 400 with the issue ("This study has expert coders
+since its first deploy, but the design invites a crowd: …") at
 `[0, "invite"]`, `units.fields` the declared unit
 fields, `items` the top-level questions, experiments, branches and unit loops
 (branches and loops holding questions, end items and nested branches;
@@ -755,27 +753,37 @@ out: unchanged, the first deploy: "{n} new units were added for you.";
 `docs/coder-identity.md` §9). Units and sets are drafts until deployed
 (`docs/architecture.md` §8.4):
 
-1. check that the design version passes validation (400 with `issues` if not:
-   drafts may be saved with issues, coders only get valid designs), and
+1. check that the design version passes validation and has chosen who
+   codes (400 with `issues` if not: drafts may be saved with issues, coders
+   only get valid designs; without `session.invite` the issue is "Choose
+   who codes first: expert coders or a crowd (one link)" at `[0,
+   "invite"]`; after the first deploy an invitation for the other kind of
+   coders is an issue too), and
    check it against the role columns (400 `assignment_invalid` with the
    errors: expert coders without `coder_set` values, coders of it without
    an email address where coders sign in (named), an experiment that selects
    units without `condition_set` or with listed conditions it has no units
    for; `shared/deployChecks.ts` `assignmentChecks`);
-2. with `units`: new versions of the units the draft changed (versions
+2. the first deploy records who codes: the study's `coderKind` becomes the
+   kind the design invites (`expert` or `crowd`), fixed from then on. A
+   first deploy as a crowd deletes the study's expert coders made before
+   (they aren't used, and have no sessions yet): their rows with their
+   email addresses, and their units in the draft's `coder_set`. Later
+   deploys delete no coders;
+3. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
    sets become the deployed ones;
-3. store it, bump `version` if the design version or the units changed (pausing
+4. store it, bump `version` if the design version or the units changed (pausing
    and resuming don't: coders don't reload), record the version with what
    it changed ([listDeploymentVersions](#listdeploymentversions)), and make
    the design version immutable;
-4. sync the study's links (contracts `linkCombinations`): one, one per
+5. sync the study's links (contracts `linkCombinations`): one, one per
    coder with a link each; links no longer made (a coder that is gone) are
    retired. Above 500 links this
    needs `confirmLinks: true` (409 `confirm_links` otherwise), and more
    than 2000 is 400 `too_many_links`. The response's `links` is the number
    of active links;
-5. bump the deployment's revision, so every server process re-reads it on
+6. bump the deployment's revision, so every server process re-reads it on
    its next request.
 
 Paused (`active: false`): coders save what they have open, but get no new

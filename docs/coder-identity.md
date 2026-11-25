@@ -33,9 +33,23 @@ one person group them by coder id or email in analysis.
 
 ### The study's coders
 
-A study has expert coders or a crowd: its `coderKind` (`studies.coder_kind`),
-chosen when it is made and fixed by its first deploy (`architecture.md`
-§6.1). The Coders page shows the coders of that kind.
+A study has expert coders or a crowd. The design's invitation chooses
+(the editor's **Who codes**), freely until the study's first deploy, which
+records the kind (`studies.coder_kind`, the study's `coderKind`; NULL
+before it) and fixes it (`architecture.md` §6.1). The Coders page shows the
+coders of that kind: before the first deploy the kind the draft (latest)
+design invites, after it the fixed one.
+
+Expert coders a design doesn't use are never hidden. While the draft
+invites a crowd (or hasn't chosen) and the study has expert coders, the
+Coders page says "N expert coders (with email addresses) aren't used by
+this design", with **Delete them** (deleteCoders, after confirming); the
+editor's Who codes says the same when it is switched to a crowd. A first
+deploy as a crowd deletes them in the deploy's transaction (their rows
+with their email addresses, and their units in `coder_set`; they can have
+no sessions yet), and the Deploy page says so beforehand ("3 expert coders
+aren't used and will be deleted"). A crowd's coders only appear after a
+crowd is deployed, so the reverse doesn't arise.
 
 A study's coders are rows of `coders`: the coder id (key: study and coder
 id; unique ignoring case), `kind` (`expert` or `crowd`), `email` (an expert
@@ -81,8 +95,8 @@ Links are made by deploying: one, or one per coder for expert coders with
 a link each (`architecture.md` §7). A link no longer part of the design is
 retired (403 `link_inactive` for new sessions; started sessions go on). A
 revoked link (403 `link_revoked`) can be reopened. The invitation
-(`architecture.md` §6.1), which is for the study's kind of coders, decides
-how a session starts:
+(`architecture.md` §6.1), which says who codes (after the first deploy:
+the study's kind of coders), decides how a session starts:
 
 | Invitation | Sign-in | The coder (`$session.coder`) |
 | --- | --- | --- |

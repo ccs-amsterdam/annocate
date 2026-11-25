@@ -15,7 +15,7 @@ const HEIGHTS: Record<Sample["page"], number> = { design: 760, units: 360 };
  */
 const VIEWS = { full: [0, WIDTH], tree: [0, 487], form: [473, 554] } as const;
 
-/** The sample study as one with a crowd, and as one with expert coders: each its own data, never mixed with the researcher's study. */
+/** The sample study with a design for a crowd, and with one for expert coders: each its own data, never mixed with the researcher's study. */
 const sampleOf = (coderKind: CoderKind) => ({
   queries: new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } }),
   client: sampleClient(coderKind),
@@ -72,7 +72,8 @@ export function GuideSample({ sample }: { sample: Sample }) {
                 // A fresh editor per sample: its selection is the step's
                 key={`${coderKind}:${sample.select ?? "none"}`}
                 client={client}
-                coderKind={coderKind}
+                // Not deployed: who codes is the design's choice
+                coderKind={null}
                 version={sampleDesign(coderKind)}
                 mode="history"
                 wideLayout

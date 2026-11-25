@@ -19,7 +19,7 @@ test("a coder_set column makes the coder set; a link per coder; a coder codes th
   await page.goto("/research");
   await page.getByRole("button", { name: /Create new study/ }).click();
   await page.getByRole("menuitem", { name: /Empty study/ }).click();
-  await createStudy(page, "Expert coders", "Expert coders");
+  await createStudy(page, "Expert coders");
   await expect(page.getByRole("button", { name: "Overview" })).toBeVisible();
   const study = (await list<StudyResponse>(request, "/study")).find((j) => j.name === "Expert coders")!;
   // The coders the file's coder_set column names

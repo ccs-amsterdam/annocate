@@ -51,11 +51,12 @@ export function designVersionUnits(row: Pick<DesignVersionRow, "units">): UnitsS
 }
 
 /**
- * Whether a design's items (with the Study entry) pass validation in a study
- * with this kind of coders and ask something, as required to deploy or
- * preview them.
+ * Whether a design's items (with the Study entry) pass validation and ask
+ * something, as required to deploy or preview them. `coderKind`: the kind
+ * of coders the study's first deploy fixed (null before it: any). Deploying
+ * also asks for who codes (contracts `deployErrors`).
  */
-export function itemsValid(items: unknown[], coderKind: CoderKind): boolean {
+export function itemsValid(items: unknown[], coderKind: CoderKind | null): boolean {
   const asks = items.some((i) => (i as { type?: unknown } | null)?.type !== "session");
   return asks && designErrors(items, coderKind).length === 0;
 }
@@ -71,7 +72,7 @@ const knownValid = new Map<string, boolean>();
 const MAX_KNOWN_VALID = 5000;
 
 /** Whether a stored design version passes validation (see `itemsValid`). */
-function versionValid(row: DesignVersionRow, coderKind: CoderKind): boolean {
+function versionValid(row: DesignVersionRow, coderKind: CoderKind | null): boolean {
   const key = `${row.id}/${row.revision}/${row.updated.getTime()}/${coderKind}`;
   const known = knownValid.get(key);
   if (known !== undefined) return known;
@@ -81,8 +82,8 @@ function versionValid(row: DesignVersionRow, coderKind: CoderKind): boolean {
   return valid;
 }
 
-/** A stored design version as listed; `coderKind`: its study's kind of coders, which its invitation must be for. */
-export function toDesignVersionMeta(row: DesignVersionRow, coderKind: CoderKind): DesignVersionMeta {
+/** A stored design version as listed; `coderKind`: the kind of coders its study's first deploy fixed (null before it), which its invitation must be for. */
+export function toDesignVersionMeta(row: DesignVersionRow, coderKind: CoderKind | null): DesignVersionMeta {
   return {
     id: row.id,
     note: row.note,
@@ -96,7 +97,7 @@ export function toDesignVersionMeta(row: DesignVersionRow, coderKind: CoderKind)
 }
 
 /** A stored design version as served. */
-export function toDesignVersion(row: DesignVersionRow, coderKind: CoderKind): DesignVersion {
+export function toDesignVersion(row: DesignVersionRow, coderKind: CoderKind | null): DesignVersion {
   return {
     ...toDesignVersionMeta(row, coderKind),
     studyId: row.studyId,

@@ -26,9 +26,12 @@ release can't be used with it: start with an empty database
   on. Coders' unsaved answers survive a new version.
 - Results as a download (CSV or .xlsx) with documented column names that
   can't collide, and a results view with agreement.
-- Who codes is a setting of the study: expert coders or a crowd, chosen when
-  you create it and changed in its Settings until its first deploy, then
-  locked. The editor offers only the invitation that fits.
+- Who codes, expert coders or a crowd, is chosen in the design (Who codes:
+  two cards in a new design) and can be changed until the study's first
+  deploy, which records it and locks it; after that the editor offers only
+  that kind's options. Deploying needs the choice. Expert coders a crowd's
+  design doesn't use are shown with a way to delete them, and a first
+  deploy as a crowd deletes them (the Deploy page says so first).
 - A Coders page lists a study's coders with their units, what is done and
   what remains; add coders (by id, or id and email), edit an email, copy a
   link, move units or delete a coder. A coder's id is fixed, an email can be

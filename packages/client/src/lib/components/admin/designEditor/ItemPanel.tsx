@@ -8,6 +8,7 @@ import {
   sessionItem,
   unitLoops,
   loopTitle,
+  CROWD_INVITE,
   inviteOf,
   type DesignItem,
   type EndItem,
@@ -267,7 +268,8 @@ function loopUnitsContext(items: readonly DesignItem[], cleanItems: readonly unk
     .map(([name, v]) => ({ name, selectsUnits: (v as { selectsUnits?: boolean }).selectsUnits === true }));
   const loops = unitLoops(items);
   const at = loops.findIndex((l) => getItemKey(l.loop as DesignItem) === key);
-  const invite = inviteOf(session);
+  // Who codes not chosen yet: the loop's settings are a crowd's, as previews run it
+  const invite = inviteOf(session) ?? CROWD_INVITE;
   return {
     invite,
     sources: shareSources(invite, random),

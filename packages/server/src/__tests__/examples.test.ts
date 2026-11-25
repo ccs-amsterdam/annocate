@@ -151,25 +151,30 @@ describe("studies from a recipe", () => {
   const post = (body: object) => researcher("/api/study/from-recipe", { method: "POST", body: JSON.stringify(body) });
   const studyCount = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0].n;
 
-  it("the study's kind of coders: the recipe's, else the kind its design invites", async () => {
+  it("the study's kind of coders: none for a draft, the kind the design invites once deployed", async () => {
     const made = async (extra: object) => {
       const res = await post({ name: "Kind", design: { items: [] }, ...extra });
       expect(res.status, await res.clone().text()).toBe(201);
       return StudyResponseSchema.parse(await res.json()).coderKind;
     };
     const experts = { session: { invite: { mode: "coders", link: "per_coder" } }, items: [] };
-    expect(await made({})).toBe("crowd");
-    expect(await made({ design: experts })).toBe("expert");
-    expect(await made({ coderKind: "expert" })).toBe("expert");
-    expect(await made({ coderKind: "crowd", design: experts })).toBe("crowd");
-    // Deployed, the design must invite the recipe's kind
+    expect(await made({})).toBeNull();
+    expect(await made({ design: experts })).toBeNull();
+    // Not an input of a recipe any more: ignored
+    expect(await made({ coderKind: "expert" })).toBeNull();
+
     const specified = structuredClone(items);
     (specified[1] as { children: { variable: object }[] }).children[1].variable = { type: "confirm", question: "?" };
-    const other = await post({ ...recipe, coderKind: "expert", design: { items: specified }, deploy: true });
-    expect(other.status).toBe(400);
-    expect(await other.json()).toMatchObject({
+    const crowd = { items: specified, session: { invite: { mode: "crowd" } } };
+    const deployed = await post({ ...recipe, design: crowd, deploy: true });
+    expect(deployed.status, await deployed.clone().text()).toBe(201);
+    expect(StudyResponseSchema.parse(await deployed.json()).coderKind).toBe("crowd");
+    // Deployed, the design must have chosen who codes
+    const unchosen = await post({ ...recipe, design: { items: specified }, deploy: true });
+    expect(unchosen.status).toBe(400);
+    expect(await unchosen.json()).toMatchObject({
       code: "recipe_invalid",
-      error: expect.stringContaining("This study has expert coders, but the design invites a crowd"),
+      error: expect.stringContaining("Choose who codes first"),
     });
   });
 
@@ -215,7 +220,8 @@ describe("studies from a recipe", () => {
     const specified = structuredClone(items);
     // (Its first child is the layout item)
     (specified[1] as { children: { variable: object }[] }).children[1].variable = { type: "confirm", question: "?" };
-    const published = await post({ ...recipe, design: { items: specified }, deploy: true });
+    const design = { items: specified, session: { invite: { mode: "crowd" } } };
+    const published = await post({ ...recipe, design, deploy: true });
     expect(published.status, await published.clone().text()).toBe(201);
     const { id } = StudyResponseSchema.parse(await published.json());
     expect(

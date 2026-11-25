@@ -262,6 +262,19 @@ describe("study exports", { timeout: 60_000 }, () => {
       400,
       expect.objectContaining({ code: "export_invalid", error: expect.stringContaining("settings") }),
     ]);
+    // The study's kind of coders: the kind its deployed design invites, recorded by the first deploy
+    const kind = rowsOf(rows, "studies")[0]!.coder_kind;
+    expect(["expert", "crowd"]).toContain(kind);
+    const other = kind === "crowd" ? "expert" : "crowd";
+    for (const [coderKind, said] of [
+      [other, "deployed"],
+      [null, "kind of coders"],
+      ["panel", "studies_coder_kind_check"],
+    ] as const)
+      expect(await refusal(changed("studies", () => true, { coder_kind: coderKind }))).toEqual([
+        400,
+        expect.objectContaining({ code: "export_invalid", error: expect.stringContaining(said) }),
+      ]);
     // A line that isn't a row, and a row that doesn't fit its table
     const damaged = gzipSync(Buffer.from([JSON.stringify(manifest), '{"table":"units"}', ""].join("\n")));
     expect(await refusal(damaged)).toEqual([400, expect.objectContaining({ code: "export_invalid" })]);

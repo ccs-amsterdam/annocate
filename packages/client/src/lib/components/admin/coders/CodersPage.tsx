@@ -9,6 +9,7 @@ import {
   useLinksQuery,
   useSetGroupsQuery,
   useStudyQuery,
+  useWhoCodes,
 } from "../../../admin/queries";
 import { HelpButton } from "../../../help/HelpButton";
 import { Button } from "@/components/ui/button";
@@ -20,19 +21,23 @@ import { CodersTable } from "./CodersTable";
 import { EditEmailDialog } from "./EditEmailDialog";
 import { SessionsPanel } from "./SessionsPanel";
 import { UnassignedNotice } from "./UnassignedNotice";
+import { UnusedExpertsNotice } from "./UnusedExpertsNotice";
 import { useHandOver } from "./useHandOver";
 
 /** What is open on top of the page. */
 type Open = { dialog: "add" | "set" } | { dialog: "email" | "delete"; coder: CoderResponse } | null;
 
 /**
- * The Coders page (docs/client.md §7, "Coders"): the study's coders of its
- * kind (`coderKind`: expert coders, or a crowd's), with their
- * units and progress; adding expert coders, dividing the units over them,
- * and deleting a coder. Below it, the coder sessions.
+ * The Coders page (docs/client.md §7, "Coders"): the study's coders of the
+ * kind that codes (`useWhoCodes`: the draft design's before the first
+ * deploy, the study's fixed kind after), with their units and progress;
+ * adding expert coders, dividing the units over them, and deleting a
+ * coder. Expert coders the design doesn't use are never out of sight
+ * (`UnusedExpertsNotice`). Below it, the coder sessions.
  */
 export function CodersPage({ client }: { client: ResearcherApi }) {
-  const kind = useStudyQuery(client).data?.coderKind;
+  const who = useWhoCodes(client);
+  const kind = who?.kind;
   const codersQuery = useCodersQuery(client, { poll: true });
   const all = codersQuery.data?.coders ?? [];
   const groups = useSetGroupsQuery(client).data ?? [];
@@ -41,24 +46,41 @@ export function CodersPage({ client }: { client: ResearcherApi }) {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
-      <section className="flex flex-col gap-3">
+      <section data-guide="coders-table" className="flex flex-col gap-3">
         <header className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="flex items-center gap-1.5 text-lg font-medium">
             Coders <HelpButton topic="coders-and-progress" label="Help: coders" />
           </h2>
           {kind === "expert" && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setOpen({ dialog: "add" })}>
+              <Button
+                data-guide="add-coders"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setOpen({ dialog: "add" })}
+              >
                 <UserPlus className="h-3.5 w-3.5" /> Add coders
               </Button>
-              <Button size="sm" className="gap-1.5" onClick={() => setOpen({ dialog: "set" })}>
+              <Button
+                data-guide="make-coder-set"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setOpen({ dialog: "set" })}
+              >
                 <Users className="h-3.5 w-3.5" /> Make coder set
               </Button>
             </div>
           )}
         </header>
         <UnassignedNotice client={client} />
-        {kind && !codersQuery.isLoading ? (
+        {who && who.kind !== "expert" && <UnusedExpertsNotice client={client} kind={who.kind} />}
+        {kind === null ? (
+          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Who codes isn&apos;t chosen yet: choose expert coders or a crowd in the design (Who codes). The coders
+            appear here.
+          </p>
+        ) : kind && !codersQuery.isLoading ? (
           <KindCoders
             client={client}
             kind={kind}

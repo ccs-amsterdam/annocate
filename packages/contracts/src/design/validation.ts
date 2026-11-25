@@ -103,23 +103,28 @@ interface RefContext {
  * In simple conditions (condition.ts) the helper arguments are checked too.
  * Script syntax isn't checked here (no JS engine); the admin editor does that.
  *
- * `coderKind`: the kind of coders of the study the design is in. Given, the
- * invitation must be for that kind (`coderKindIssues`).
+ * `coderKind`: the kind of coders the study's first deploy fixed (none
+ * before it). Given, an invitation must be for that kind (`coderKindIssues`).
  */
-export function validateDesignItems(items: unknown[], coderKind?: CoderKind): DesignIssue[] {
+export function validateDesignItems(items: unknown[], coderKind?: CoderKind | null): DesignIssue[] {
   return [...schemaIssues(items), ...semanticIssues(items), ...(coderKind ? coderKindIssues(items, coderKind) : [])];
 }
 
 /**
- * A design is in a study with expert coders or a crowd (the study's
- * `coderKind`): an invitation for the other kind is an error, at the Study
- * entry's `invite`.
+ * A study's first deploy fixes its kind of coders (the study's
+ * `coderKind`): from then on an invitation for the other kind is an error,
+ * at the Study entry's `invite`.
  */
 export function coderKindIssues(items: unknown[], coderKind: CoderKind): DesignIssue[] {
   const message = coderKindProblem(sessionItem(items), coderKind);
   if (message === null) return [];
+  return [{ path: invitePath(items), message }];
+}
+
+/** Where an issue about who codes is: the Study entry's `invite`. */
+function invitePath(items: unknown[]): (string | number)[] {
   const at = items.findIndex((i) => (i as { type?: unknown } | null)?.type === "session");
-  return [{ path: at >= 0 ? [at, "invite"] : [], message }];
+  return at >= 0 ? [at, "invite"] : [];
 }
 
 /** Zod schema validation of each item. */
@@ -526,7 +531,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
   ) {
     const units = raw && typeof raw === "object" ? raw : null;
     if (!units) return;
-    if (units.divide && inviteOf(sessionItem(items)).mode !== "crowd")
+    if (units.divide && inviteOf(sessionItem(items))?.mode === "coders")
       issue(
         [...path, "divide"],
         "Dividing units among coders is for a crowd: expert coders get the units of their set (Who codes)",
@@ -724,7 +729,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     if (selectsUnits(item)) {
       if (sessionNamed.has(item.name) || (RESERVED_SESSION_NAMES as readonly string[]).includes(item.name))
         issue([...itemPath, "name"], `Experiment '${item.name}' selects units: its name can't also be a session value`);
-      if (inviteOf(sessionItem(items)).mode === "coders")
+      if (inviteOf(sessionItem(items))?.mode === "coders")
         issue(
           [...itemPath, "variable", "selectsUnits"],
           `Experiment '${item.name}' selects units by condition, but expert coders get the units of their coder set: invite a crowd`,
@@ -1058,11 +1063,21 @@ export function callArgumentProblems(
 
 /**
  * Validation errors only (warnings left out): what keeps a design from
- * being deployed or previewed. `coderKind`: the study's kind of coders
- * (`validateDesignItems`).
+ * being deployed or previewed. `coderKind`: the kind of coders the study's
+ * first deploy fixed (`validateDesignItems`).
  */
-export function designErrors(items: unknown[], coderKind?: CoderKind): DesignIssue[] {
+export function designErrors(items: unknown[], coderKind?: CoderKind | null): DesignIssue[] {
   return validateDesignItems(items, coderKind).filter((i) => !i.warning);
+}
+
+/** What deploying asks of a design besides no errors: who codes chosen. */
+export const NO_INVITE = "Choose who codes first: expert coders or a crowd (one link)";
+
+/** The errors that keep a design from being deployed: `designErrors`, and who codes not chosen. */
+export function deployErrors(items: unknown[], coderKind?: CoderKind | null): DesignIssue[] {
+  const errors = designErrors(items, coderKind);
+  if (inviteOf(sessionItem(items)) !== null) return errors;
+  return [...errors, { path: invitePath(items), message: NO_INVITE }];
 }
 
 /** Every question in the tree (name -> type), and the key of the loop it is in (`unitLoops`; null: coder-level). */

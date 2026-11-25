@@ -4,12 +4,11 @@ import {
   EMPTY_SESSION,
   addedFields,
   collectQuestions,
-  coderKindProblem,
+  NO_INVITE,
   sessionItem,
   reservedColumnError,
   designItems,
   checkUnitData,
-  inviteKind,
   inviteOf,
   isSetType,
   roleColumnType,
@@ -150,8 +149,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
     const parsed = DesignItemsSchema.safeParse(designItems(recipe.design));
     if (!parsed.success)
       throw invalid(`The design can't be deployed: ${parsed.error.issues.map((i) => i.message).join("; ")}`);
-    const problem = recipe.coderKind && coderKindProblem(sessionItem(parsed.data), recipe.coderKind);
-    if (problem) throw invalid(`The design can't be deployed: ${problem}`);
+    if (inviteOf(sessionItem(parsed.data)) === null) throw invalid(`The design can't be deployed: ${NO_INVITE}`);
   }
 
   const [made] = await tx
@@ -161,11 +159,9 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       ...(options.publicId ? { publicId: options.publicId } : {}),
       ownerId: options.ownerId,
       origin: options.origin ?? null,
-      // Left out: the kind the design invites
-      coderKind: recipe.coderKind ?? inviteKind(inviteOf(recipe.design.session)),
     })
     .returning();
-  const study = made!;
+  let study = made!;
   if (options.ownerId !== null && options.ownerIsAdmin)
     await tx.insert(roles).values({ role: "ADMIN", studyId: study.id, userId: options.ownerId });
 
@@ -208,6 +204,8 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
       .orderBy(asc(links.id))
       .limit(1);
     firstLink = first?.id ?? null;
+    // Deploying recorded the study's kind of coders
+    [study] = (await tx.select().from(studies).where(eq(studies.id, study.id))) as [typeof study];
   }
   return { study, designVersionId, unitIds, firstLink };
 }

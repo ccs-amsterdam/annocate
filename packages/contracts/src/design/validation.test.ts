@@ -6,7 +6,7 @@ import {
   type TopLevelQuestionItem,
   type InLoopQuestionItem,
 } from "./item.js";
-import { availableQuestions, designErrors, validateDesignItems } from "./validation.js";
+import { NO_INVITE, availableQuestions, deployErrors, designErrors, validateDesignItems } from "./validation.js";
 import { DesignItemsSchema, DesignWriteSchema } from "./designVersion.js";
 import type { Condition } from "./condition.js";
 
@@ -236,29 +236,40 @@ describe("the Session item", () => {
     );
   });
 
-  it("checks the invitation against the study's kind of coders, when given", () => {
+  it("checks the invitation against the kind of coders the first deploy fixed, when given", () => {
     const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"]))]);
     const experts = [session({ invite: { mode: "coders", link: "per_coder" } }), loop];
     const crowd = [session({ invite: { mode: "crowd" } }), loop];
     const none = [session({}), loop];
-    // Without a study (a design on its own): any invitation
-    expect(validateDesignItems(experts as never)).toEqual([]);
-    expect(validateDesignItems(crowd as never)).toEqual([]);
+    // Before the first deploy (no kind yet): any invitation, or none
+    for (const kind of [undefined, null]) {
+      expect(validateDesignItems(experts as never, kind)).toEqual([]);
+      expect(validateDesignItems(crowd as never, kind)).toEqual([]);
+      expect(validateDesignItems(none as never, kind)).toEqual([]);
+    }
     expect(validateDesignItems(experts as never, "expert")).toEqual([]);
     expect(validateDesignItems(crowd as never, "crowd")).toEqual([]);
-    expect(validateDesignItems(none as never, "crowd")).toEqual([]);
     expect(validateDesignItems(crowd as never, "expert")).toEqual([
-      { path: [0, "invite"], message: expect.stringContaining("This study has expert coders") },
-    ]);
-    expect(validateDesignItems(none as never, "expert")).toEqual([
       { path: [0, "invite"], message: expect.stringContaining("This study has expert coders") },
     ]);
     expect(designErrors(experts, "crowd")).toEqual([
       { path: [0, "invite"], message: expect.stringContaining("This study has a crowd") },
     ]);
-    // Items without the Study entry: a crowd's
-    expect(designErrors([loop], "expert")).toEqual([{ path: [], message: expect.stringContaining("expert coders") }]);
-    expect(designErrors([loop], "crowd")).toEqual([]);
+    // Who codes not chosen: not the other kind's
+    expect(validateDesignItems(none as never, "expert")).toEqual([]);
+    expect(designErrors([loop], "expert")).toEqual([]);
+  });
+
+  it("deploying asks for who codes: a design without an invitation has that one error more", () => {
+    const loop = unitLoop("loop", [questionVar("q1", select(["a", "b"]))]);
+    const crowd = [session({ invite: { mode: "crowd" } }), loop];
+    expect(designErrors([session({}), loop])).toEqual([]);
+    expect(deployErrors([session({}), loop])).toEqual([{ path: [0, "invite"], message: NO_INVITE }]);
+    expect(deployErrors([loop], "crowd")).toEqual([{ path: [], message: NO_INVITE }]);
+    expect(deployErrors(crowd)).toEqual([]);
+    expect(deployErrors(crowd, "crowd")).toEqual([]);
+    expect(deployErrors(crowd, "expert")).toEqual(designErrors(crowd, "expert"));
+    expect(deployErrors(crowd, "expert")).toHaveLength(1);
   });
 
   it("checks a loop's units against the invitation: dividing, an earlier loop's units", () => {

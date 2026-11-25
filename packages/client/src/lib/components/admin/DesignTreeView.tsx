@@ -260,7 +260,11 @@ function StartRow({
         )}
       >
         <span className={nameClass}>Start</span>
-        <span className="truncate px-1 text-[11px] text-muted-foreground">{inviteSummary(inviteOf(session))}</span>
+        <span
+          className={cn("truncate px-1 text-[11px]", inviteOf(session) ? "text-muted-foreground" : "text-destructive")}
+        >
+          {inviteOf(session) ? inviteSummary(inviteOf(session)) : "who codes? Choose first"}
+        </span>
         {tree.isChanged(session as DesignItem) && (
           <span
             title="Unsaved changes"

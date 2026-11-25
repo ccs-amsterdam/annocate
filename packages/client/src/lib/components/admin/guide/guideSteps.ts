@@ -15,7 +15,7 @@ export type GuideSample =
       select?: string;
       /** The whole editor, or only its tree or its form. */
       view?: "full" | "tree" | "form";
-      /** Who codes in the sample (default: a crowd). */
+      /** Who codes in the sample's design (default: a crowd). */
       coders?: CoderKind;
     }
   | { page: "units" };
@@ -55,18 +55,18 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         id: "modes",
         title: "Two modes: expert or crowd coding",
         text: [
-          "The first choice for a study is who codes: you make it when you create the study. It decides how coders get in and how units are handed out.",
-          "You can change it in the study's Settings until the first deploy. How those coders get in is at the top of the tree: Who codes.",
+          "The first choice for a study is who codes: expert coders or a crowd. You make it in the design, at the top of the tree: Who codes. It decides how coders get in and how units are handed out.",
+          "A new design shows the two as cards to choose from. You can change the choice until the study's first deploy, which fixes it.",
         ],
         sample: { page: "design", view: "tree" },
-        showMe: { page: "Design", target: "who-codes", label: "Who codes: how the study's coders get in" },
+        showMe: { page: "Design", target: "who-codes", label: "Who codes: expert coders or a crowd" },
       },
       {
         id: "coders",
         title: "Expert coders",
         text: [
-          "For content analysis with trained coders. Each coder has their own units: the units' coder set (the coder_set column) says whose they are.",
-          "Coders get a link each, pick their name from one link, or sign in. Their session stays open: they come back to their job, and you can add and redistribute units at any time.",
+          "For content analysis with trained coders. You add them on the Coders page, each with a coder id and optionally an email address. The coder set (the units' coder_set column) selects which of them code which units.",
+          "Coders get a link each, pick their name from one link, or sign in: signing in needs an email address for each coder. Their session stays open: they come back to their job, and you can add and redistribute units at any time.",
         ],
         sample: { page: "design", select: "session", view: "form", coders: "expert" },
         showMe: { page: "Design", target: "who-codes", label: "Who codes: how expert coders get in" },
@@ -129,6 +129,39 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
   },
   {
+    page: "Coders",
+    title: "Coders",
+    steps: [
+      {
+        id: "add-coders",
+        title: "Adding expert coders",
+        text: [
+          "Expert coders are added here, one per line: a coder id (a name, a number), and optionally the email address they sign in with.",
+          "A crowd's coders aren't added: they appear here when they start with a coder id from their link.",
+        ],
+        showMe: { page: "Coders", target: "add-coders", label: "Add coders: an id each, optionally an email address" },
+      },
+      {
+        id: "coder-set",
+        title: "Making a coder set",
+        text: [
+          "The coder set says who codes which units. Make coder set has two tabs: Select coders, where you choose which coders get units and how the units are divided, and Manage coders, where you add coders.",
+          "It is a draft until you deploy the units.",
+        ],
+        showMe: { page: "Coders", target: "make-coder-set", label: "Make coder set: Select coders, Manage coders" },
+      },
+      {
+        id: "coders-table",
+        title: "Following the coders",
+        text: [
+          "The table shows each coder's units: assigned now (as deployed) and in the draft, done, and remaining. A notice above it says how many units no coder has.",
+          "Deleting a coder deletes their answers for good, and takes them out of the coder set: their units have no coder until you divide them again.",
+        ],
+        showMe: { page: "Coders", target: "coders-table", label: "Coders: units and progress per coder" },
+      },
+    ],
+  },
+  {
     page: "Preview",
     title: "Trying it",
     steps: [
@@ -177,9 +210,10 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         id: "results",
         title: "Answers and agreement",
         text: [
-          "Results shows the answers so far, each coder's progress and the agreement between coders, and downloads everything as CSV or Excel.",
+          "Results shows the answers so far and the agreement between coders, and downloads everything as CSV or Excel.",
+          "Each coder's progress is on the Coders page.",
         ],
-        showMe: { page: "Results", target: "tab-Results", label: "Results: answers, coders and downloads" },
+        showMe: { page: "Results", target: "tab-Results", label: "Results: answers, agreement and downloads" },
       },
     ],
   },

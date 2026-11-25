@@ -5,7 +5,6 @@ import {
   RecipeSchema,
   designItems,
   inviteKind,
-  inviteOf,
   sessionItem,
   VariableValueSchema,
   validateAnswer,
@@ -26,6 +25,7 @@ import {
   unitVersions,
 } from "./db/schema/index.js";
 import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
+import { runtimeInvite } from "./runtime/sessionValues.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
 import type { StudyRow } from "./shared/studies.js";
@@ -184,7 +184,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
       if (linkId === null) throw new Error(`examples/${id}.json: example coders need a deployed study (deploy)`);
       // A coder of the study's kind (not one of its expert coders with units: those are for real coders)
       const exampleCoder = `Example coder ${i + 1}`;
-      const kind = inviteKind(inviteOf(sessionItem(withSession)));
+      const kind = inviteKind(runtimeInvite(sessionItem(withSession)));
       await tx.insert(coders).values({ studyId: study.id, coder: exampleCoder, kind });
       const [made] = await tx
         .insert(coderSessions)

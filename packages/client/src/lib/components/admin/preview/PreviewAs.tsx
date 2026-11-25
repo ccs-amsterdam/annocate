@@ -18,7 +18,7 @@ export function PreviewAs({
   onChange: (key: string, value: string) => void;
 }) {
   const invite = inviteOf(session);
-  const coders = invite.mode === "coders" ? columnValues(groups, CODER_SET) : [];
+  const coders = invite?.mode === "coders" ? columnValues(groups, CODER_SET) : [];
   const params = (session?.urlParams ?? []).filter((p) => p.values && p.values.length > 1);
   if (coders.length < 2 && params.length === 0) return null;
   const select = "h-8 rounded-md border border-input bg-background px-2 text-xs";

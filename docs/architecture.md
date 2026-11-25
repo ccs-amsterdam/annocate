@@ -201,21 +201,32 @@ coders, with some overlap" is then one setting and two columns
 Decided per session, for the whole study (contracts `design/session.ts`,
 `shareOf` in the runtime).
 
-**Who codes is the study's setting**: expert coders or a crowd
-(`studies.coder_kind`, the study's `coderKind`: `expert` or `crowd`). It is
-chosen when the study is made (`POST /study`, the Create study dialog, a
-recipe; left out: a crowd) and can be changed in the study's Settings until
-its first deploy; after that `PUT /study/:id` with another kind answers 409
-`coder_kind_locked`. Changing it gives the study's designs the new kind's
-first invitation (contracts `firstInvite`: a crowd's open link, or a link
-per expert coder). Both kinds stay in the data model (`coders.kind`): only
-the change after a deploy is refused.
+**Who codes is the design's choice, which the first deploy fixes**: expert
+coders or a crowd. The design's **invitation** (`session.invite`) chooses:
+`mode: "coders"` for expert coders, `mode: "crowd"` for a crowd. A new
+design has none (the editor's **Who codes** shows the two as cards): it
+saves and previews (as a crowd with one open link, the runtime's
+`runtimeInvite`), and deploying it is refused (contracts `deployErrors`,
+`NO_INVITE`). Until the study's first deploy the choice can be changed
+freely.
 
-How those coders get in is the design's **invitation** (`session.invite`),
-which must be for the study's kind: one for the other kind is a validation
-error (contracts `coderKindProblem`: the version is not `valid`, and can't
-be deployed or previewed), also in a design written through the API. A
-design without an invitation invites a crowd with one open link.
+The study only records it: `studies.coder_kind` (the study's `coderKind`)
+is NULL until the first deploy, which sets it to the kind the deployed
+design invites (`shared/coderKind.ts` `recordCoderKind`, in the deploy's
+transaction). From then on it is fixed: an invitation for the other kind
+is a validation error (contracts `coderKindProblem`: the version is not
+`valid`, and can't be deployed or previewed; drafts still save), also in a
+design written through the API, and the editor says "fixed since the first
+deploy" and offers only that kind's options. Both kinds stay in the data
+model (`coders.kind`).
+
+Expert coders made before a first deploy as a crowd aren't used: that
+deploy deletes them (their rows with their email addresses, and their
+units in `coder_set`; they have no sessions yet). Before that they are
+never out of sight: the Coders page and the editor's Who codes say "N
+expert coders (with email addresses) aren't used by this design", with a
+way to delete them, and the Deploy page says that deploying will. Units
+uploaded before any design start a design without an invitation.
 
 ```yaml
 session:

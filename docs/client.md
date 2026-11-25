@@ -598,12 +598,16 @@ parameters**, **Display**) that opens that part alone (`SessionItemForm.tsx`,
 the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPartJson.tsx`) and its preview shows what it means for coders
 (`SessionPreview.tsx`: the links, what a link must carry, the screen). Who
-codes (**Expert coders** or **Crowd (one link)**) is the study's setting, not
-the design's: the form (`session/InvitationSettings.tsx`) says which it is and
-shows that kind's options only (the study's kind comes from the editor,
-`session/coderKind.ts`). An invitation for the other kind (a design written
-through the API) is a validation error; the form then shows the study's
-options and a button that replaces it. The
+codes (**Expert coders** or **Crowd (one link)**) is chosen in the form
+(`session/InvitationSettings.tsx`): two cards (`session/WhoCodesCards.tsx`),
+none chosen in a new design, and the chosen kind's options below them. The
+choice can be changed until the study's first deploy; switching to a crowd
+while the study has expert coders shows that they aren't used, with a way
+to delete them (`coders/UnusedExpertsNotice.tsx`). After the first deploy
+the kind is fixed (the study's `coderKind`, which the editor passes on,
+`session/coderKind.ts`): the form says "fixed since the first deploy" and
+shows that kind's options only. An invitation for the other kind is then a
+validation error; the form shows a button that replaces it. The
 expert coders form shows the units' coder set (`coder_set`: how many
 coders, or that one is required), how coders get in (disabled until
 there is a coder set), and what that asks of the coders
@@ -790,11 +794,13 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   session. After a first study, `GuidePrompt.tsx` asks (yes or no, it can't
   be dismissed otherwise).
 - **Who codes** (`session/WhoCodesCards.tsx`, the two kinds as cards): chosen
-  in the Create study dialog (`studyList/CreateStudyDialog.tsx`: no study
-  without it) and changed in the study's Settings until its first deploy
-  (then the cards are disabled, with why). A study's first design starts
-  with its kind's first invitation (`design/draft.ts` `startDraft`: expert
-  coders with a link each).
+  in the design's Who codes, not when a study is made
+  (`studyList/CreateStudyDialog.tsx` asks for a name only) or in its
+  Settings. A new design has no invitation (`design/draft.ts` `startDraft`):
+  the tree's Start row says "who codes? Choose first", and deploying needs
+  the choice. Pages that depend on who codes (Coders, Units, the overview)
+  follow `admin/whoCodes.ts` (`useWhoCodes`): the kind the first deploy
+  fixed, before it the kind the draft design invites.
 - **Tree** (`DesignTreeView.tsx`, `designTree/`): the top level holds
   questions, experiments, `branch`es and unit loops; validation refuses an
   end item there ("An end item goes in a branch") and a loop inside a
@@ -969,7 +975,7 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   Deploy page, the deploys' history too.
 - **Settings** (`StudySettingsPage` in `overview/StudyOverview.tsx`): the
   team (`overview/TeamSettings.tsx`, at least one ADMIN) and
-  `StudySettings.tsx`: rename, archive, who codes (until the first deploy),
+  `StudySettings.tsx`: rename, archive,
   when coders finish (the reopen time), panel return links, export, delete. Deleting (`studyList/DeleteStudyDialog.tsx`, also from the studies
   list) says what goes (design versions, units, coders and their answers,
   sessions, results downloads) and asks to type the study's name.
@@ -980,7 +986,11 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
 - **Coders** (`coders/CodersPage.tsx`; `coder-identity.md` §2): the coders
-  of the study's kind (its `coderKind`: expert coders, or a crowd's), in a table
+  of the kind that codes (`useWhoCodes`: before the first deploy the draft
+  design's, after it the study's `coderKind`; not chosen yet: the page says
+  so), with a notice for expert coders the design doesn't use
+  (`coders/UnusedExpertsNotice.tsx`: "N expert coders … aren't used by this
+  design", **Delete them**), in a table
   (`coders/CodersTable.tsx`, its columns and order in
   `admin/codersTable.ts`) that sorts on every column, most left to do
   first: coder, and for expert coders their email address and their units
