@@ -1,36 +1,12 @@
 import type { StudyResponse } from "@annotinder/contracts";
-import {
-  Archive,
-  ChevronLeft,
-  CircleHelp,
-  Download,
-  LayoutDashboard,
-  Layers,
-  Link2,
-  PencilRuler,
-  Play,
-  Send,
-  Settings,
-  Users,
-} from "lucide-react";
+import { Archive, ChevronLeft, CircleHelp, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import type { TabId } from "../../../admin/tabs";
 import { CollapsibleHeader } from "../../../hooks/useCollapsingChrome";
 import { openHelp } from "../../../help/helpStore";
 import { GuideButton } from "../guide/GuideButton";
-
-/** The study's pages in the navigation (Preview has its own button). */
-const PAGES: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "Overview", label: "Overview", icon: LayoutDashboard },
-  { id: "Design", label: "Design", icon: PencilRuler },
-  { id: "Units", label: "Units", icon: Layers },
-  { id: "Coders", label: "Coders", icon: Users },
-  { id: "Deploy", label: "Deploy", icon: Send },
-  { id: "Links", label: "Links", icon: Link2 },
-  { id: "Results", label: "Results", icon: Download },
-  { id: "Settings", label: "Settings", icon: Settings },
-];
+import { STUDY_PAGES } from "./studyPages";
 
 /** The help topic the Help button opens on each page. */
 const TAB_HELP: Record<TabId, string> = {
@@ -92,7 +68,7 @@ export function StudyHeader({
           </div>
 
           <nav className="flex gap-0.5 overflow-x-auto" aria-label="Study">
-            {PAGES.map((page) => (
+            {STUDY_PAGES.map((page) => (
               <PageButton key={page.id} page={page} active={page.id === tab} onClick={() => onTabChange(page.id)} />
             ))}
           </nav>
@@ -117,7 +93,15 @@ export function StudyHeader({
   );
 }
 
-function PageButton({ page, active, onClick }: { page: (typeof PAGES)[number]; active: boolean; onClick: () => void }) {
+function PageButton({
+  page,
+  active,
+  onClick,
+}: {
+  page: (typeof STUDY_PAGES)[number];
+  active: boolean;
+  onClick: () => void;
+}) {
   const Icon = page.icon;
   return (
     <button

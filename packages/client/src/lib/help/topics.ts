@@ -3,6 +3,10 @@
 // ordinary relative links (`[Snippets](snippets.md#names)`), so the files
 // also read well on GitHub.
 
+import { parseFrontMatter } from "./topicText";
+
+export { headingId, helpLink, parseFrontMatter } from "./topicText";
+
 export interface HelpTopic {
   slug: string;
   title: string;
@@ -32,18 +36,6 @@ const files = import.meta.glob("./topics/*.md", { query: "?raw", import: "defaul
   string
 >;
 
-/** Splits a file into its front matter (`key: value` lines between `---` lines) and body. */
-export function parseFrontMatter(raw: string): { meta: Record<string, string>; body: string } {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(raw);
-  if (!match) return { meta: {}, body: raw };
-  const meta: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const at = line.indexOf(":");
-    if (at > 0) meta[line.slice(0, at).trim()] = line.slice(at + 1).trim();
-  }
-  return { meta, body: raw.slice(match[0].length) };
-}
-
 function toTopic(path: string, raw: string): HelpTopic {
   const slug = path.replace(/^.*\//, "").replace(/\.md$/, "");
   const { meta, body } = parseFrontMatter(raw);
@@ -65,21 +57,4 @@ export const HELP_TOPICS: HelpTopic[] = Object.entries(files)
 
 export function helpTopic(slug: string): HelpTopic | undefined {
   return HELP_TOPICS.find((t) => t.slug === slug);
-}
-
-/** A heading's id: lower case, words joined with `-` (as GitHub does). */
-export function headingId(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .trim()
-    .replace(/\s+/g, "-");
-}
-
-/** A link to another topic (`snippets.md`, `snippets.md#names`, `#names` on the same page), or null for other links. */
-export function helpLink(href: string, from: string): { slug: string; anchor?: string } | null {
-  const match = /^(?:\.\/)?([a-z0-9-]+)\.md(?:#(.+))?$/.exec(href);
-  if (match) return match[2] ? { slug: match[1], anchor: match[2] } : { slug: match[1] };
-  if (href.startsWith("#")) return { slug: from, anchor: href.slice(1) };
-  return null;
 }

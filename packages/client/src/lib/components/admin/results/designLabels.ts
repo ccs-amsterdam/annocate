@@ -6,6 +6,7 @@ import {
   valueLabel,
   unitLoops,
   type AnyVariableType,
+  type DesignVersion,
   type TopLevelItem,
   type UnitLayout,
 } from "@annotinder/contracts";
@@ -29,45 +30,46 @@ export interface DesignLabels {
   loop: (key: string) => { layout: UnitLayout; questions: string[] } | undefined;
 }
 
-/** Labels from the deployed design version (none while loading: names and values as they are). */
+/** The labels of a design version (none: names and values as they are). */
+export function designLabels(design: Pick<DesignVersion, "items"> | undefined): DesignLabels {
+  const items = (design?.items ?? []) as TopLevelItem[];
+  const { questions, loopOf } = collectQuestions(items);
+  const designLoops = unitLoops(items);
+  const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop)]));
+  const layouts = new Map(designLoops.map(({ key, loop }) => [key, loopLayouts(loop.children)[0] ?? { template: "" }]));
+  const optionsOf = (name: string): { value: string | number; label?: string }[] => {
+    const type: AnyVariableType | undefined = questions.get(name);
+    return type && "options" in type && Array.isArray(type.options) ? type.options : [];
+  };
+  return {
+    ready: design !== undefined,
+    loopTitle: (key) => (key === null ? "Questions" : (loops.get(key) ?? `Loop ${key}`)),
+    questionText: (name) => {
+      const type = questions.get(name);
+      return type && "question" in type && typeof type.question === "string" ? type.question : "";
+    },
+    // Options, and special answers (by their code, or their kind: contracts `valueLabel`)
+    valueLabel: (question, value) => {
+      const type = questions.get(question);
+      return type ? valueLabel(type, value) : String(value);
+    },
+    itemLabel: (question, item) => {
+      const type = questions.get(question);
+      const found = type?.type === "scale" ? type.items.find((i) => i.name === item) : undefined;
+      return found?.label || item;
+    },
+    options: (question) => optionsOf(question).map((o) => o.value),
+    questions,
+    loop: (key) => {
+      const layout = layouts.get(key);
+      return layout && { layout, questions: [...loopOf].filter(([, l]) => l === key).map(([name]) => name) };
+    },
+  };
+}
+
+/** Labels from the deployed design version (none while loading). */
 export function useDesignLabels(client: ResearcherApi): DesignLabels {
   const deployment = useDeploymentQuery(client).data;
   const design = useDesignVersionQuery(client, deployment?.designVersionId ?? null).data;
-  return useMemo(() => {
-    const items = (design?.items ?? []) as TopLevelItem[];
-    const { questions, loopOf } = collectQuestions(items);
-    const designLoops = unitLoops(items);
-    const loops = new Map(designLoops.map(({ key, loop }) => [key, loopTitle(loop)]));
-    const layouts = new Map(
-      designLoops.map(({ key, loop }) => [key, loopLayouts(loop.children)[0] ?? { template: "" }]),
-    );
-    const optionsOf = (name: string): { value: string | number; label?: string }[] => {
-      const type: AnyVariableType | undefined = questions.get(name);
-      return type && "options" in type && Array.isArray(type.options) ? type.options : [];
-    };
-    return {
-      ready: design !== undefined,
-      loopTitle: (key) => (key === null ? "Questions" : (loops.get(key) ?? `Loop ${key}`)),
-      questionText: (name) => {
-        const type = questions.get(name);
-        return type && "question" in type && typeof type.question === "string" ? type.question : "";
-      },
-      // Options, and special answers (by their code, or their kind: contracts `valueLabel`)
-      valueLabel: (question, value) => {
-        const type = questions.get(question);
-        return type ? valueLabel(type, value) : String(value);
-      },
-      itemLabel: (question, item) => {
-        const type = questions.get(question);
-        const found = type?.type === "scale" ? type.items.find((i) => i.name === item) : undefined;
-        return found?.label || item;
-      },
-      options: (question) => optionsOf(question).map((o) => o.value),
-      questions,
-      loop: (key) => {
-        const layout = layouts.get(key);
-        return layout && { layout, questions: [...loopOf].filter(([, l]) => l === key).map(([name]) => name) };
-      },
-    };
-  }, [design]);
+  return useMemo(() => designLabels(design), [design]);
 }

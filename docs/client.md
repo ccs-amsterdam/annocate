@@ -778,21 +778,88 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   Settings (`docs/hosting.md` "Moving a study"). A researcher's first study
   (empty, from an example or a file) asks whether to take the guide.
 - **Guide** (`guide/`): a dialog over the study's pages, like the help: a
-  menu of sections (one per page: the study designer, units, preview,
-  deploy, links, results) and their steps beside the open step, at a fixed
-  height. Next and Back go through all steps in order (`guideSteps.ts`).
-  Each step shows the sample study (`sampleStudy.ts`: a design with two
-  coder questions and a unit loop with three questions, the third in a
-  branch, and three units; as a study with a crowd or one with expert
-  coders, each with its own in-memory API) drawn with the
-  real page, read only: the design editor (wide, the step's item selected;
-  all of it, or only its tree or its form) or the Units page, from an
-  in-memory API, inert and scaled to fit (`GuideSample.tsx`). "Show me"
-  closes it and rings the real element on the researcher's page
-  (`data-guide` attributes, `ShowMe.tsx`); nothing is blocked. The header's
-  **Guide** opens the page's section, at the step last open there in this
-  session. After a first study, `GuidePrompt.tsx` asks (yes or no, it can't
-  be dismissed otherwise).
+  menu of sections and their steps beside the open step, at a fixed height.
+  Next and Back go through all steps in order. A step is a title, a few
+  lines of text and a picture; on a narrow screen the text is above the
+  picture, on a wide one beside a picture that is taller than wide. A
+  picture that would get too small to read takes the width, and the step
+  scrolls. "Show me" closes the guide and rings the real element on the
+  researcher's page (`data-guide` attributes, `ShowMe.tsx`); nothing is
+  blocked. The header's **Guide** opens the page's section (a page without
+  one: the start), at the step last open there in this session. After a
+  first study, `GuidePrompt.tsx` asks (yes or no, it can't be dismissed
+  otherwise).
+
+  **Its content is Markdown**, a file per section in `guide/content/`
+  (`start.md`, `design.md`, `units.md`, ...), read by `parseGuide.ts` into
+  the sections and steps (`guideSteps.ts`). To change the guide, edit these
+  files; `guide.test.ts` checks them (below). A file looks like this:
+
+  ```markdown
+  ---
+  title: Design
+  page: Design
+  order: 2
+  ---
+
+  ## The tree {#tree}
+  <!-- show: design, focus: tree, select: topic; show me: Design / add-item / Add item: a question, a unit loop and more -->
+  - The tree is the coder's path, from **Start** at the top to the end.
+  - Click an item to select it. More in [the design editor](design-editor.md).
+  ```
+
+  - The front matter: the section's `title` in the menu, the `page` it
+    belongs to (a page's name: Overview, Design, Units, Coders, Preview,
+    Deploy, Links, Results, Settings; one section per page) and its `order`
+    among the sections. Text between the front matter and the first heading
+    is ignored (each file has a note on the format there).
+  - `## Title {#id}` starts a step. The id is unique in the whole guide; the
+    app opens some steps by it (`openGuide("Design", "modes")`), so keep the
+    ids of existing steps. Steps show in the file's order.
+  - The line right under the heading may be an HTML comment with what the
+    step shows, where "Show me" goes, or both with a `;` between. Without
+    it the step is text only.
+    - `show: design, focus: …, select: …`: the sample study in the design
+      editor. `focus` is `overview` (the whole editor, scaled down, its two
+      parts outlined and numbered 1 and 2: write them as a numbered list),
+      `tree` (the tree only), `item` (the selected item's form and preview)
+      or `form` (its form only). `select` is the name of the item selected
+      (`age`, `news_use`, `topic`, `tone`, `actor`; `session` for Who
+      codes); it is optional.
+    - `show: map` (a study's five steps), `units`, `add-coders`, `coders`,
+      `deploy`, `links` or `results`: that page with sample data.
+    - `show me: Page / name / Text`: the page the button goes to, the
+      `data-guide` name of the element it rings there (`tab-Deploy` etc.
+      for a page's tab), and what the pointer says.
+  - The rest is the step's text, in Markdown as the help topics have it
+    (rendered by the help's `HelpMarkdown.tsx`): bullets, **bold**,
+    `code`, and links to help topics by their file name (`[units](uploading-units.md)`),
+    which open the help. A numbered list gets round numbers like the
+    overview's markers. Keep a step to three or four short lines: the
+    picture does the work.
+
+  `guide.test.ts` fails with what is wrong and where when a file doesn't
+  parse (a heading without an id, an unknown `show` or `focus`, a `show me`
+  without its three parts, a step without text), an id is used twice, a
+  `select` names no item of the sample design, a `show me` names no
+  `data-guide` element in the client, or a link names no help topic. It
+  also lists the sections and step ids in order: update that list when
+  adding, removing or moving a step.
+
+  **The pictures** (`GuideSample.tsx`) are the real components with the
+  sample study (`sampleStudy.ts`: a design with two coder questions and a
+  unit loop with three questions, the third in a branch, three units and
+  expert coders; `sampleData.ts`: its coders, links and results), from an
+  in-memory API that refuses writes. They are inert (nothing can be clicked
+  or focused) and scaled to fit, never larger than drawn. The design editor
+  is drawn read only at a wide window's size (tree, form and preview side
+  by side) and cut to the step's focus, so it has no + buttons. The pages
+  (`SamplePages.tsx`): the Units page itself; the Coders table, the form
+  to add coders, the links table and the results' answers and agreement
+  with sample data; the Deploy page's parts for a later deploy. A new kind
+  of picture is a name in `parseGuide.ts` (`SAMPLE_PAGES`), the size it is
+  drawn at in `pictures.ts` (which also has the editor's focuses and
+  markers) and what it draws in `SamplePages.tsx`.
 - **Who codes** (`session/WhoCodesCards.tsx`, the two kinds as cards): chosen
   in the design's Who codes, not when a study is made
   (`studyList/CreateStudyDialog.tsx` asks for a name only) or in its
@@ -907,7 +974,10 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   (front matter `title`, `section`, `order`, `summary`), shown in one
   `HelpDialog`; `openHelp("topic#heading")` opens it. Code blocks in the
   language `example` are live, editable template examples. A test checks
-  front matter, links, the topics the UI opens, and every example.
+  front matter, links, the topics the UI opens, and every example. The
+  Markdown itself is rendered by `HelpMarkdown.tsx` (the guide's steps use
+  it too); `topicText.ts` reads front matter and links without loading the
+  topics.
 - **Versions and deploying** (`design/versions.ts`): _live_ is the deployed
   version (frozen), _draft_ the latest if not frozen, _history_ the rest
   (read only, restorable as the draft). Editing the live version saves a new

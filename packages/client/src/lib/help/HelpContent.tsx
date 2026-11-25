@@ -1,25 +1,11 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { HELP_SECTIONS, HELP_TOPICS, headingId, helpLink, helpTopic, type HelpTopic } from "./topics";
+import { HELP_SECTIONS, HELP_TOPICS, helpTopic, type HelpTopic } from "./topics";
 import { openHelp, type HelpTarget } from "./helpStore";
-import { HelpExample } from "./HelpExample";
-import { highlightTemplate } from "./highlight";
-
-interface HastNode {
-  type: string;
-  value?: string;
-  tagName?: string;
-  properties?: { className?: string[] };
-  children?: HastNode[];
-}
-
-const textOf = (node: HastNode | undefined): string =>
-  node?.type === "text" ? (node.value ?? "") : (node?.children ?? []).map(textOf).join("");
+import { HelpMarkdown } from "./HelpMarkdown";
 
 /**
  * The help dialog's content (lazy, with the topics): the topic menu, the
@@ -108,9 +94,7 @@ export default function HelpContent({ target }: { target: HelpTarget }) {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{topic.title}</h1>
             {topic.summary && <p className="mt-3 text-lg text-muted-foreground">{topic.summary}</p>}
             <div className="help-prose mt-8">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents(topic.slug)}>
-                {topic.body}
-              </ReactMarkdown>
+              <HelpMarkdown slug={topic.slug} body={topic.body} />
             </div>
             <footer className="mt-12 flex justify-between gap-4 border-t border-border pt-6 text-sm">
               {previous ? <PagerLink topic={previous} direction="previous" /> : <span />}
@@ -218,53 +202,4 @@ function PagerLink({ topic, direction }: { topic: HelpTopic; direction: "previou
       </span>
     </button>
   );
-}
-
-function heading(Tag: "h2" | "h3") {
-  return function Heading({ node, children }: { node?: unknown; children?: ReactNode }) {
-    return <Tag id={headingId(textOf(node as HastNode))}>{children}</Tag>;
-  };
-}
-
-/** How topic markdown renders: heading ids, links between topics, examples and template code. */
-function markdownComponents(slug: string): Components {
-  return {
-    h2: heading("h2"),
-    h3: heading("h3"),
-    a({ href, children }) {
-      const link = href ? helpLink(href, slug) : null;
-      if (link)
-        return (
-          <a
-            href={`#${link.anchor ?? ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              openHelp(link.anchor ? `${link.slug}#${link.anchor}` : link.slug);
-            }}
-          >
-            {children}
-          </a>
-        );
-      return (
-        <a href={href} target="_blank" rel="noreferrer">
-          {children}
-        </a>
-      );
-    },
-    pre({ node, children }) {
-      const code = (node as HastNode | undefined)?.children?.find((c) => c.tagName === "code");
-      const language = code?.properties?.className?.find((c) => c.startsWith("language-"))?.slice("language-".length);
-      const text = textOf(code).replace(/\n$/, "");
-      if (language === "example") return <HelpExample source={text} />;
-      if (language === "template") return <pre>{highlightTemplate(text)}</pre>;
-      return <pre>{children}</pre>;
-    },
-    table({ children }) {
-      return (
-        <div className="overflow-x-auto">
-          <table>{children}</table>
-        </div>
-      );
-    },
-  };
 }

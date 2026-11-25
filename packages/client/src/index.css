@@ -589,6 +589,48 @@
   }
 }
 
+/* The guide's steps (components/admin/guide): help prose, a few compact lines.
+   A numbered list has its numbers as the picture's markers have them. */
+@layer components {
+  .help-prose.guide-prose {
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+  .guide-prose > * + * {
+    margin-top: 0.6em;
+  }
+  .guide-number,
+  .guide-prose ol > li::before {
+    display: flex;
+    height: 1.375rem;
+    width: 1.375rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: var(--ember);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--ember-foreground);
+  }
+  .help-prose.guide-prose ol:not(.not-prose *) {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: guide-step;
+  }
+  .guide-prose ol > li {
+    position: relative;
+    padding-left: 2rem;
+    counter-increment: guide-step;
+  }
+  .guide-prose ol > li::before {
+    content: counter(guide-step);
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
 /* The logo's smoke (Logo.tsx, `smoke`): each wisp drawn upwards, drifting
    and fading, on a loop; the second half a beat later. Muted, like smoke. */
 .logo-smoke {

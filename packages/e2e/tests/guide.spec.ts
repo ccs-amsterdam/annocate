@@ -115,16 +115,16 @@ test("the guide opens on the page's section, where it was; Show me points at the
   // Its menu goes to any step; Show me goes to the step's page
   await guide
     .getByRole("navigation", { name: "Guide" })
-    .getByRole("button", { name: /Two modes/ })
+    .getByRole("button", { name: "Who codes", exact: true })
     .click();
-  await expect(guide.getByRole("heading", { name: /Two modes/ })).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Who codes", exact: true })).toBeVisible();
   await guide.getByRole("button", { name: "Show me" }).click();
   await expect(page).toHaveURL(/\/design$/);
   await expect(page.getByRole("status").filter({ hasText: "Who codes: expert coders or a crowd" })).toBeVisible();
   await page.getByRole("button", { name: "Got it" }).click();
   // Opened again on this page: where it was
   await page.getByRole("button", { name: "Guide" }).click();
-  await expect(guide.getByRole("heading", { name: /Two modes/ })).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Who codes", exact: true })).toBeVisible();
 
   // The Coders page has its own section: its Show me points at that page's buttons
   await guide
@@ -137,4 +137,50 @@ test("the guide opens on the page's section, where it was; Show me points at the
   await expect(
     page.getByRole("status").filter({ hasText: /^Make coder set: Select coders, Manage coders(?!:)/ }),
   ).toBeVisible();
+});
+
+test("the guide starts with a study's five steps, then the editor with its parts marked; its text links to the help", async ({
+  page,
+  request,
+}) => {
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Guided from the start" });
+  await page.goto(`/research/studies/${study.id}/overview`);
+  await page.getByRole("button", { name: "Guide" }).click();
+  const guide = page.getByRole("dialog").filter({ has: page.getByRole("navigation", { name: "Guide" }) });
+  await expect(guide.getByRole("heading", { name: "A study in five steps" })).toBeVisible();
+  // The step's text is Markdown: a numbered list
+  await expect(guide.getByRole("listitem")).toHaveCount(5);
+  await expect(guide.getByRole("listitem").first()).toContainText("Design: what coders see and answer");
+
+  // The overview: the whole sample editor, its two parts numbered as the text's list
+  await guide.getByRole("button", { name: "The design editor" }).last().click();
+  await expect(guide.getByRole("heading", { name: "The design editor" })).toBeVisible();
+  const picture = guide.getByRole("img", { name: "The sample study" });
+  await expect(picture).toContainText("Parliament votes");
+  await expect(picture.locator(".guide-number")).toHaveText(["1", "2"]);
+
+  // The tree's step shows only the tree: the unit's preview is cut off
+  await guide.getByRole("button", { name: "The tree" }).last().click();
+  await expect(picture).toContainText("news_use");
+  await expect(picture.getByText("Parliament votes")).not.toBeInViewport();
+
+  // A link to a help topic opens it
+  await guide.getByRole("button", { name: "Back", exact: true }).click();
+  await guide.getByRole("link", { name: "design editor" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "The design editor" })).toBeVisible();
+});
+
+test("on a phone the guide's text is above its picture, which fits the width", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  const study = await api<StudyResponse>(request, "POST", "/study", { name: "Guided on a phone" });
+  await page.goto(`/research/studies/${study.id}/design`);
+  await page.getByRole("button", { name: "Guide" }).click();
+  const guide = page.getByRole("dialog");
+  await guide.getByRole("button", { name: "The tree" }).click();
+  await expect(guide.getByRole("heading", { name: "The tree" })).toBeVisible();
+  const text = (await guide.getByRole("listitem").first().boundingBox())!;
+  const picture = (await guide.getByRole("img", { name: "The sample study" }).boundingBox())!;
+  expect(text.y + text.height).toBeLessThanOrEqual(picture.y);
+  expect(picture.x).toBeGreaterThanOrEqual(0);
+  expect(picture.x + picture.width).toBeLessThanOrEqual(390);
 });
