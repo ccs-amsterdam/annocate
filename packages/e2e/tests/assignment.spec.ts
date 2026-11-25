@@ -325,6 +325,7 @@ test("uploading units with role columns makes them, shown with their values", as
   });
   await expect(page.getByText(/names a coder who isn't an expert coder of this study: carl\./)).toBeVisible();
   await expect(page.getByRole("button", { name: /Upload 2 units/ })).toBeDisabled();
+  await page.getByRole("button", { name: "Choose another file" }).click();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
     mimeType: "text/csv",
