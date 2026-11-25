@@ -9,15 +9,16 @@ import { LEADER_TIMEOUT } from "../../keyboard/leader";
 import { MAPPINGS, mappingById } from "../../keyboard/mappings";
 import { useMenuKeys } from "../../keyboard/hooks";
 
-/** The shortcuts every question has, whatever the shortcut style. */
-const DEFAULT_SHORTCUTS: [string, string][] = [
-  ["← → ↑ ↓", "Move between answer options, or swipe"],
-  ["Ctrl + ←  or  / ←  / 4", "Previous question"],
-  ["Ctrl + →  or  / →  / 6", "Next question (when possible)"],
-  ["Ctrl + Enter  or  / Enter", "Continue / done"],
-  ["Ctrl + Space  or  / Space  / 0", "The question's instruction (when it has one)"],
-  ["/ 8,  / 9", "Don't know, not applicable (when the question has them)"],
-  ["Typing", "Depends on the question: a number, a search"],
+/** The shortcuts every question has, whatever the shortcut style: the keys (alternatives, a line each) and what they do. */
+const DEFAULT_SHORTCUTS: [string[], string][] = [
+  [["← → ↑ ↓"], "Move between answer options, or swipe"],
+  [["Ctrl + ←", "/ ←", "/ 4"], "Previous question"],
+  [["Ctrl + →", "/ →", "/ 6"], "Next question (when possible)"],
+  [["Ctrl + Enter", "/ Enter"], "Continue / done"],
+  [["Ctrl + Space", "/ Space", "/ 0"], "The question's instruction (when it has one)"],
+  [["/ 8"], "Don't know (when the question has it)"],
+  [["/ 9"], "Not applicable (when the question has it)"],
+  [["Typing"], "Depends on the question: a number, a search"],
 ];
 
 /**
@@ -50,7 +51,7 @@ export function KeyboardMenu() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="max-h-(--radix-popover-content-available-height) w-72 space-y-3 overflow-y-auto p-3 shadow-lg"
+        className="max-h-(--radix-popover-content-available-height) w-80 space-y-3 overflow-y-auto p-3 shadow-lg"
         // Closed: the keys go back to the question, not to this button (Space would open it again)
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -58,10 +59,14 @@ export function KeyboardMenu() {
           Keyboard shortcuts
         </h4>
 
-        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px]">
           {DEFAULT_SHORTCUTS.map(([keys, what]) => (
-            <div key={keys} className="contents">
-              <dt className="font-mono text-foreground">{keys}</dt>
+            <div key={what} className="contents">
+              <dt className="flex flex-col font-mono whitespace-nowrap text-foreground">
+                {keys.map((key) => (
+                  <span key={key}>{key}</span>
+                ))}
+              </dt>
               <dd className="text-muted-foreground">{what}</dd>
             </div>
           ))}
