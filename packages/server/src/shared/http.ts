@@ -13,13 +13,21 @@ export interface RequestIssue {
  */
 export class HttpError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 503,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 429 | 503,
     message: string,
     /** Machine-readable code the client handles specially (contracts `CoderErrorCode`). */
     readonly code?: string,
     readonly issues?: RequestIssue[],
   ) {
     super(message);
+  }
+}
+
+/** 429 `rate_limited` (shared/rateLimit.ts): too many requests of a kind; counting starts again in `retryAfter` seconds. */
+export class TooManyRequests extends HttpError {
+  constructor(readonly retryAfter: number) {
+    const wait = retryAfter <= 60 ? "a minute" : `${Math.ceil(retryAfter / 60)} minutes`;
+    super(429, `Too many requests: try again in ${wait}`, "rate_limited");
   }
 }
 

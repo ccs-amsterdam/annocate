@@ -183,7 +183,7 @@ Generate the two secrets with `openssl rand -hex 32` (hex needs no quoting).
 | `OIDC_ACCOUNT_URL` | `https://auth.societal-analytics.nl/realms/idp/account` | Where users set up a second factor (`<OIDC_HOST>/account` for Keycloak). Required unless `AUTH_INSECURE_DISABLE_2FA` |
 | `ANNOTINDER_ADMINS` | e.g. `a.researcher@vu.nl,b.researcher@vu.nl` | The first admins: these verified addresses get the admin role at login |
 
-`compose.yml` sets `DATABASE_URL` and `ANNOTINDER_TRUST_PROXY=1` (the app is
+`compose.yml` sets `DATABASE_URL` and `ANNOTINDER_TRUST_PROXY=proxy` (the app is
 reachable only through Caddy, so rate limits use `X-Forwarded-For`); the image
 sets `PORT` and `ANNOTINDER_CLIENT_DIR`. Never set `AUTH_DEV_MODE` or
 `ANNOTINDER_DEMO` on a server. All settings: [Settings](#settings).
@@ -617,9 +617,11 @@ channel that is read.
    minutes, on `https://<host>/api/health`, expecting `"ok":true`. Any uptime
    service does this (for example Uptime Kuma on another lab machine, or a
    hosted one). **`/api/health` does not look at the database**: it answers
-   as long as the server process runs, also when Postgres is down
-   (`plans/go-live.md`, P-06). So add a second check that does reach the
-   database: `GET https://<host>/api/me` with the header
+   as long as the server process runs, also when Postgres is down. So point
+   the check at `https://<host>/api/ready` instead, expecting status 200: it
+   asks the database too, and answers 503 with `"database":false` when
+   Postgres is down or doesn't answer within 3 seconds. A check that also
+   covers logging in: `GET https://<host>/api/me` with the header
    `authorization: Bearer <api key>`, expecting status 200. Make the API key
    for an account without roles in any study; a key can't do sensitive
    actions. Or run the smoke test with a key from another machine, daily
@@ -753,14 +755,13 @@ never been run that way. From the code:
 | **Results downloads** | The file is written to the instance's disk and the download link read from disk. On another instance: "this download link has expired". **Break** unless `ANNOTINDER_FILES_DIR` is a folder all instances share |
 | A study's limit on answers | Counted per instance, read again once a minute: a little over the limit at worst |
 | A link's settings | Cached per instance for up to a minute: a revoked link can work a minute longer on another instance |
-| `/api/health` | Does not look at the database: a load balancer keeps sending visitors to an instance that lost its database |
+| Health checks | `/api/health` does not look at the database: give the load balancer `/api/ready`, which answers 503 on an instance that lost its database |
 
 So, before a second instance: previews in the database, or session affinity
 at the load balancer (Cloudflare's sets one more cookie); results files in a
-shared store (`plans/exports-and-files.md` plans S3); a health check that
-includes the database; a `compose.yml` without the `db` service; and a
-test of all of it under load. These are in `plans/go-live.md` (P-06, P-08,
-P-09, P-15).
+shared store (`plans/exports-and-files.md` plans S3); a `compose.yml`
+without the `db` service; and a test of all of it under load. These are in
+`plans/go-live.md` (P-08, P-09, P-15).
 
 ### Where Postgres runs
 
@@ -887,10 +888,7 @@ Caddyfile:
 ```
 annotinder.com {
 	tls /etc/caddy/origin.pem /etc/caddy/origin.key
-	reverse_proxy 127.0.0.1:8787 {
-		# The visitor's address, from Cloudflare (step 4)
-		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-	}
+	reverse_proxy 127.0.0.1:8787
 }
 ```
 
@@ -900,8 +898,8 @@ header, with `ANNOTINDER_PUBLIC_URL` starting with `https://`.
 
 #### 3. Only Cloudflare may reach the server
 
-Otherwise an attacker who finds the VM's address walks around the proxy,
-and can fake the visitor's address of step 4. On the VM's firewall, allow
+Otherwise an attacker who finds the VM's address walks around the proxy
+and its protection. On the VM's firewall, allow
 ports 80 and 443 from Cloudflare's address ranges only
 (`https://www.cloudflare.com/ips-v4` and `ips-v6`), and SSH from your own
 ranges as before:
@@ -923,17 +921,22 @@ server.
 
 #### 4. The visitor's real address
 
-The server limits requests per address (`security.md` §3), and takes the
-address from the **last** entry of `X-Forwarded-For` (`shared/rateLimit.ts`).
-Behind Caddy alone that is the visitor. Behind Cloudflare and Caddy it is a
-Cloudflare data centre: Caddy puts the address of whoever connected to it in
-that header, and that is Cloudflare. All visitors behind one Cloudflare
-address would then share one limit: 60 logins a minute, 300 new coder
-sessions a minute.
+The server limits requests per address (`security.md` §3). Behind Caddy alone
+(`ANNOTINDER_TRUST_PROXY=proxy`) it takes the address from the **last** entry
+of `X-Forwarded-For`: who connected to Caddy. Behind Cloudflare and Caddy
+that is a Cloudflare data centre, and all visitors behind one Cloudflare
+address would share one limit.
 
-The `header_up` line in the Caddyfile of step 2 fixes this by replacing the
-header with `CF-Connecting-IP`, the visitor's address as Cloudflare saw it.
-It is only safe together with step 3: otherwise anyone can send that header.
+So set `ANNOTINDER_TRUST_PROXY=cloudflare` (in `compose.yml`, in place of
+`proxy`). The server then takes the address from `CF-Connecting-IP`, the
+visitor's address as Cloudflare saw it, but only for requests that reached
+Caddy from one of Cloudflare's addresses (`shared/clientAddress.ts` holds the
+list). Anyone else who sends the header is counted under their own address,
+so the setting is safe without step 3 too. Caddy needs no extra line: it
+passes `CF-Connecting-IP` on and writes `X-Forwarded-For` itself.
+
+The server says at start-up where it takes addresses from
+(`sudo docker compose logs app | grep "client addresses"`).
 
 **Test it** before the server opens. Open the login page in a browser, then:
 
@@ -942,9 +945,10 @@ sudo docker compose exec db psql -U annotinder -c "select key, count from rate_l
 ```
 
 The `login:` line must show your own public address
-(`curl -s https://ifconfig.me`), not one from Cloudflare's ranges. A setting
-that makes the server read `CF-Connecting-IP` itself is proposed
-(`plans/go-live.md`, P-02).
+(`curl -s https://ifconfig.me`), not one from Cloudflare's ranges. If it
+shows a Cloudflare address, Cloudflare has added a range the server doesn't
+know yet: limits are then shared per Cloudflare address (tighter, never
+looser) until the list in `shared/clientAddress.ts` is updated.
 
 #### 5. What Cloudflare caches
 
@@ -997,7 +1001,7 @@ you turn on goes into the privacy statement's cookie table
 
 | Limit | Cloudflare (Free and Pro) | The server | What it means |
 | --- | --- | --- | --- |
-| Size of one request | **100 MB** (Business: 200 MB) | 256 MB for the researcher API (`/api/study/*`), 2 MB for coders, 1 MB for admin, 64 KB for account settings | A units upload or study import between 100 and 256 MB works on the lab's server and fails behind Cloudflare, with Cloudflare's own error page (413). Split the upload (P-10) |
+| Size of one request | **100 MB** (Business: 200 MB) | 256 MB for a units upload, a study import and a study from a recipe; 4 MB for the rest of the researcher API (`/api/study/*`), 2 MB for coders, 1 MB for admin, 64 KB for everything else (`shared/bodyLimit.ts`) | A units upload or study import between 100 and 256 MB works on the lab's server and fails behind Cloudflare, with Cloudflare's own error page (413). Split the upload (P-10) |
 | Time until the server starts answering | **100 to 120 seconds** (Cloudflare's pages give both numbers; only Enterprise can raise it). Then error 524 | None in the server or Caddy. Node's own default allows 5 minutes to receive one request | Affected: making the results download and exporting a study (both are built completely before the answer starts), importing a study, a very large upload or deploy. Fine for ordinary studies; measure with your largest one (P-13) |
 | Size of a download | No limit for answers that aren't cached | None | Results downloads of any size pass |
 
@@ -1070,8 +1074,9 @@ The same `compose.yml` works on any machine with Docker:
 
 The app listens on `127.0.0.1:8787`. Put a TLS proxy in front that keeps the
 `Host` header and sets `X-Forwarded-Proto` and `X-Forwarded-For` (Caddy's
-block from step 7 does). The server takes the client's address from the last
-entry of `X-Forwarded-For`: with a second proxy in front, see
+block from step 7 does). With `ANNOTINDER_TRUST_PROXY=proxy` (compose sets
+it) the server takes the client's address from the last entry of
+`X-Forwarded-For`: with Cloudflare in front as well, see
 [The visitor's real address](#4-the-visitors-real-address).
 
 ## Settings
@@ -1081,8 +1086,8 @@ those for `compose.yml`.
 
 | Variable | What |
 | --- | --- |
-| `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, no trailing slash. The login callback is `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`; `https://` turns on HSTS |
-| `ANNOTINDER_SECRET` | Signs login state, preview links and download links (`openssl rand -hex 32`); without it these end at every restart |
+| `ANNOTINDER_PUBLIC_URL` | Where browsers reach AnnoTinder, no path or trailing slash. The login callback is `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`; `https://` turns on HSTS. Required with `DATABASE_URL` (the server doesn't start without it, except in development mode) |
+| `ANNOTINDER_SECRET` | Signs login state, preview links and download links (`openssl rand -hex 32`); at least 32 characters. Required with `DATABASE_URL`; without it (development) these end at every restart |
 | `DATABASE_URL` | Postgres, e.g. `postgres://user:pass@host:5432/annotinder` (compose sets it). Without it: PGlite in `PGLITE_DIR` (development) |
 | `OIDC_HOST`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | The login provider's issuer and client. Without them nobody can log in |
 | `OIDC_MFA_CLAIM` | Which ID token claim is a second factor: `amr:mfa` (default) or `acr:<value>` (`security.md` §1) |
@@ -1091,8 +1096,9 @@ those for `compose.yml`.
 | `AUTH_STEP_UP_MAX_AGE` | Seconds a second factor stays fresh for sensitive actions (default 600) |
 | `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: weaker security, for teaching and servers without sensitive data (`security.md` §1) |
 | `ANNOTINDER_ADMINS` | Comma-separated addresses that get the admin role at login |
-| `ANNOTINDER_TRUST_PROXY` | `1`: take the client's address (for rate limits) from the last entry of `X-Forwarded-For`. Only when the server is reachable only through the proxy (compose sets it) |
+| `ANNOTINDER_TRUST_PROXY` | What is in front of the server, which says where the client's address (for rate limits) comes from. `none` (default): the connection. `proxy`: the last entry of `X-Forwarded-For`; only when the server is reachable only through one proxy (compose sets it). `cloudflare`: `CF-Connecting-IP` for requests that reached that proxy from Cloudflare ([The visitor's real address](#4-the-visitors-real-address)). Any other value: the server doesn't start |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (e.g. a load test from one machine) |
+| `ANNOTINDER_NEW_SESSIONS_PER_ADDRESS` | How many new coder sessions one address may ask for per 10 minutes (default 500: a brake only, since a whole class can share one address), or `off` |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins (space or comma separated) that may frame AnnoTinder, e.g. `https://amcat.example.org` |
 | `ANNOTINDER_COMMIT` | The commit recorded with each deployment; a build argument of the image |
 | `POSTGRES_PASSWORD` | Compose only: the database password |
@@ -1191,7 +1197,9 @@ Each deployment records the release and commit it ran on (the deploy history,
 and `design.json` in the results). The release is in the code; the commit
 comes from `ANNOTINDER_COMMIT` (a build argument; "unknown" without it, which
 the smoke test reports). A server run from a git checkout finds the commit
-itself. `GET /api/health` answers `{ ok: true, service, release, commit }`.
+itself. `GET /api/health` answers `{ ok: true, service, release, commit }`
+without asking the database; `GET /api/ready` asks it too and answers
+`{ ok, service, database }`, with status 503 when the database doesn't answer.
 
 ## Several server processes
 

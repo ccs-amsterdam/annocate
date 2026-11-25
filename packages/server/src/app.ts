@@ -1,51 +1,49 @@
-import { createHash } from "node:crypto";
-import { getCookie } from "hono/cookie";
-import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
-import { readDevice } from "./runtime/session.js";
-import { SESSION_COOKIE } from "./researcher/login.js";
-import { securityHeaders } from "./shared/securityHeaders.js";
-import { Hono, type Context } from "hono";
-import { cors } from "hono/cors";
-import { compress } from "hono/compress";
-import { bodyLimit } from "hono/body-limit";
+import { Readable } from "node:stream";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
-import type { Db } from "./db/index.js";
-import { CLIENT_VERSION } from "./version.js";
+import { Hono, type Context } from "hono";
+import { compress } from "hono/compress";
+import { cors } from "hono/cors";
 import type { Env, Server } from "./context.js";
 import { coderApi } from "./coder.js";
 import { coderAccount } from "./coderAccount.js";
-import { Deployments } from "./runtime/registry.js";
-import { DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime/runtime.js";
-import type { Store } from "./runtime/store.js";
-import { HttpError, logLines, postgresCode } from "./shared/http.js";
-import { annotationsReset } from "./researcher/annotations.reset.js";
-import { annotations } from "./researcher/annotations.js";
-import { results } from "./researcher/results.js";
-import { DiskFileStore, readFileToken, type FileStore } from "./shared/files.js";
-import { Readable } from "node:stream";
-import { me } from "./researcher/me.js";
-import { admin } from "./researcher/admin.js";
-import { login } from "./researcher/login.js";
+import { databaseAnswers, type Db } from "./db/index.js";
 import { Oidc, type OidcOptions } from "./oidc.js";
-import { designVersion } from "./researcher/design.$id.js";
-import { designVersions } from "./researcher/design.js";
+import { admin } from "./researcher/admin.js";
+import { annotations } from "./researcher/annotations.js";
+import { annotationsReset } from "./researcher/annotations.reset.js";
 import { coders } from "./researcher/coders.js";
+import { deployment } from "./researcher/deployment.js";
 import { deploymentPreview } from "./researcher/deployment.preview.js";
 import { deploymentStatus } from "./researcher/deployment.status.js";
-import { deployment } from "./researcher/deployment.js";
+import { designVersion } from "./researcher/design.$id.js";
+import { designVersions } from "./researcher/design.js";
+import { examples } from "./researcher/examples.js";
 import { links } from "./researcher/links.js";
+import { login } from "./researcher/login.js";
+import { me } from "./researcher/me.js";
+import { overview } from "./researcher/overview.js";
+import { results } from "./researcher/results.js";
+import { sets } from "./researcher/sets.js";
 import { study } from "./researcher/study.$id.js";
 import { studyUsers } from "./researcher/study.$id.users.js";
 import { studies } from "./researcher/study.js";
-import { examples } from "./researcher/examples.js";
-import { overview } from "./researcher/overview.js";
-import { unit } from "./researcher/units.$id.js";
-import { sets } from "./researcher/sets.js";
-import { unitsFields } from "./researcher/units.fields.js";
-import { unitsPage } from "./researcher/units.page.js";
-import { units } from "./researcher/units.js";
 import { studyExports } from "./researcher/studyExport.js";
+import { unit } from "./researcher/units.$id.js";
+import { unitsFields } from "./researcher/units.fields.js";
+import { units } from "./researcher/units.js";
+import { unitsPage } from "./researcher/units.page.js";
+import { Deployments } from "./runtime/registry.js";
+import { DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime/runtime.js";
+import type { Store } from "./runtime/store.js";
+import { requestBodyLimit } from "./shared/bodyLimit.js";
+import { requestLog } from "./shared/requestLog.js";
+import type { TrustProxy } from "./shared/clientAddress.js";
+import { DiskFileStore, readFileToken, type FileStore } from "./shared/files.js";
+import { HttpError, TooManyRequests, logLines, postgresCode } from "./shared/http.js";
+import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
+import { securityHeaders } from "./shared/securityHeaders.js";
+import { CLIENT_VERSION } from "./version.js";
 
 export interface AppOptions {
   /** Signs preview tokens. Random per process if not given (previews then end with a restart). */
@@ -83,10 +81,12 @@ export interface AppOptions {
   frameAncestors?: string[];
   /** Browsers reach the server over HTTPS (`ANNOTINDER_PUBLIC_URL`): sends HSTS. */
   https?: boolean;
-  /** Rate limits per minute (docs/security.md); absent: none (tests). The server turns them on by default. */
+  /** Rate limits (docs/security.md, shared/rateLimit.ts); absent: none (tests). The server turns them on by default. */
   rateLimits?: Partial<RateLimits>;
-  /** Behind a proxy that sets X-Forwarded-For (`ANNOTINDER_TRUST_PROXY`): the client's address comes from it. */
-  trustProxy?: boolean;
+  /** What is in front of the server (`ANNOTINDER_TRUST_PROXY`): where the client's address comes from (shared/clientAddress.ts). Default none. */
+  trustProxy?: TrustProxy;
+  /** Writes a line per API request (shared/requestLog.ts); absent: no request log (tests). The server logs to the console. */
+  log?: (line: string) => void;
 }
 
 /**
@@ -95,8 +95,24 @@ export interface AppOptions {
  * database is a restart: runtimes rebuild from the database.
  */
 export function createApp(db: Db, options: AppOptions = {}) {
+  const server = buildServer(db, options);
+
+  const app = new Hono<Env>();
+  app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
+  // Compressed responses (gzip): JSON and the client's files shrink 5 to 20 times. No BREACH
+  // risk: cross-site pages can't make a browser send API requests with its cookies (the
+  // x-annotinder header, researcher/auth.ts).
+  app.use("*", compress({ encoding: "gzip" }));
+  app.onError(errorResponse);
+  app.route("/api", api(server, options.log));
+  if (options.clientDir) serveClient(app, options.clientDir);
+  return app;
+}
+
+/** What every endpoint gets, from the options. */
+function buildServer(db: Db, options: AppOptions): Server {
   const secret = options.secret ?? crypto.randomUUID();
-  const server: Server = {
+  return {
     db,
     deployments: new Deployments(db, secret, { ...DEFAULT_RUNTIME_OPTIONS, ...options.runtime }, options.wrapStore),
     devMode: options.devMode ?? false,
@@ -118,68 +134,80 @@ export function createApp(db: Db, options: AppOptions = {}) {
       disable2fa: options.insecure?.disable2fa ?? false,
       disableEmailVerification: options.insecure?.disableEmailVerification ?? false,
     },
+    rateLimiter: options.rateLimits
+      ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? "none")
+      : null,
   };
+}
 
-  const app = new Hono<Env>();
-  app.use("*", securityHeaders({ frameAncestors: options.frameAncestors, https: options.https ?? false }));
-  // Compressed responses (gzip): JSON and the client's files shrink 5 to 20 times. No BREACH
-  // risk: cross-site pages can't make a browser send API requests with its cookies (the
-  // x-annotinder header, researcher/auth.ts).
-  app.use("*", compress({ encoding: "gzip" }));
-  const onError = (err: Error, c: Context) => {
-    if (err instanceof HttpError)
-      return c.json(
-        { error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.issues ? { issues: err.issues } : {}) },
-        err.status,
-      );
-    const pgCode = postgresCode(err);
-    // Postgres: a malformed or out-of-range value in a parameter (e.g. a number in the query).
-    if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);
-    // A unique constraint, e.g. two units with the same external id in one upload.
-    if (pgCode === "23505") return c.json({ error: "Already exists" }, 409);
-    console.error(logLines(err).join("\n"));
-    return c.json({ error: "Internal error" }, 500);
-  };
-  app.onError(onError);
+/** The response to an error a handler threw: the API's one error shape (shared/http.ts). */
+function errorResponse(err: Error, c: Context<Env>) {
+  if (err instanceof TooManyRequests) c.header("Retry-After", String(err.retryAfter));
+  if (err instanceof HttpError)
+    return c.json(
+      { error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.issues ? { issues: err.issues } : {}) },
+      err.status,
+    );
+  const pgCode = postgresCode(err);
+  // Postgres: a malformed or out-of-range value in a parameter (e.g. a number in the query).
+  if (pgCode === "22P02" || pgCode === "22003") return c.json({ error: "Invalid parameter" }, 400);
+  // A unique constraint, e.g. two units with the same external id in one upload.
+  if (pgCode === "23505") return c.json({ error: "Already exists" }, 409);
+  // Unexpected: logged under the request's id, which the response names
+  const requestId = c.get("requestId");
+  console.error([`Error in request ${requestId}`, ...logLines(err)].join("\n"));
+  return c.json({ error: "Internal error", requestId }, 500);
+}
 
-  // The APIs, all under /api (contracts endpoint paths are relative to it)
+/** The APIs, all under /api (contracts endpoint paths are relative to it). */
+function api(server: Server, log: AppOptions["log"]): Hono<Env> {
   const api = new Hono<Env>();
-  api.onError(onError);
+  api.onError(errorResponse);
+  api.use("*", requestLog(log));
+  healthRoutes(api, server);
+  mountLimits(api, server);
+  coderRoutes(api, server);
+  researcherRoutes(api, server);
+  filesRoute(api, server);
+  // Anything else under /api: not found, as JSON (never the app)
+  api.all("*", (c) => c.json({ error: "Not found" }, 404));
+  return api;
+}
+
+function healthRoutes(api: Hono<Env>, server: Server): void {
+  // Is the process up? Asks nothing of the database, so it stays cheap (the container's own check).
   api.get("/health", (c) => c.json({ ok: true, service: "annotinder", ...CLIENT_VERSION }));
+  // Can it serve requests? Also asks the database: for uptime checks and load balancers.
+  api.get("/ready", async (c) => {
+    const database = await databaseAnswers(server.db);
+    return c.json({ ok: database, service: "annotinder", database }, database ? 200 : 503);
+  });
+}
 
-  // Request bodies: a coder sends one unit's answers at a time; a researcher
-  // may upload all units at once (each unit is also checked against the
-  // server's unit size, shared/limits.ts).
-  const tooLarge = (c: Context) => c.json({ error: "The request is too large", code: "request_too_large" }, 413);
-  api.use("/d/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
-  api.use("/study/*", bodyLimit({ maxSize: 256 * 1024 * 1024, onError: tooLarge }));
-  api.use("/admin/*", bodyLimit({ maxSize: 1024 * 1024, onError: tooLarge }));
-  api.use("/me/*", bodyLimit({ maxSize: 64 * 1024, onError: tooLarge }));
+/** How large a request may be and how many there may be, before any route reads one. */
+function mountLimits(api: Hono<Env>, server: Server): void {
+  api.use("*", requestBodyLimit());
 
-  // Rate limits (docs/security.md): generous, against floods and guessing.
-  const limiter = options.rateLimits
-    ? new RateLimiter(db, { ...DEFAULT_RATE_LIMITS, ...options.rateLimits }, options.trustProxy ?? false)
-    : null;
-  api.use("/d/*", rateLimit(limiter, "coder", { memory: true }));
-  api.use("/d/*", rateLimit(limiter, "coderStart", { when: (c) => !readDevice(c) }));
-  api.use("/d/*", rateLimit(limiter, "transfer", { when: (c) => c.req.path.endsWith("/transfer/redeem") }));
+  // Rate limits (docs/security.md): generous, against floods and guessing. New coder sessions
+  // (runtime/store.ts) and researchers once authenticated (researcher/auth.ts) are counted
+  // where they are known, with `server.rateLimiter`.
+  const limiter = server.rateLimiter;
+  for (const path of ["/d/*", "/coder/*"]) api.use(path, rateLimit(limiter, "coder", { memory: true }));
+  api.use("/d/:deployment/transfer/redeem", rateLimit(limiter, "transfer"));
   // Logins and their callbacks (against guessing)
   for (const path of ["/auth/login", "/auth/callback"]) api.use(path, rateLimit(limiter, "login"));
-  // Per account: the API key or login session (hashed: no secrets in the table), else per address.
-  const accountKey = (c: Context) => {
-    const credential = c.req.header("authorization") ?? getCookie(c, SESSION_COOKIE);
-    return credential ? `account:${createHash("sha256").update(credential).digest("hex").slice(0, 32)}` : null;
-  };
   // ("/study/*" also matches "/study")
-  for (const path of ["/study/*", "/me/*", "/admin/*"])
-    api.use(path, rateLimit(limiter, "researcher", { key: accountKey }));
+  for (const path of ["/study/*", "/me/*", "/admin/*"]) api.use(path, rateLimit(limiter, "researcherAddress"));
+}
 
-  // Coder API (coder.ts): same origin as the client, no CORS.
-  api.use("/coder/*", rateLimit(limiter, "coder", { memory: true }));
+/** The coder API (coder.ts): same origin as the client, no CORS. */
+function coderRoutes(api: Hono<Env>, server: Server): void {
   api.route("/d/:deployment", coderApi(server));
   api.route("/", coderAccount(server));
+}
 
-  // Researcher API (researcher/): full paths, API keys (researcher/auth.ts).
+/** The researcher API (researcher/): full paths, API keys (researcher/auth.ts). */
+function researcherRoutes(api: Hono<Env>, server: Server): void {
   // CORS, so a client on another origin (e.g. the Vite dev server) can call it.
   // Cookies are same-origin only: CORS here is for API keys.
   for (const path of ["/study", "/study/*", "/me", "/me/*", "/admin/*"]) api.use(path, cors());
@@ -211,7 +239,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
     results,
   ])
     api.route("/", routes(server));
-  // Download links (shared/files.ts): the token names the file and expires
+}
+
+/** Download links (shared/files.ts): the token names the file and expires. */
+function filesRoute(api: Hono<Env>, server: Server): void {
   api.get("/files/:token", async (c) => {
     const file = readFileToken(server.secret, c.req.param("token"));
     const size = file && (await server.files.size(file.key));
@@ -226,21 +257,16 @@ export function createApp(db: Db, options: AppOptions = {}) {
       },
     });
   });
-  // Anything else under /api: not found, as JSON (never the app)
-  api.all("*", (c) => c.json({ error: "Not found" }, 404));
-  app.route("/api", api);
+}
 
-  if (options.clientDir) {
-    const root = options.clientDir;
-    // Built files have hashed names: cached for good.
-    app.use("/assets/*", async (c, next) => {
-      await next();
-      if (c.res.ok) c.header("cache-control", "public, max-age=31536000, immutable");
-    });
-    app.use("*", serveStatic({ root }));
-    // Everything else outside /api is the app (it reads its state from the URL).
-    app.get("*", serveStatic({ path: join(root, "index.html") }));
-  }
-
-  return app;
+/** The built client in `root`: its files, and the app for every other path outside /api. */
+function serveClient(app: Hono<Env>, root: string): void {
+  // Built files have hashed names: cached for good.
+  app.use("/assets/*", async (c, next) => {
+    await next();
+    if (c.res.ok) c.header("cache-control", "public, max-age=31536000, immutable");
+  });
+  app.use("*", serveStatic({ root }));
+  // Everything else outside /api is the app (it reads its state from the URL).
+  app.get("*", serveStatic({ path: join(root, "index.html") }));
 }

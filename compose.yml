@@ -25,8 +25,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgres://annotinder:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/annotinder
-      # Only reachable through the proxy on this machine (127.0.0.1 below): client addresses from X-Forwarded-For
-      ANNOTINDER_TRUST_PROXY: "1"
+      # Only reachable through the proxy on this machine (127.0.0.1 below): client addresses from
+      # X-Forwarded-For. Set ANNOTINDER_TRUST_PROXY=cloudflare in .env behind the Cloudflare proxy.
+      ANNOTINDER_TRUST_PROXY: ${ANNOTINDER_TRUST_PROXY:-proxy}
     ports:
       - "127.0.0.1:8787:8787"
     depends_on:

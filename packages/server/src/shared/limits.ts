@@ -18,8 +18,10 @@ export async function studyLimits(db: Db, studyId: number): Promise<{ ownerId: n
 
 const limitReached = (message: string) => new HttpError(403, message, "limit_reached");
 
-const size = (bytes: number) =>
-  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB`;
+function size(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return bytes >= 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${bytes} bytes`;
+}
 
 /** Refuses an upload that adds `added` units past the study's or its owner's limits, or a unit larger than the server allows. */
 export async function checkUnitUpload(
@@ -72,24 +74,4 @@ export function checkAnswerSize(name: string, value: unknown, answerBytes: numbe
       `The answer to '${name}' takes ${size(bytes)}; at most ${size(answerBytes)}`,
       "answer_too_large",
     );
-}
-
-/** Refuses an imported study (already written, in the caller's transaction) past its owner's limits on units and coders. */
-export async function checkImportedStudy(db: Db, studyId: number): Promise<void> {
-  const { ownerId, limits } = await studyLimits(db, studyId);
-  if (limits.unitsPerStudy != null) {
-    const n = await db.$count(unitsTable, and(eq(unitsTable.studyId, studyId), eq(unitsTable.inDraft, true)));
-    if (n > limits.unitsPerStudy)
-      throw limitReached(`A study can have at most ${limits.unitsPerStudy} units; this one has ${n}`);
-  }
-  if (limits.units != null && ownerId !== null) {
-    const { units } = await usage(db, ownerId);
-    if (units > limits.units)
-      throw limitReached(`You can have at most ${limits.units} units in all your studies; with this one, ${units}`);
-  }
-  if (limits.codersPerStudy != null) {
-    const n = await db.$count(coderSessions, eq(coderSessions.studyId, studyId));
-    if (n > limits.codersPerStudy)
-      throw limitReached(`A study can have at most ${limits.codersPerStudy} coders; this one has ${n}`);
-  }
 }

@@ -4,6 +4,7 @@ import type { Deployments } from "./runtime/registry.js";
 import type { Researcher } from "./researcher/auth.js";
 import type { Oidc } from "./oidc.js";
 import type { FileStore } from "./shared/files.js";
+import type { RateLimiter } from "./shared/rateLimit.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
@@ -40,11 +41,15 @@ export interface Server {
    * confirm their address can log in. Never for sensitive data.
    */
   insecure: { disable2fa: boolean; disableEmailVerification: boolean };
+  /** Counts requests against the rate limits (shared/rateLimit.ts); null: no limits (`ANNOTINDER_RATE_LIMITS=off`, tests). */
+  rateLimiter: RateLimiter | null;
 }
 
 /** Hono context variables, set by the auth middleware. */
 export interface Env {
   Variables: {
+    /** The request's id, as in its log line (shared/requestLog.ts). */
+    requestId: string;
     studyId: number;
     /** Researcher API only (researcher/auth.ts). */
     researcher: Researcher;

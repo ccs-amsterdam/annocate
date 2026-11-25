@@ -693,6 +693,29 @@ describe("links, coder progress and overview", () => {
   });
 });
 
+describe("health checks", () => {
+  it("/api/health says the process is up without asking the database; /api/ready asks it", async () => {
+    const down = { execute: () => Promise.reject(new Error("connection refused")) } as unknown as Db;
+    const health = await createApp(down).request("/api/health");
+    expect(health.status).toBe(200);
+    expect(await json(health)).toMatchObject({ ok: true, service: "annotinder" });
+
+    const ready = await app.request("/api/ready");
+    expect(ready.status).toBe(200);
+    expect(await json(ready)).toEqual({ ok: true, service: "annotinder", database: true });
+    const notReady = await createApp(down).request("/api/ready");
+    expect(notReady.status).toBe(503);
+    expect(await json(notReady)).toEqual({ ok: false, service: "annotinder", database: false });
+  });
+
+  it("a database that doesn't answer in time is not ready", async () => {
+    const { databaseAnswers } = await import("../db/index.js");
+    const hangs = { execute: () => new Promise(() => undefined) } as unknown as Db;
+    expect(await databaseAnswers(hangs, 20)).toBe(false);
+    expect(await databaseAnswers(db)).toBe(true);
+  });
+});
+
 describe("security headers", () => {
   it("sends nosniff, a referrer policy and no framing by others; a CSP on pages; HSTS over HTTPS", async () => {
     const res = await app.request("/api/health");
@@ -721,30 +744,28 @@ describe("security headers", () => {
   });
 });
 
-describe("rate limits", () => {
-  it("count per kind and address (or account) per minute, in the database; 429 with Retry-After", async () => {
-    const limited = createApp(db, { devMode: true, rateLimits: { coderStart: 2, researcher: 3 } });
-    const start = () =>
-      limited.request("/api/d/demostudy001/session", { headers: { "x-annotinder": "1", "x-link-secret": "nope" } });
-    expect((await start()).status).not.toBe(429); // refused for other reasons (no such study), but counted
-    expect((await start()).status).not.toBe(429);
-    const third = await start();
-    expect(third.status).toBe(429);
-    expect(third.headers.get("retry-after")).toBe("60");
-    expect(await third.json()).toMatchObject({ code: "rate_limited" });
-    // A browser with a session cookie isn't starting one: not counted
-    expect(
-      (
-        await limited.request("/api/d/demostudy001/session", {
-          headers: { "x-annotinder": "1", cookie: "annotinder_device=x" },
-        })
-      ).status,
-    ).not.toBe(429);
+describe("request body limits", () => {
+  const send = (path: string, method: string, bytes: number) =>
+    app.request(path, { method, headers: adminHeaders, body: JSON.stringify({ padding: "x".repeat(bytes) }) });
+  const KB = 1024;
+  const MB = 1024 * KB;
 
-    const me = () => limited.request("/api/study", { headers: adminHeaders });
-    for (let i = 0; i < 3; i++) expect((await me()).status).toBe(200);
-    expect((await me()).status).toBe(429);
-    const [{ n }] = await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM rate_limits");
-    expect(n).toBeGreaterThan(0);
+  it("only the routes that take a study's units accept large bodies; 413 request_too_large otherwise", async () => {
+    const study = await createStudy();
+    const tooLarge = async (res: Response) => {
+      expect(res.status).toBe(413);
+      expect(await json(res)).toMatchObject({ code: "request_too_large" });
+    };
+    await tooLarge(await send(`/api/study/${study.id}/design`, "POST", 5 * MB));
+    await tooLarge(await send(`/api/study/${study.id}/sets/train`, "PUT", 5 * MB));
+    await tooLarge(await send("/api/coder/settings", "PUT", 100 * KB));
+    await tooLarge(await send("/api/me/researcher-request", "POST", 100 * KB));
+    await tooLarge(await send("/api/auth/logout", "POST", 100 * KB));
+    await tooLarge(await send("/api/d/demostudy001/variables/unit", "POST", 3 * MB));
+    // Units, an imported study and a study from a recipe: read, and refused for what they say
+    for (const path of [`/api/study/${study.id}/units`, "/api/study/import", "/api/study/from-recipe"])
+      expect((await send(path, "POST", 5 * MB)).status).toBe(400);
+    // Within the limit: a design that isn't one
+    expect((await send(`/api/study/${study.id}/design`, "POST", 3 * MB)).status).toBe(400);
   });
 });

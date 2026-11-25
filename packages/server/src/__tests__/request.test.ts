@@ -104,7 +104,7 @@ describe("database errors", () => {
     try {
       const res = await send("POST", "/admin/plans", JSON.stringify({ name: "a-secret-value", limits: {} }));
       expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ error: "Internal error" });
+      expect(await res.json()).toEqual({ error: "Internal error", requestId: res.headers.get("x-request-id") });
     } finally {
       await query(db, "ALTER TABLE plans_away RENAME TO plans");
     }
