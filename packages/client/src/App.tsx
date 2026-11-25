@@ -84,7 +84,7 @@ function AppHeader() {
   // The active section: the wood accent underneath (one of the few places wood is used)
   const nav =
     "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
-  const active = { className: "bg-muted text-foreground shadow-[inset_0_-2px_0_var(--wood)]" };
+  const active = { className: "bg-muted text-foreground" };
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm">
       <div className="flex flex-1 items-center gap-3">

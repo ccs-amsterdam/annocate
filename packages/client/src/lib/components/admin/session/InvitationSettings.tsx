@@ -86,7 +86,7 @@ function StudyCoders({ kind }: { kind: CoderKind }) {
         {title}
       </span>
       <span className="text-[11px] text-muted-foreground">
-        {short}. Chosen for the study: it can be changed in the study&apos;s Settings until the first deploy.
+        {short}.
       </span>
       <button
         type="button"

@@ -47,38 +47,44 @@ export function SessionHeader({ draft, readOnly }: { draft: DesignDraft; readOnl
           stays private, so it can say what the study is about.
         </InfoTip>
       </div>
-      <div className="flex flex-wrap items-center gap-1 px-1">
+      <div className="flex flex-col items-start gap-1 px-1">
+        <div className=" w-full flex justify-between flex-auto">
         <HeaderButton
           guide="who-codes"
-          icon={invite.mode === "coders" ? Users : Globe}
+          icon={invite?.mode === "coders" ? Users : Globe}
           label="Who codes"
           summary={inviteSummary(invite)}
           selected={selected && tab === "invite"}
-          issues={issuesOf("invite")}
+          // Not chosen: needed to deploy
+          issues={issuesOf("invite") + (invite ? 0 : 1)}
           title="Who codes, and how they get in. Open to edit"
           onClick={() => open("invite")}
         />
-        <HeaderButton
-          icon={Link2}
-          label="URL parameters"
-          summary={params.length === 0 ? "none" : params.map((p) => p.name).join(", ")}
-          selected={selected && tab === "urlParams"}
-          issues={issuesOf("urlParams")}
-          title="Values a link carries, e.g. from a panel. Open to edit"
-          onClick={() => open("urlParams")}
-        />
+
         <HeaderButton
           icon={Monitor}
           label="Display"
           summary={[
             session.display?.layouts === "responsive" ? "responsive" : "fixed layouts",
-            ...(session.display?.theme && session.display.theme !== "coder" ? [`always ${session.display.theme}`] : []),
+            ...(session.display?.theme && session.display.theme !== "coder"
+              ? [`always ${session.display.theme}`]
+              : []),
           ].join(", ")}
           selected={selected && tab === "display"}
           issues={issuesOf("display")}
           title="How the coding screen looks: layouts and theme. Open to edit"
           onClick={() => open("display")}
         />
+      </div>
+          <HeaderButton
+            icon={Link2}
+            label="URL parameters"
+            summary={params.length === 0 ? "none" : params.map((p) => p.name).join(", ")}
+            selected={selected && tab === "urlParams"}
+            issues={issuesOf("urlParams")}
+            title="Values a link carries, e.g. from a panel. Open to edit"
+            onClick={() => open("urlParams")}
+          />
       </div>
     </div>
   );

@@ -40,14 +40,16 @@ interface GuideSection {
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
     page: "Design",
-    title: "The study designer",
+    title: "Design",
     steps: [
       {
         id: "designer",
-        title: "The study designer",
+        title: "The design editor",
         text: [
-          "The design is what coders see, from top to bottom: here two questions about the coder, then a unit loop that shows each headline with its questions.",
-          "Left the tree, in the middle the form of the selected item, right a preview of it. Work on a wide screen to see the preview beside the form.",
+          "An AnnoTinder study is almost entirely defined in a single design blueprint. The design editor helps you create and navigate this blueprint. It consists of three main parts",
+          "- On the left you see the coder journey from start (top) to end (bottom). In the example coders start with survey questions (age, news use), and then code some headlines (topic, tone) with an optional question of political news (actor)",
+          "- When you select an item in the tree, the second panel lets you edit its settings",
+          "- On a wide screen, the third panel also shows a preview of the coder view. On smaller screens the 2nd and 3rd panels are combined, and you can select between them",
         ],
         sample: { page: "design", select: "topic" },
       },
