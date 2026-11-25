@@ -200,10 +200,11 @@ same `.env`.
 - **Changing `POSTGRES_PASSWORD`** in `.env` alone breaks the app: Postgres
   keeps the password it was created with. Change it in the database first
   (`ALTER USER annotinder PASSWORD '...'`), then in `.env`.
-- Today the server starts without `ANNOTINDER_SECRET` (a warning in the log)
-  and without `ANNOTINDER_PUBLIC_URL` (it then assumes `http://localhost`).
-  Check the startup lines of step 6 (release plan, B7-04, turns both into
-  errors).
+- With `DATABASE_URL` set (as `compose.yml` does) the server does not start
+  without `ANNOTINDER_SECRET` (at least 32 characters) and
+  `ANNOTINDER_PUBLIC_URL` (a web address without a path or trailing slash):
+  `sudo docker compose logs app` then shows the setting to change, and the
+  container restarts until it is there.
 
 ### 6. Build and start
 
@@ -357,8 +358,20 @@ container is replaced: update at a quiet hour.
 ### 12. Logs
 
 - **Server**: `sudo docker compose logs -f app` (or `--since 1h`): startup
-  (settings, login, admins), failed logins (`Login failed: ...`), errors. The
-  server does not log requests (release plan, B7-05).
+  (settings, login, admins), failed logins (`Login failed: ...`), errors, and
+  one line per API request.
+- **The request log**: method, path, status, duration and the request's id,
+  e.g. `GET /api/study/3/units 200 12ms 9f2c1a7b04d1`. Never the query string
+  (coder links carry their secret and panel ids there), bodies, headers or
+  addresses; a download link's token is logged as `/api/files/…`.
+  `/api/health` is logged only when it fails (the container asks every few
+  seconds).
+- **Request ids**: every API response has the id in its `X-Request-Id`
+  header. An unexpected error answers `{"error":"Internal error","requestId":"…"}`,
+  and the researcher pages show it after the message ("Internal error (request id …)"). The log has
+  the error under `Error in request <id>` and the request's own line with the
+  same id: `sudo docker compose logs app | grep <id>`. Of a failed query the
+  log has its text and the database's message, never its parameters.
 - **Database and dumps**: `sudo docker compose logs db db-backup`.
 - **Caddy**: `journalctl -u caddy -n 100`.
 - Docker never trims logs itself, so `compose.yml` caps each service at 3
@@ -927,8 +940,9 @@ of `X-Forwarded-For`: who connected to Caddy. Behind Cloudflare and Caddy
 that is a Cloudflare data centre, and all visitors behind one Cloudflare
 address would share one limit.
 
-So set `ANNOTINDER_TRUST_PROXY=cloudflare` (in `compose.yml`, in place of
-`proxy`). The server then takes the address from `CF-Connecting-IP`, the
+So set `ANNOTINDER_TRUST_PROXY=cloudflare` in `.env` (`compose.yml` passes
+it on, and uses `proxy` when `.env` doesn't set it), then
+`sudo docker compose up -d`. The server then takes the address from `CF-Connecting-IP`, the
 visitor's address as Cloudflare saw it, but only for requests that reached
 Caddy from one of Cloudflare's addresses (`shared/clientAddress.ts` holds the
 list). Anyone else who sends the header is counted under their own address,
@@ -1107,7 +1121,7 @@ those for `compose.yml`.
 | `PGPOOL_MAX` | Database connections per server process (default 20) |
 | `PGLITE_DIR` | Without `DATABASE_URL`: the PGlite folder (default `packages/server/.pglite`) |
 | `ANNOTINDER_CLIENT_DIR` | The built client (the image sets it) |
-| `ANNOTINDER_FILES_DIR` | Where results downloads are kept (default: a folder in the temp folder; in the image that is inside the container, so it is emptied when the container is replaced). A cache: losing it only means the next download is written again. One file per study, replaced by the next download; it holds coders' answers, and is not removed when the study or a coder's data is deleted (`plans/go-live.md`, P-15) |
+| `ANNOTINDER_FILES_DIR` | Where results downloads are kept (default: a folder in the temp folder; in the image that is inside the container, so it is emptied when the container is replaced). A cache: losing it only means the next download is written again. One file per study, replaced by the next download; it holds coders' answers, so it is removed when the study is deleted, a coder's data is deleted or answers are reset |
 | `ANNOTINDER_DEMO` | `1`: an empty database gets the demo study. Development only |
 | `AUTH_DEV_MODE` | `1`: development auth headers instead of a login; the server only starts if it listens on localhost. **Never on a server others use** |
 
@@ -1179,17 +1193,31 @@ coders' data.
 
 - **Format** (`StudyExportManifestSchema`): gzipped JSON lines, a manifest
   (release, last migration), then each row as stored.
+- **Coders' email addresses** are in the file only if the deployed design
+  asks coders to sign in; otherwise the export leaves them out.
 - **Import** loads the rows into an empty in-memory database at that
   migration, applies newer migrations, and copies the result in one
   transaction. Exports from older releases open on newer ones; from a newer
   release (or unknown migrations) they are refused.
+- **The import checks the file before it writes anything**: the study's
+  settings and every design version must pass what saving them checks, the
+  deployed design what deploying checks (coders get it as soon as the import
+  is done), and every row must refer only to rows the file has. A file that
+  fails is refused (400 `export_invalid`, with the issues) and nothing is
+  created.
+- **Size**: the upload can be 256 MB (the gzipped file), and the file can
+  unpack to at most 400 MB of JSON lines; a larger one is refused. The import
+  holds the rows in memory. Behind Cloudflare the upload limit is
+  Cloudflare's 100 MB ([Limits of the proxy](#7-limits-of-the-proxy)).
 - **What changes**: every row gets a new id; the importer owns the study;
   links get new secrets (send coders the new links); coders' browsers can't
   continue, but a coder who logged in finds their session by logging in.
   Codings are derived again.
 - **What stays behind**: other users and their roles, leases, transfer links.
   Session ids differ from before the move: match coders by coder id.
-- The importer's limits apply.
+- The importer's limits apply (units, coders and answers per study, units in
+  all their studies), and this server's largest unit and answer: 403
+  `limit_reached` otherwise.
 
 ## Versions
 

@@ -40,8 +40,35 @@ provider. Without one, an orange shield by your account menu links to the
 setup page; log in twice afterwards.
 
 Some actions ask you to log in again (step-up): API keys, deleting
-answers, coders' data or a study, and giving or taking admin roles. API
-keys can't do these.
+answers, coders' data, a study or your account, exporting a study, and
+giving or taking admin roles. API keys can't do these.
+
+## Deleting your account
+
+Click your account (top right) → **Delete account**. It can't be undone.
+The dialog first tells you what happens to your studies:
+
+- **Studies in which only you have a role** are deleted with your account,
+  with all their units, answers and results. The dialog lists them.
+  [Download the results](results.md) or
+  [export the study](results.md#backing-up-or-moving-a-study) first if you
+  want to keep them.
+- **Your roles in other people's studies** go; those studies stay.
+
+Your logins, API keys and security log go too. To confirm, you type your
+email address.
+
+Your account **can't be deleted yet** while:
+
+- you **own a study in which others have a role**: delete the study,
+  remove the other users (see [Working together](working-together.md)), or
+  ask a server admin to give it another owner;
+- you are the **only ADMIN of someone else's study**: give another user
+  the ADMIN role first;
+- you are the **server's only admin**: make another user admin first.
+
+The dialog says which studies are in the way. So a study others work in
+never disappears with someone's account.
 
 ## Your account is your login
 

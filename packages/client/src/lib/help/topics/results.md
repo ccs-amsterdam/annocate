@@ -22,11 +22,25 @@ label columns, reset answers, and the raw export.
 | `display_changes.csv` | display change                   | shortcut style, screen width, theme                     |
 | `timings.csv`         | answer                           | time per question                                       |
 | `deleted_coders.csv`  | deleted session                  | to delete them from earlier downloads too               |
+| `reset_answers.csv`   | reset answer                     | only with **Include answers that were reset**           |
 | `README.txt`          |                                  | what the columns mean                                   |
 
 Files are UTF-8; times are UTC (`2026-10-27T14:05:00.000Z`). As Excel, each
-table is a sheet of the same name in `results.xlsx`; its text cells are
-plain text, never run as formulas.
+table is a sheet of the same name in `results.xlsx`.
+
+## Don't open the CSV files in a spreadsheet
+
+CSV cells are written as coders typed them. A spreadsheet program (Excel,
+LibreOffice, Google Sheets) runs a cell that starts with `=`, `+`, `-` or
+`@` as a formula, so a coder's open answer such as `=HYPERLINK(...)` would
+be run, not shown. The Download page says so next to the CSV choice, and
+`README.txt` repeats it.
+
+- **For R, Python, SPSS or Stata**: use the CSV files. These programs read
+  the text as text; nothing is changed or escaped, so what you read is what
+  the coder typed.
+- **To look at the data in a spreadsheet**: download as **Excel (.xlsx)**.
+  Its text cells are plain text, never run as formulas.
 
 **Raw export** (under **Download settings**) saves the data as the server keeps
 it, for scripts: a JSON-lines file per table and `manifest.json`. See the
@@ -223,9 +237,29 @@ d = (annotations
 
 ## Reset answers and scripts
 
-**Include answers that were reset** adds `reset_answers.csv` (see
-[Resetting answers](changing-a-live-design.md#resetting-answers)). Scripts
-can get the same data, or only what is new: see
+Answers that were reset no longer count: they are not in `annotations.csv`,
+and the units are coded again (see
+[Resetting answers](changing-a-live-design.md#resetting-answers)). They are
+kept, though. **Include answers that were reset** (under **Download
+settings**, off by default) adds `reset_answers.csv`, a row per reset
+answer:
+
+| Column                           | Meaning                                              |
+| -------------------------------- | ---------------------------------------------------- |
+| `unit_id`, `unit_version_id`     | the unit, and the version the coder saw              |
+| `session_id`, `coder`            | who answered                                         |
+| `variable`                       | the question                                         |
+| `value`                          | the answer, written as in `annotations.csv`          |
+| `value_label`                    | its label (with **Add label columns**)               |
+| `value_json`                     | the full answer as JSON                              |
+| `design_version`                 | the version it was answered under                    |
+| `answered`, `reset_at`           | when it was given, and when it was reset             |
+
+The new answers to the same units are in `annotations.csv`. Use
+`reset_answers.csv` to compare coding before and after a change of the
+design, or to show what was set aside.
+
+Scripts can get the same data, or only what is new: see
 [Scripts and the researcher API](researcher-api.md).
 
 ## Backing up or moving a study

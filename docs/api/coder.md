@@ -58,8 +58,15 @@ with an old version (all but `/session` and `/transfer`) get 409
 `design_changed` before anything is stored; the client reloads the session
 and continues (`docs/client.md` §2).
 
-Errors are `{ error, code? }`, with `code` from `CoderErrorCodeSchema`. See
+Errors are `{ error, code?, issues? }` ([README](README.md#errors)), with
+`code` from `CoderErrorCodeSchema`; a 500 also has `requestId`. See
 [`docs/coder-identity.md`](../coder-identity.md).
+
+**Limits.** A request body can be 2 MB (413 `request_too_large`); one
+answer as large as the server's setting allows (413 `answer_too_large`).
+Rate limits are per address (`security.md` §3): 429 `rate_limited` with a
+`Retry-After` header in seconds. The coding client tries again by itself
+after a 429, a 408, a 5xx or a network error (`docs/client.md` §2).
 
 ## Endpoints
 

@@ -31,27 +31,35 @@ carry one of:
 column below is the minimum). A study's creator is its `ADMIN` and owner.
 Each user also has an **account role** (`docs/accounts.md`): `user`,
 `researcher` (creates studies), `admin` (also the [admin API](admin.md)).
+A study the user has no role in answers **404**, like a study that doesn't
+exist; 403 is for a role that is too low.
 
 **Second factor and sensitive actions.** Researchers work without a second
 factor; server admin access needs one (else 403 `mfa_required`;
-`security.md` §1). API keys count as having one. **Sensitive actions**
-(creating or revoking API keys, resetting answers, deleting coders' data or a
-study, exporting a study, changing a study's ADMINs or the admin role) need a
+`security.md` §1). **Sensitive actions**
+(creating or revoking API keys, resetting answers, deleting coders' data, a
+study or one's account, exporting a study, changing a study's ADMINs or who
+is a server admin) need a
 web session whose second factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old
 (403 `step_up_required`: log in again with `/auth/login?stepUp=1`), and never
 work with an API key (403 `not_with_api_key`).
 
-**Errors** are `{ error, code? }`:
+**API keys** do everything else their user can do as a researcher. A key is
+never an admin: an admin's key works as a researcher's (`GET /me` answers
+`role: "researcher"` for it).
+
+**Errors** are `{ error, code?, issues? }` ([README](README.md#errors); a 500
+also has `requestId`):
 
 | Status | Meaning |
 |---|---|
-| 400 | invalid body or parameter |
+| 400 | invalid body or parameter (`issues`: what the schema refused); `confirmation_mismatch` (a deletion's `confirm` isn't the name or address) |
 | 401 | not logged in, no valid API key |
-| 403 | no (sufficient) role (`researcher_required` for the account role); `limit_reached` (the owner's limits); `study_suspended` (only reading and deleting still work) |
-| 404 | not found |
+| 403 | a role in the study that is too low; `researcher_required` (the account role); `limit_reached` (the owner's limits); `study_suspended` (a server admin suspended the study: only reading, deleting coders' data and deleting the study still work); `step_up_required`, `not_with_api_key` (sensitive actions) |
+| 404 | not found, or a study the user has no role in |
 | 409 | not allowed in this state (e.g. editing a deployed design version) |
-| 413 | too large (`unit_too_large`) |
-| 429 | `rate_limited` (`security.md` §3) |
+| 413 | too large (`request_too_large`, `unit_too_large`) |
+| 429 | `rate_limited`, with `Retry-After`: 6000 requests a minute per address and 1200 per user, over all their keys and sessions (`security.md` §3) |
 
 | Endpoint | | Role | Request | Response |
 |---|---|---|---|---|
@@ -60,6 +68,8 @@ work with an API key (403 `not_with_api_key`).
 | [logout](#logout) | `POST /auth/logout` | none | – | – |
 | [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
 | [requestResearcher](#requestresearcher) | `POST /me/researcher-request` | any | `ResearcherRequestWriteSchema` | `MeResponseSchema` |
+| [getAccountDeletion](#getaccountdeletion) | `GET /me/deletion` | any | – | `AccountDeletionSchema` |
+| [deleteAccount](#deleteaccount) | `DELETE /me` | any | `ConfirmDeletionSchema` | – |
 | [listApiKeys](#listapikeys) | `GET /me/keys` | any | – | `ApiKeyResponseSchema[]` |
 | [createApiKey](#createapikey) | `POST /me/keys` | any | `ApiKeyWriteSchema` | `ApiKeyCreatedSchema` |
 | [revokeApiKey](#revokeapikey) | `POST /me/keys/:id/revoke` | any | – | `ApiKeyResponseSchema` |
@@ -73,7 +83,7 @@ work with an API key (403 `not_with_api_key`).
 | [importStudy](#importstudy) | `POST /study/import` | any | the export's bytes | `StudyResponseSchema` |
 | [getStudy](#getstudy) | `GET /study/:id` | READ | – | `StudyResponseSchema` |
 | [updateStudy](#updatestudy) | `PUT /study/:id` | ADMIN | `StudyWriteSchema` | `StudyResponseSchema` |
-| [deleteStudy](#deletestudy) | `DELETE /study/:id` | ADMIN | – | – |
+| [deleteStudy](#deletestudy) | `DELETE /study/:id` | ADMIN | `ConfirmDeletionSchema` | – |
 | [getStudyUsers](#getstudyusers) | `GET /study/:id/users` | ADMIN | – | `StudyUserResponseSchema[]` |
 | [putStudyUsers](#putstudyusers) | `PUT /study/:id/users` | ADMIN | `StudyUsersWriteSchema` | – |
 | [getOverview](#getoverview) | `GET /study/:studyId/overview` | READ | – | `StudyOverviewSchema` |
@@ -100,6 +110,7 @@ work with an API key (403 `not_with_api_key`).
 | [reopenLink](#reopenlink) | `POST /study/:studyId/links/:id/reopen` | WRITE | – | `LinkResponseSchema` |
 | [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
 | [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `{ coders: CoderProgressSchema[], next? }` |
+| [listCoderUnits](#listcoderunits) | `GET /study/:studyId/coders/units` | READ | – | `CoderUnitsSchema` |
 | [deleteCoders](#deletecoders) | `POST /study/:studyId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
 | [postponeDeletion](#postponedeletion) | `POST /study/:studyId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
 | [listCoderDeletions](#listcoderdeletions) | `GET /study/:studyId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
@@ -148,10 +159,15 @@ session and redirects to `returnTo`. A refused login comes back with
 (`LoginErrorSchema`). Options: `stepUp=1` (a fresh second factor for
 sensitive actions, `docs/security.md` §1); `provider=previous` (the
 previous login provider, until `previous.until`); `link=1` (with a session:
-adds the login at the current provider to this account, account linking;
-`link_failed` if that login is someone else's). The login is the user of
+adds the login at the current provider to this account, account linking:
+only while the server moves providers, from a session of the previous
+provider, for a user without a login at the current one; `link_failed`
+otherwise, and if that login is someone else's; `docs/security.md` §1). The login is the user of
 that identity (`iss` + `sub`), or claims an invitation for its verified
 email (`docs/accounts.md` §1).
+
+The session cookie (`annotinder_session`, httpOnly) lasts 14 days from the
+session's last use: the server sends it again when it extends the session.
 
 ### getMe
 
@@ -170,6 +186,29 @@ now).
 `POST /me/researcher-request` (`{ message }`) → `MeResponseSchema`: asks
 the server's admins to become a researcher. 403 if the server takes no
 requests, 409 for researchers.
+
+### getAccountDeletion
+
+`GET /me/deletion` → `AccountDeletionSchema`: what deleting your account
+would do, for the dialog that asks to confirm it (`docs/accounts.md` §5):
+
+- `email`: the address to type to confirm;
+- `studies` (`[{ id, name }]`): deleted with the account, with all their
+  data: the studies you own and nobody else has a role in;
+- `blocking` (`[{ id, name, reason }]`): studies that keep the account from
+  being deleted. `reason: "shared"`: you own it and others have a role in
+  it; `"last_admin"`: someone else's study in which you are the only ADMIN;
+- `lastAdmin`: you are the server's only admin.
+
+### deleteAccount
+
+`DELETE /me` with `{ confirm: <your email address> }` → 204: deletes your
+account (logins, sessions, roles, API keys, security log) and the `studies`
+of [getAccountDeletion](#getaccountdeletion), and clears the session
+cookie. `confirm` is compared without capitals and surrounding spaces: 400
+`confirmation_mismatch` if it isn't the address. 409 `account_has_studies`
+while `blocking` has studies, 409 `last_admin` for the server's only
+admin; nothing is deleted then. Sensitive, as `createApiKey`.
 
 ### listApiKeys
 
@@ -261,7 +300,13 @@ a deploy. `StudyResponseSchema` also has
 
 ### deleteStudy
 
-`DELETE /study/:id` → 204. Removes the study and everything in it.
+`DELETE /study/:id` with `{ confirm: <the study's name> }` → 204. Removes
+the study and everything in it, also its stored results downloads (a
+download link handed out before stops working). `confirm` is the study's
+name exactly (surrounding spaces don't count): 400 `confirmation_mismatch`
+otherwise. Sensitive: a web session with a recent second factor (403
+`step_up_required`), never an API key (403 `not_with_api_key`). Logged in
+`security_log` (`study_deleted`). Works on a suspended study too.
 
 ### exportStudy
 
@@ -270,8 +315,9 @@ a deploy. `StudyResponseSchema` also has
 included, as gzipped JSON lines (a manifest, `StudyExportManifestSchema`,
 then the rows). Study ADMIN, and sensitive: a web session with a recent
 second factor (403 `step_up_required`), never an API key (403
-`not_with_api_key`). Logged in `security_log` (`study_exported`). See
-`docs/hosting.md` "Moving a study".
+`not_with_api_key`). Logged in `security_log` (`study_exported`). Coders'
+email addresses are in the file only if the deployed design asks coders to
+sign in. See `docs/hosting.md` "Moving a study".
 
 ### importStudy
 
@@ -282,7 +328,12 @@ their limits). Query: `name` (else the exported one), `coders=false`
 export's rows are migrated to this release first; every id is new and
 links get new secrets. 400 `export_invalid` for a file that isn't an
 export, comes from a newer release or from a database this release doesn't
-know.
+know, unpacks to more than 400 MB, or holds something a save or a deploy
+would refuse (a study setting, a design version, the deployed design, a row
+that refers to a row the file doesn't have); `issues` says what. 403
+`limit_reached` if it doesn't fit the importer's limits or this server's
+largest unit or answer. The body can be 256 MB. Nothing is created when it
+is refused.
 
 ### getStudyUsers
 
@@ -293,7 +344,7 @@ after a year without a second factor; `docs/accounts.md` §2).
 
 ### putStudyUsers
 
-`PUT /study/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400. The role goes to the user who has the address now, or to an invitation (a shadow user) that their first login claims. `restore: true` on an entry turns a `disabled` role on again. A change in who is `ADMIN` is sensitive: a web session with a recent second factor (403 `step_up_required`), never an API key (403 `not_with_api_key`).
+`PUT /study/:id/users` → 204. Replaces the whole list; it must keep at least one `ADMIN` (400 otherwise). Emails are stored lowercased, as accounts are; an email twice in the list is a 400. The role goes to the user who has the address now, or to an invitation (a shadow user) that their first login claims. `restore: true` on an entry turns a `disabled` role on again. A change in who is `ADMIN` is sensitive: a web session with a recent second factor (403 `step_up_required`), never an API key (403 `not_with_api_key`). Every change is logged in `security_log` (`study_users_changed`: who went from which role to which).
 
 ### getOverview
 
@@ -557,7 +608,8 @@ between coders (the Units page's coders panel, `admin/moveUnits.ts`).
 `POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ sessionIds?,
 coders?, emails? }`, at least one) → `{ sessionIds, answers }`. ADMIN.
 Deletes the matching coder sessions of the study and all their answers, also reset
-ones, for good (a coder withdrew; docs/coder-identity.md §8). Units
+ones, for good (a coder withdrew; docs/coder-identity.md §8), and the
+study's stored results downloads. Sensitive, as `createApiKey`. Units
 nobody has answers for any more can be deleted again; unit versions stay.
 Each deleted coder is logged (listCoderDeletions); `deletedBy` is the
 researcher's email.
@@ -574,8 +626,10 @@ UI then no longer brings up. The request stays until the coder is deleted.
 per deleted coder session `sessionId`, `coder`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
-can be deleted from those too. Not the email address: nothing that
-identifies the person is kept.
+can be deleted from those too. Not the email address: a `coder` that is an
+email address (coders who sign in) is `sha256:<hex>`, the SHA-256 of the
+address in lower case, which still matches the coder in earlier downloads
+(`docs/coder-identity.md` §8). Nothing that identifies the person is kept.
 
 ## Deploying
 
@@ -607,7 +661,7 @@ out: unchanged, the first deploy: "{n} new units were added for you.";
    errors: expert coders without `coder_set` values, coders who sign in
    whose values aren't all email addresses, an experiment that selects
    units without `condition_set` or with listed conditions it has no units
-   for; `shared/sets.ts` `assignmentChecks`);
+   for; `shared/deployChecks.ts` `assignmentChecks`);
 2. with `units`: new versions of the units the draft changed (versions
    they replace that no answer points to are deleted), and the draft's
    sets become the deployed ones;
@@ -674,7 +728,10 @@ preview's coder API answers 409 `design_invalid`.
 of these variables (optionally only some units, `unitIds`, or coder sessions, `sessionIds`): kept for
 analysis, but they no longer count, so the units are coded again. Bumps
 the deployment's `annotationEpoch`: runtimes re-read it and derive the
-finished codings again. Only answers to units are reset.
+finished codings again. Only answers to units are reset. The study's stored
+results downloads are removed (the next download is written again).
+Sensitive: a web session with a recent second factor (403
+`step_up_required`), never an API key (403 `not_with_api_key`).
 
 ## Annotations
 
@@ -729,7 +786,8 @@ of the deployed design (a scale: per item), the answers given and skipped,
 and per value how often it was given (several answers count each; span and
 relation questions per label). Live answers only. Schemas:
 [`contracts/src/results.ts`](../../packages/contracts/src/results.ts);
-implementation: [`researcher/results.ts`](../../packages/server/src/researcher/results.ts).
+implementation: [`researcher/results.ts`](../../packages/server/src/researcher/results.ts),
+with the summaries in [`shared/results/`](../../packages/server/src/shared/results/).
 
 ### getResultsAgreement
 

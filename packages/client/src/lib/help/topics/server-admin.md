@@ -26,6 +26,14 @@ Per account, most recent login first:
 **Invite** an email address to give a role at the first login (within 3
 months); **Withdraw** an unused invitation.
 
+**Delete** removes the account of someone who has logged in, as they could
+do themselves (see [Deleting your account](accounts.md#deleting-your-account)):
+for a request from someone who left or can't log in any more. The dialog
+shows the studies that are deleted with it (those in which only they have a
+role), or what is in the way (a study they own that others work in, a study
+whose only ADMIN they are, the server's only admin), and you type their
+email address to confirm. You can't delete your own account here.
+
 **Roles off**: roles are turned off for an invitation used after 3 months,
 and for someone back after more than a year without a second factor. Click
 the mark to restore them if it's still the same person.
@@ -63,9 +71,11 @@ an admin works as a researcher. Researchers see an orange shield linking
 to `OIDC_ACCOUNT_URL`. Coding never needs it. Lost second factors go to
 the login provider's helpdesk.
 
-Sensitive actions (API keys, deleting answers, coders' data or a study,
-admin roles) need a recent login with the second factor; API keys can
-never do them.
+Sensitive actions (API keys, deleting answers, coders' data, a study or an
+account, exporting a study, every change of who is an admin) need a recent
+login with the second factor; API keys can never do them. Server admin
+itself needs the web pages: an API key works as a researcher at most, also
+an admin's.
 
 ## Warnings
 

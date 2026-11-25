@@ -85,7 +85,9 @@ answers. Previews are not stored.
 
 ## Removing data
 
-- **Delete Study** (**Settings**) deletes everything.
+- **Delete Study** (**Settings**) deletes everything: design versions,
+  units, coders and their answers, and results downloads kept on the
+  server. You type the study's name to confirm; it can't be undone.
 - **Deleting a coder's data** (**Coders**) deletes one coder, by coder id
   or email; coders can ask for it (see
   [Deleting a coder's data](coders-and-progress.md#deleting-a-coders-data)).

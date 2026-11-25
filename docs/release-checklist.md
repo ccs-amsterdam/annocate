@@ -108,12 +108,27 @@ Known limitations, documented rather than fixed:
 2. Migrations only add: change `server/src/db/schema/` and run
    `db:generate`; never edit a released migration.
 3. Run the checks: `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`,
-   `pnpm test`, `pnpm test:e2e`, and the load test
-   (`server/scripts/load-test.mjs`, results in `hosting.md` "Capacity")
-   against the release build. Run `pnpm test:e2e` once with `DATABASE_URL`
-   set to an empty Postgres database too, not only on PGlite.
-4. After updating a server (`hosting.md`, step 11): run
-   `scripts/smoke-test.sh` against it.
-5. A security read of what changed: authorization and study scoping of
-   every new route and id, CSRF (`x-annotinder`), cookies, redirect URLs,
-   markdown and `::html` rendering, body sizes (`security.md`).
+   `pnpm test` and `pnpm test:e2e`. Run `pnpm test:e2e` once with
+   `DATABASE_URL` set to an empty Postgres database too, not only on PGlite.
+4. Run the benchmark against the release (`hosting.md`, "Capacity"):
+   `pnpm bench smoke` (20 seconds on PGlite: that nothing errors), then
+   `DATABASE_URL=<a Postgres database of its own> pnpm bench public`, which
+   exits with 1 when the launch criteria aren't met (no errors, submit p95
+   under 100 ms, next batch p95 under 250 ms). It starts the server itself,
+   with development auth and without rate limits, and writes the result to
+   `bench/<date>-<preset>-<database>.json` in the repository. Never quote
+   capacity from a PGlite run. `server/scripts/load-test.mjs` runs one
+   scenario against a server that is already running.
+5. After updating a server (`hosting.md`, step 11): run
+   `scripts/smoke-test.sh` against it, and check the startup lines
+   (`sudo docker compose logs app`): the login provider, the admins, and
+   where client addresses come from (`ANNOTINDER_TRUST_PROXY`). The server
+   doesn't start on Postgres without `ANNOTINDER_SECRET` (32 characters or
+   more) and `ANNOTINDER_PUBLIC_URL`, or with a `ANNOTINDER_TRUST_PROXY`
+   other than `none`, `proxy` or `cloudflare` (the earlier `1` is refused:
+   remove it from `.env`, `compose.yml` sets `proxy`).
+6. A security read of what changed: authorization and study scoping of
+   every new route and id (a study without a role answers 404), CSRF
+   (`x-annotinder`), cookies, redirect URLs, markdown and `::html`
+   rendering, body sizes per route (`shared/bodyLimit.ts`), which actions
+   are sensitive (`security.md` §1).

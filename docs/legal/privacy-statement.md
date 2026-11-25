@@ -274,9 +274,12 @@ email.
 4. **Legal bases in §4** are placeholders on purpose. For a university
    the basis may be the public task; for another operator, the agreement
    with the researcher or legitimate interest.
-5. **Things promised that need doing by hand today:** deleting an
-   account on request (no self-service and no admin button yet: work in the
-   database; release plan P-A2), and everything about retention in §7: the
+5. **Deleting an account** is in the app now: a user deletes their own
+   from the account menu, and a server admin can delete a user's on request
+   (`docs/accounts.md` §5). The studies only that user has a role in are
+   deleted with it; an account that owns a study others work in can't be
+   deleted until the study is deleted or has another owner. §8 above can say
+   so. **Still by hand:** everything about retention in §7: the
    server removes nothing by itself except rate limit counters and used or
    expired links to continue on another device. Expired login sessions, the
    security log and the admin log stay until someone removes them

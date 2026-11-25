@@ -105,11 +105,35 @@ session** (empty).
 |                         | **/ 8**, **/ 9**                 | the special answers: don't know, not applicable           |
 
 These are commands: they always work, whatever the shortcut style or
-**Answer with keys**. **/** is the leader key: press it, then the command
-(a hint shows them; **/** again or **Esc** cancels). It is on the numpad
-too, so every command works with one hand there. The Ctrl keys also work
-while typing; on a Mac, **Option + ←** / **→** works too. (8 and 9 follow
-the codes surveys use: 8 or 88 for don't know.)
+**Answer with keys**. The Ctrl keys also work while typing; on a Mac,
+**Option + ←** / **→** works too.
+
+### The leader key: /
+
+**/** is the leader key: press it, let go, then press the command's key.
+**/** then **Enter** continues, **/** then **4** goes back.
+
+- **Which key.** The key that types **/** on the coder's keyboard, however
+  it is typed (on a German keyboard **Shift + 7**), and the **/** of the
+  numpad. On keyboards where the key next to the right Shift types
+  something else (a **-** on a German one), that key works too.
+- **A hint** at the bottom of the screen lists the commands while
+  AnnoTinder waits for one.
+- **Three seconds.** The command must follow within 3 seconds; after that
+  the hint goes and the next key is an ordinary key again. **/** again or
+  **Esc** cancels at once, and so does any key that is no command.
+- **With one hand on the numpad**: **/ 4** and **/ 6** are back and
+  forward (as the arrows on those keys), **/ 0** opens the instructions,
+  **/ Enter** continues, **/ 8** is don't know and **/ 9** not applicable
+  (the codes surveys use: 8 or 88 for don't know, 9 or 99 for not
+  applicable). The digits of the main keyboard work the same.
+- **While typing text** **/** is just a character: in a text box use the
+  Ctrl keys. In a number box the leader works, since a number has no **/**.
+- **/ 8** and **/ 9** do nothing on a question without that special answer.
+  Their buttons show the keys as badges (`/8`, `/9`).
+
+Holding a key down chooses once: a held number or arrow doesn't answer the
+next questions too.
 
 Swipe questions use the arrows to swipe (the shortcut style's keys work
 too). In span questions the arrows move over the words (**↑** **↓**: a

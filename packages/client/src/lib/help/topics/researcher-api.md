@@ -21,6 +21,11 @@ A key acts as you in every study you have a role in. Keep it out of shared
 scripts (use an environment variable, e.g. in `.Renviron`) and **Revoke**
 keys you no longer need.
 
+A key can't do everything you can. It never does the actions that ask you
+to log in again: making or revoking keys, deleting a study, your account or
+coders' data, resetting answers, exporting a study, changing who is a
+study's ADMIN. And it is never a server admin, also when you are one.
+
 ## How requests work
 
 The API is at your AnnoTinder address plus `/api`
@@ -30,8 +35,15 @@ The API is at your AnnoTinder address plus `/api`
 Authorization: Bearer atk_...
 ```
 
-JSON in and out. Errors: `401` (no valid key), `403` (role too low), `404`
-(not found), `409` (not allowed now, e.g. an existing unit id). Most paths
+JSON in and out. An error is `{ "error": "…" }`, often with a `code` for
+your script to check, and for a request that doesn't fit with `issues`
+(where, and why). Statuses: `400` (the request is wrong), `401` (no valid
+key), `403` (role too low, a limit, or something a key can't do), `404`
+(not found, or a study you have no role in), `409` (not allowed now, e.g.
+an existing unit id), `429` (too many requests: wait the seconds in the
+`Retry-After` header; the limit is 1,200 a minute for all your keys
+together). An "Internal error" comes with a `requestId` to pass on to
+whoever runs the server. Most paths
 start with the study's number; list studies to find it:
 
 ```text

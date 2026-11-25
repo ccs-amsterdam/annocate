@@ -35,13 +35,30 @@ How the web client (`packages/client`) works and why. Server side:
 `useStudyManager` binds it to React with `useSyncExternalStore`. It talks only
 to the `CoderApi` interface (`api/httpCoderApi.ts`); tests use stubs.
 
-Its parts, in `studyManager/`: `outbox.ts` (background saving), `unitDraft.ts`
-(the open unit's answers in localStorage), `items.ts` (codebook lookups),
-`practice.ts`, `navigationLabels.ts`, `errors.ts` and `types.ts` (the
-snapshot the screen reads). The screen is `components/StudyRunner.tsx`, with
-its parts in `components/studyRunner/`: the top bar, the question panel,
-settings and transfer menus, and the loading, error and pick-a-name screens
-(`SessionNotices.tsx`).
+Its parts, in `studyManager/`: `outbox.ts` (background saving, and the
+finished units kept in the browser), `unitDraft.ts` (unfinished units'
+answers in the browser), `items.ts` (codebook lookups), `practice.ts`,
+`navigationLabels.ts`, `errors.ts` (which failures are tried again) and
+`types.ts` (the snapshot the screen reads).
+
+**The screen** is `components/StudyRunner.tsx`: only the providers (the
+coder's settings, the keyboard) around `CoderSessionGate`. Its parts are in
+`components/studyRunner/`, one component per file:
+
+| File | What |
+| --- | --- |
+| `CoderSessionGate.tsx` | Before coding: redeems a transfer link, starts a new session on request |
+| `CodingScreen.tsx` | One session: hooks, then a switch on the snapshot's phase: loading, error, finished, or the question |
+| `QuestionScreen.tsx` | The top bar, the connection notice, the new-units banner, and the question: `UnitQuestionLayout` in a unit loop, `CoderQuestionCard` outside one |
+| `UnitQuestionLayout.tsx` | The unit scrolling above, the question docked below. `UnitAnnotations` (spans and relations) is mounted once per unit, so the unit stays as it is (its frames, how far it is scrolled) from question to question |
+| `AnsweredQuestion.tsx`, `QuestionPanel.tsx`, `SwipeArea.tsx` | The question with the coder's earlier answer, practice feedback or a frozen answer's Continue, and the swipe |
+| `CodingTopBar.tsx`, `KeyboardMenu.tsx`, `CoderSettingsMenu.tsx`, `TransferMenu.tsx` | The top bar and its menus |
+| `ConnectionNotices.tsx`, `NewUnitsBanner.tsx`, `PracticeCorrectFlash.tsx` | What shows over or under the top bar |
+| `SessionNotices.tsx`, `SessionNotice.tsx`, `CoderElsewhere.tsx`, `PickName.tsx` | What shows instead of a question: a notice per server error code, else the message with Retry |
+| `hooks.ts`, `useCurrentQuestion.ts`, `useUnitSlide.ts`, `practiceFeedback.ts` | The screen's hooks (display, leave warning, document title, slide direction) |
+
+`useStudyManager` starts the manager when the screen mounts and calls
+`dispose()` when it unmounts.
 
 - **Steps.** It computes the visible steps from the codebook: top-level
   items, then loop questions, with conditions (of branches, which show
@@ -60,10 +77,47 @@ settings and transfer menus, and the loading, error and pick-a-name screens
   background when 2 are left.
 - **Saving in the background.** Answers go into an outbox, posted one at a
   time in order; a newer post for the same answers replaces one still
-  waiting (`Outbox`). Connection failures (network, 5xx, 408, 429) are retried, backing
-  off up to 30 s; other failures stop saving and show an error. The outbox is
-  emptied before `/end` and `/quit`. `StudyRunner` shows "Not saved yet: no
-  connection" and asks before the page closes with unsaved answers.
+  waiting, but not the one being sent (`Outbox`). The outbox is emptied
+  before `/end` and `/quit`, and before an experiment's condition is asked.
+- **Retrying a save.** A failure that may go away by itself is tried again
+  without the coder doing anything: a network error, a 5xx, 408 or 429
+  (`isTransient`, `errors.ts`), after 1 s, 2 s, 4 s, … up to 30 s. Any other
+  failure stops saving (`outbox.error`) and shows the error screen; nothing
+  more is sent until `retry()` clears it. A `design_changed` failure loads
+  the session again instead (below).
+- **Connection notices** (`ConnectionNotices.tsx`), while a save is being
+  tried again (`snapshot.retrying`): the top bar shows a cloud icon with
+  "Not saved yet: no connection", or "3 units not saved yet: no connection"
+  when finished units wait (`snapshot.unsavedUnits`); under the top bar a
+  line says "Waiting for the connection… Your answers are kept, and saved as
+  soon as it is back. The study ends only once they are saved." The coder
+  can go on answering; only the end of the study and an experiment's
+  condition wait. The quit dialog says the same. Leaving the page with
+  unsaved answers asks first (`useLeaveWarning`).
+- **Unsent units** (`UnsentUnits`, `outbox.ts`). The finished units still in
+  the outbox are also kept in localStorage, under
+  `annotinder:unsent-units:<session id>`, written whenever the outbox
+  changes. A coder on a bad connection whose tab is closed or discarded (a
+  phone) doesn't lose them: the next `start()` posts them before it reads
+  the session (posting a unit twice stores the same), then loads the session
+  again, since it now has other finished units. One the server no longer
+  takes (a new design version) comes again with its answers, as far as they
+  fit.
+- **Drafts per unit** (`UnitDraftStore`, `unitDraft.ts`). The answers to a
+  unit the coder started and didn't finish are kept in localStorage as they
+  are given, under `annotinder:unit-drafts:<session id>`: one object, with
+  an entry per unit (`<loop id>/<unit id>`), the newest 20. So there is a
+  draft for the unit on screen and for each unit the coder went back from,
+  and a coder who closes the page mid-unit finds the answers back when the
+  unit comes again. A unit's draft is cleared when the unit is saved, all of
+  them when the session ends. Not for practice units (a restored answer
+  would skip its check), nor for a finished unit the coder went back to
+  (its change is saved at once). Both stores are per coder session, and keep
+  nothing when storage fails (private mode, full).
+- **`dispose()`**: the coding screen is gone. The manager stops timing and
+  the outbox stops sending and waiting; what was unsent stays in the browser
+  for the next visit. `start()` after `dispose()` goes on with the same
+  session (React StrictMode mounts twice).
 - **Frozen answers.** Coder-level answers a loop depends on are read-only
   once a unit in that loop is saved (`session.frozen`).
 - **Response times.** `QuestionTimer` (`studyManager/timing.ts`) times each
@@ -73,10 +127,27 @@ settings and transfer menus, and the loading, error and pick-a-name screens
   `POST /end`.
 - **A new design version while coding.** The server answers 409
   `design_changed` to requests under the old version. `StudyManager` then
-  reloads the session and returns to the unit the coder had open; unsaved unit
-  answers are kept as far as they fit, coder-level ones asked again.
-- `start()` is idempotent (React StrictMode); `retry()` re-runs the last
-  failed operation (safe: writes are upserts).
+  reloads the session and returns to the unit the coder had open. The
+  answers to every unit that wasn't saved come back with their units as far
+  as they still fit (`carryOver`): units started and not finished, and
+  finished units still in the outbox, which are saved again. Unsaved
+  coder-level answers are asked again.
+- **The error screen and `retry()`.** A failed operation (answering,
+  navigating, loading) leaves the coder on the step they were on and shows
+  the error with **Retry**. `retry()` shows that step again, then repeats
+  what failed: the whole operation, or only the part of it that was still to
+  do (`retryFrom`). What it did before is not done again: an answer already
+  kept isn't given twice, a unit already queued isn't queued twice, and
+  after a failed `/end` Retry ends the session without taking the steps
+  again. It also clears a failed save, so saving goes on. Writes are
+  upserts, so a repeat that reaches the server twice stores the same.
+- **"Go back to the unit".** When the server refuses a finished unit's
+  answers (a 400: sending the same again would be refused again), the error
+  screen also offers **Go back to the unit** (`snapshot.refusedUnit`,
+  `backToRefusedUnit()`). It drops that post from the outbox, opens the unit
+  at its first question without an answer that fits, and saves it when the
+  coder finishes it again; the posts after it are sent.
+- `start()` is idempotent (React StrictMode).
 
 **Navigation.** Back, forward, and jumps to a phase, unit or question. Unit
 history is kept per loop and rebuilt on resume from the finished unit ids
@@ -92,8 +163,9 @@ against `fakeCoderServer.ts`):
 - Jumping to a loop returns to the unit the coder was on. Going back after an
   `end` inside a loop (`reopen`) opens that unit at its last question.
 - Operations run **one at a time**, in order; an answer to a question no
-  longer on screen is dropped. `StudyRunner` also drops double clicks in the
-  answer area and auto-repeated answer keys (`components/inputGuards.ts`).
+  longer on screen is dropped. The screen also drops the second click of a
+  double click in the answer area (`components/inputGuards.ts`) and the
+  repeats of a held-down key (`keyboard/keyDown.ts`, §4 "Keyboard").
 
 ## 3. Unit layout and texts
 
@@ -410,10 +482,30 @@ screen provides it (`display/context.ts`) with the coding area's width class
 
 ### Keyboard
 
-One key listener (`keyboard/KeyboardProvider.tsx`) and a `KeyController`
-whose scopes get key presses in turn: menus (exclusive) over span editors
-over answer fields over the base layer. Text fields, modifiers and held keys
-are handled there once.
+One key listener (`keyboard/KeyboardProvider.tsx`, its logic in
+`keyboard/keyDown.ts`) and a `KeyController` (`keyboard/controller.ts`)
+whose scopes get key presses in turn, by priority: menus (10) over span
+editors (5) over answer fields (0) over the base layer (-10); among equals
+the latest registered. A scope that uses a key ends it. Text fields, the
+leader and held keys are handled once, before the scopes.
+
+- **Held keys.** A key held down chooses once: its repeats are dropped when
+  the first press was used by the keyboard, so a held `1` doesn't answer the
+  next questions too. When the first press was not used, the repeats are the
+  browser's: holding ↓, Space or PageDown scrolls. Presses the browser's
+  input method is composing (an IME's Enter) are left alone.
+- **Exclusive menus.** While a menu, popover or dialog of the coding screen
+  is open (`useMenuKeys`), an exclusive scope at menu priority keeps every
+  key it doesn't use from the scopes below: no key answers the question
+  behind an open menu. A menu's own keys (the loop panel's number pad) are
+  scopes above it.
+- **↑ and ↓.** The arrows move focus between the answer targets
+  (`data-key-target`) by where they are on screen (`keyboard/focus.ts`).
+  With focus outside the targets, ↑ and ↓ first scroll the unit
+  (`data-key-scroll`) while it has more to show that way; at its end they
+  move to the answers (the chosen one, else the first). An element that
+  keeps the arrows for itself is marked `data-keys-own` (selecting text for
+  a span).
 
 - Answer fields declare their choices (`useKeyTargets`: groups of targets; a
   scale has a group per item) and get each target's key for its badge.
@@ -425,15 +517,43 @@ are handled there once.
   shortcuts and holds the shortcut style and "Show shortcut badges".
 - The base layer: arrows move focus by screen position, Space/Enter click
   the focused button, Ctrl + Left/Right go to the previous/next question
-  (back focuses its answer), Ctrl + Enter continues an answered question
-  (`keyboard/commands.ts`).
-- The leader key (`keyboard/leader.ts`): / on the main keyboard or the
-  numpad, then one key for a command, dispatched as the Ctrl press it
-  stands for: Enter continue, ← → or 4 6 back and forward, Space or 0 the
-  instruction, 8 / 9 the special answers (`useSpecialKeys`, badges `/8`,
-  `/9`; the survey codes for don't know). / again or Esc cancels; a hint
-  shows the commands meanwhile (`KeyChoiceFlash`). Commands always work,
-  whatever the answer keys setting.
+  (Alt + arrows too, for Macs where Ctrl + arrows are the system's),
+  Ctrl + Enter continues an answered question, Ctrl + Space opens the
+  instruction (`keyboard/commands.ts`).
+- **`useFocusAfterBack`** (`keyboard/hooks.ts`). Going back with the
+  keyboard asks the controller to focus the answer (`requestFocus`), so the
+  coder can change it at once. The question itself takes the request when it
+  comes on screen (`Question.tsx` calls the hook, whatever its answer
+  field), once it is painted, and focuses the chosen target, else the first.
+  A field without targets (a text box) focuses nothing, and the request
+  never waits for a later question.
+- **The leader key** (`keyboard/leader.ts`): `/`, then one key for a
+  command, so every command also works with one hand on the numpad.
+
+  | After `/` | Command | Dispatched as |
+  | --- | --- | --- |
+  | Enter | continue | Ctrl + Enter |
+  | `4` or ← | the previous question | Ctrl + ← |
+  | `6` or → | the next question | Ctrl + → |
+  | `0` or Space | the question's instruction | Ctrl + Space |
+  | `8` | the special answer don't know | Ctrl + 8 |
+  | `9` | the special answer not applicable | Ctrl + 9 |
+
+  - The leader is the typed character `/`, however the keyboard types it
+    (Shift + 7 on a German one), or the physical keys `Slash` and
+    `NumpadDivide` whatever they type; never with Ctrl, Alt or ⌘.
+  - Digits are read from the physical key (`Digit4`, `Numpad4`), else from
+    the character.
+  - It waits 3 seconds for its command (`LEADER_TIMEOUT`); after that the
+    next key is an ordinary key again. `/` again, Esc, or any key that is no
+    command ends it at once; modifier keys (Shift, AltGr, NumLock) don't.
+  - Not while typing text, where `/` is a character. In a number's box it
+    works: a number has no `/`.
+  - While it waits, a hint lists the commands (`KeyChoiceFlash`). The
+    special answers are `useSpecialKeys`, with badges `/8` and `/9` (the
+    codes surveys use: 88, 99).
+
+  Commands always work, whatever the answer keys setting.
 
 ### Study entry
 
@@ -495,7 +615,7 @@ redirect links (`design/references.ts`).
 | `$var.<q>.value`, `.label`              | the answer; `null` when unanswered                                                 | single nominal, ordinal, numeric, swipe, experiment |
 | `$var.<q>.values`, `.labels`            | the answers; `[]` when unanswered                                                  | nominal `multiple`, span, relation                |
 | `$var.<q>.texts`                        | the selected texts                                                                 | span                                              |
-| `$var.<q>.values`                       | all items' values, in order                                                        | scale                                             |
+| `$var.<q>.values`                       | one entry per item, in the items' order: the item's value, or `null` for an item without one (not answered yet, or a special answer without a numeric code). Never shorter than the items, so `values[0]` is always the first item; drop the nulls before averaging (`values.filter(v => v !== null)`) | scale                                             |
 | `$var.<q>.items.<item>.value`, `.label` | one item                                                                           | scale                                             |
 | `$var.<q>.special`, `.items.<item>.special` | the special answer given (`dont_know`, `not_applicable`), else `null`; helpers also match it (`.is("dont_know")`) | questions with `specials` |
 | `$var.<q>.answered`                     | answered and not skipped                                                           | any                                               |
@@ -566,14 +686,48 @@ scope)` re-runs QuickJS only when the script or one of those values
 Deploy (with the deploy history), Links, Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
+**Where things are.** A component per file; a page's parts are in a folder
+named after it, next to the page's own file. Logic without React is in
+`lib/admin/` (downloads, uploads, queries) and `lib/design/` (the draft,
+versions, the backup), each with its tests.
+
+| Folder under `components/admin/` | Holds |
+| --- | --- |
+| `study/` | A study's shell: `StudyAdminView.tsx` (loads the study; "doesn't exist, or no access" for a 404), `StudyHeader.tsx`, `StudyPage.tsx`, `useSaveBeforeLeaving.ts` |
+| `studyList/` | The studies list's cards, the create menu and dialog, `DeleteStudyDialog.tsx` |
+| `account/` | `ResearcherGate.tsx`, `AccountMenu.tsx`, `ResearcherAccess.tsx`, `DeleteAccountDialog.tsx` |
+| `server/` | The server admin page, a tab per file (`UsersTab.tsx`, `PlansTab.tsx`, `RequestsTab.tsx`, `StudiesTab.tsx`) |
+| `designEditor/` | The editor's parts: `useDesignDraft.ts` (the draft, saving, the backup), `EditorToolbar.tsx`, `TreePanel.tsx`, `ItemPanel.tsx`, `ItemPreview.tsx`, `ItemJsonEditor.tsx`, `SessionHeader.tsx` |
+| `designTree/`, `itemForm/`, `variableType/`, `unitLoop/`, `session/` | The tree's rows, and the forms of an item, a question type, a unit loop and the Study entry |
+| `jsonEditor/` | Monaco: the JSON and template editors and their setup |
+| `units/`, `units/upload/` | The Units page; the CSV upload (`UploadUnits.tsx`, `CsvUnitsForm.tsx`, `ColumnsTable.tsx`, `UploadChoices.tsx`, `useCsvMapping.ts`) |
+| `deploy/`, `links/`, `coders/`, `results/`, `overview/`, `preview/`, `guide/` | The parts of those pages |
+
+`ConfirmDeletionDialog.tsx` is the one dialog for deletions that can't be
+undone (a study, an account): it says what goes and asks to type its name or
+email address, which the request carries as `confirm` (`admin/confirmDeletion.ts`).
+
 - **Login**: `account/ResearcherGate.tsx` shows a login screen unless logged
   in (with the previous provider while the server changes providers, and a
   banner asking to link the new login). `account/AccountMenu.tsx`: email (an
-  orange shield when the login had no second factor), API keys, theme, log
-  out. On a development server, development headers replace the login.
+  orange shield when the login had no second factor), API keys, theme,
+  **Delete account**, log out. On a development server, development headers
+  replace the login.
+- **Deleting an account** (`account/DeleteAccountDialog.tsx`,
+  `docs/accounts.md` §5): asks the server what would go
+  (`GET /me/deletion`), then either lists what keeps the account (a shared
+  study the user owns, a study whose only ADMIN they are, being the server's
+  only admin, each with what to do first) or lists the studies deleted with
+  it and asks to type the email address. Admins delete a registered user the
+  same way from the Users tab.
+- **Sensitive actions**: on 403 `step_up_required` the API client
+  (`HttpResearcherApi`) asks to confirm, sends the browser to log in again
+  (`/auth/login?stepUp=1`) and back to the same page; the researcher then
+  does the action again. An internal error (500) shows with its request id
+  ("Internal error (request id …)"), to report to the server's operator.
 - **Accounts**: only researchers create studies; `account/ResearcherAccess.tsx`
   handles requests to become one. Admins get the server admin page
-  (`server/ServerAdmin.tsx`, a page per file in `server/`: warnings, users,
+  (`server/ServerAdmin.tsx`, a tab per file in `server/`: warnings, users,
   plans, registration, studies, log; `docs/accounts.md`).
 - **From a file** (`ImportStudyDialog.tsx`): a study export (its manifest is
   read in the browser, then `POST /study/import`, with or without coders) or a
@@ -638,14 +792,44 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   Saving and safety:
   - **Save** works with issues (work in progress); previewing and deploying
     need a valid design. The toolbar counts errors and warnings.
-  - A save carries its base `revision`; if someone saved meanwhile, a dialog
-    offers "Save mine over theirs" or "Discard mine, load theirs".
+  - **Conflicts** (`design/draft.ts` `saveRequest`, `conflictOf`). Two ways
+    someone else can be ahead of a save, with one dialog for both ("Someone
+    else saved a draft": who, and when):
+    - they saved the same draft: the save carries the `revision` the edits
+      are based on, and the server answers 409 `design_conflict`;
+    - they made a new draft while the open version was being edited (a
+      colleague, or an upload in another tab that added a field; `design/versions.ts`
+      `draftMadeMeanwhile`). The edits stay on the version they were made on
+      (it is pinned), and the client asks before sending anything.
+
+    The dialog offers **Save mine over theirs** (the save is sent without a
+    revision, or onto the newer draft: their changes are replaced) or
+    **Discard mine, load theirs** (after a confirm: loads the saved draft,
+    clears the backup). Closing it keeps the edits unsaved.
   - **Undo/redo**: the last 100 steps (edits less than a second apart are one
     step).
   - Items with unsaved changes have a dot; **Revert** reverts one item or all.
   - A draft is deleted only from the versions dialog.
-  - **Backup**: unsaved edits are copied to localStorage a second after each
-    change, and offered back after the browser was closed.
+  - **Backup, per study** (`design/localBackup.ts`). Unsaved edits are copied
+    to localStorage a second after each change, under
+    `annotinder:design-backup:<studyId>`: the edited items, the items as
+    last saved, the version and the revision they are based on, and the
+    time. One backup per study, so edits in two studies (two tabs) don't
+    overwrite each other.
+    - It is cleared when the edits are saved, undone or discarded, and
+      when the draft is deleted. An open editor clears only a backup that is
+      its own (one it wrote, or the one it started from, `backupKeeper`): an
+      earlier session's backup that is still on offer stays.
+    - After the browser was closed, the researcher UI offers the latest
+      backup in a banner (`BackupBanner.tsx`: the study, and when):
+      **Continue editing** opens that study's design with the edits,
+      **Discard** throws them away after a confirm.
+    - Continued on the version they were made on, the edits are as they were
+      left (same changed marks, same revision for the conflict check). If
+      another version is current by then (a draft was made or deployed
+      since), they become edits of that one (`startDraft`).
+    - Too large for localStorage, or storage unavailable (private mode):
+      there is no backup, and an outdated one is removed.
 
 - **Unit loops** (`UnitLoopForm.tsx`): besides its label and condition
   (`ItemForm.tsx`, as for branches), the loop's form holds, open, "Units and
@@ -700,10 +884,18 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   all "and" or all "or" (`design/conditionRules.ts`); a row that no longer
   fits its question stays and says why. Other scripts open in script mode with
   a cheat sheet and a syntax check.
-- **Units** (`units/`): CSV upload (`UploadUnits.tsx`, own parser
-  `admin/csv.ts`): pick the id column, which columns to upload as which field,
+- **Units** (`units/`): CSV upload (`units/upload/UploadUnits.tsx`, own parser
+  `admin/csv.ts`, the mapping in `admin/uploadUnits.ts`): pick the id column, which columns to upload as which field,
   and their types (inferred and checked); columns named like a role column
   (`coder_set`, `condition_set`, `part_set`, `test_set`) are that column.
+  The parser reads commas, or semicolons when the first line has semicolons
+  and no comma, and says what the researcher should know about how the file
+  was read (`hints`: read as semicolons, a quote never closed, rows with
+  more or fewer cells than the first line). Uploading a role column replaces
+  it: the form says how many units not in the file lose their value. When
+  the server refuses the upload (a column `answer_<x>` or `feedback_<x>`
+  where `<x>` is no question of the design: the prefixes are reserved), its
+  message is shown as it is.
   The role columns with their labels (Coder set, Condition set, Part set,
   Test set); a paged table of units, the role columns tinted and headed by
   their label; pick a value to see its units in order; "Create special
@@ -724,9 +916,12 @@ Deploy (with the deploy history), Links, Results, Settings. It uses a `Researche
   spread over the past two weeks (server `exampleTime`), so this looks like
   a running study. Pausing and resuming (`LiveControls.tsx`) is on the
   Deploy page, the deploys' history too.
-- **Settings** (`StudySettingsPage`): the team (`TeamSettings.tsx`, at least
-  one ADMIN), rename, archive, when coders finish (the reopen time), export,
-  delete.
+- **Settings** (`StudySettingsPage` in `overview/StudyOverview.tsx`): the
+  team (`overview/TeamSettings.tsx`, at least one ADMIN) and
+  `StudySettings.tsx`: rename, archive, when coders finish (the reopen
+  time), panel return links, export, delete. Deleting (`studyList/DeleteStudyDialog.tsx`, also from the studies
+  list) says what goes (design versions, units, coders and their answers,
+  sessions, results downloads) and asks to type the study's name.
 - **Links** (`LinksPanel.tsx`, `links/`): the links deploying made, with their
   label, coder or set, uses (of the design's maximum), status and the URL
   parameters they take (copied with placeholders). Per link: revoke,

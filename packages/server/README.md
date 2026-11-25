@@ -10,7 +10,8 @@ The annotinder server: one Hono app on one database.
   Spec: [docs/api/coder.md](../../docs/api/coder.md).
 - the **admin API** (`/admin/...`): server settings, users, plans. Spec:
   [docs/api/admin.md](../../docs/api/admin.md).
-- login (`/api/auth/...`), the account (`/api/me`), `/api/health` (all APIs under `/api`), and the built client
+- login (`/api/auth/...`), the account (`/api/me`), `/api/health` and
+  `/api/ready` (all APIs under `/api`), and the built client
   (`ANNOTINDER_CLIENT_DIR`, [docs/hosting.md](../../docs/hosting.md)).
 
 How it works: [docs/architecture.md](../../docs/architecture.md).
@@ -44,15 +45,30 @@ pnpm --filter @annotinder/server keys list --email a@uni.nl
 pnpm --filter @annotinder/server keys revoke --email a@uni.nl --id 3
 ```
 
-The key is printed once. `--role` sets the user's account role: only a
-researcher can create studies (and becomes their ADMIN), and an admin also
-the server's settings. With it, they give others a role in a study
-(`PUT /study/:id/users`), and make or revoke their own keys (`/me/keys`).
+The key is printed once. `--role` sets the **user's** account role (`user`,
+`researcher` or `admin`), not the key's: only a researcher can create studies
+(and becomes their ADMIN), and an admin also manages the server.
+
+What the key itself can do ([docs/security.md](../../docs/security.md) §1):
+
+- **A key acts as a researcher at most.** `keys create --role admin` makes
+  the user an admin, and gives a key that works as a researcher's: the admin
+  API (`/admin/...`) answers it 403 `admin_required`. The user does admin
+  work in the web client, after logging in with a second factor.
+- **A key never does sensitive actions** (403 `not_with_api_key`): making or
+  revoking keys, deleting a study, an account or coders' data, resetting
+  answers, exporting a study, changing who is a study's ADMIN. With a key a
+  researcher can still give others the READ or WRITE role in a study
+  (`PUT /study/:id/users`).
+
+So on a server without login, more keys are made with this command, not with
+a key.
 
 ## Code
 
 - [`src/app.ts`](src/app.ts): the app; [`src/index.ts`](src/index.ts): the
-  Node entry point.
+  Node entry point; [`src/config.ts`](src/config.ts): the settings, read and
+  checked at start.
 - [`src/researcher/`](src/researcher/): the researcher API, one file per
   path. Researcher auth ([`auth.ts`](src/researcher/auth.ts)): the session
   cookie after login ([`login.ts`](src/researcher/login.ts),

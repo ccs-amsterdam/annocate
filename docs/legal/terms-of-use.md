@@ -204,9 +204,10 @@ data.
    suspended study stays readable and downloadable, and can be deleted);
    plans and limits per account; deleting a study or coders' data,
    resetting answers and exporting a study need a recent login with a
-   second factor; study export for moving to another server. **Not yet:**
-   an account can't be deleted in the app, by its owner or by an admin
-   (§9; release plan, P-A2), and the app sends no email, so every "we tell
-   you by email" in these terms is done by hand.
+   second factor; study export for moving to another server; a user can
+   delete their own account, and an admin a user's, with the studies only
+   that user has a role in (§9; `docs/accounts.md` §5). **Not yet:** the
+   app sends no email, so every "we tell you by email" in these terms is
+   done by hand.
 6. **The lab's server** can do with a short "house rules" version: §4,
    §5 and §8.

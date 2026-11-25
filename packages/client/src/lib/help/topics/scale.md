@@ -52,5 +52,12 @@ item; **Ctrl + Enter** continues.
 | `$var.media.items.emotional.label` | its label, e.g. _Agree_    |
 | `$var.media.values`                | all item values, as a list |
 
+`.values` has one entry per item, in the items' order. An item without a
+value is `null` there: not answered yet, or answered with a special answer
+that has no numeric code. So the list is always as long as the scale, and
+`$var.media.values[0]` is the first item. Leave the nulls out before you
+calculate with it in a [script](scripts.md):
+`$var.media.values.filter(v => v !== null)`.
+
 Conditions compare an item: `$var.interest.items.technology.gte(4)`. The
 results have a column per item, `media.emotional`, with a `.label` column.

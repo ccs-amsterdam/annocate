@@ -49,7 +49,13 @@ in `server/src/db/sql.ts`), so every query applies the same rules.
 - their verified email is at a researcher domain (*Registration*);
 - registration is open: everyone with an email address;
 - an admin approves their request (`researcher_requests`);
-- addresses in `ANNOTINDER_ADMINS` get the admin role at each login.
+- addresses in `ANNOTINDER_ADMINS` get the admin role at each login, if the
+  provider confirmed the address (also with
+  `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`: an unconfirmed address names no
+  admin).
+
+An **API key** never has the admin role: an admin's key works as a
+researcher's (`security.md` §1).
 
 ### Safeguards
 
@@ -75,6 +81,11 @@ Two ways:
   (`OIDC_PREVIOUS_UNTIL`; `hosting.md`). Until then the login screen also
   offers the previous provider, and whoever uses it is asked to link their new
   login (`/auth/login?link=1`). *Server admin* shows who hasn't linked yet.
+  Linking works only from a session of the previous provider, for a user
+  without a login at the new one, with a recent login (the server asks for
+  one first), and the new provider must ask for the login then and there; a
+  login that is someone else's already is refused (`link_failed`;
+  `security.md` §1, "Linking a login").
 - **Re-claiming by email**: `pnpm --filter @annotinder/server identities reset --yes`
   (in the container: `node dist/identities.js reset --yes`) forgets all
   identities; every user becomes a shadow user, claimed by their next login
@@ -103,8 +114,21 @@ new coder (`study_full`; existing coders go on), answers (counted at most once
 a minute per process, so approximate). Nothing is removed when limits shrink.
 
 Server-wide (`server_settings`): the largest unit (default 256 KB) and answer
-(64 KB), and request bodies (`app.ts`: 2 MB for coders, 256 MB for researcher
-uploads).
+(64 KB); larger ones answer 413 `unit_too_large` or `answer_too_large`.
+
+**Request bodies** have a size limit per route (`shared/bodyLimit.ts`); a
+larger one answers 413 `request_too_large`:
+
+| Requests | Largest body |
+| --- | --- |
+| A units upload (`POST /study/:id/units`), a study import, a study from a recipe | 256 MB |
+| The rest of the researcher API (`/study/...`: designs, sets, settings) | 4 MB |
+| The coder API (`/d/...`: a coder sends one unit's answers at a time) | 2 MB |
+| The admin API (`/admin/...`) | 1 MB |
+| Everything else (`/me`, a coder's account requests, logging out) | 64 KB |
+
+A proxy in front can have a lower limit of its own (Cloudflare: 100 MB,
+`hosting.md`).
 
 ## 4. Admins
 
@@ -114,20 +138,62 @@ need a study role like anyone else. They can:
 - change account roles, plans and limits; invite users by email and withdraw
   unclaimed invitations; restore roles the safeguards turned off;
 - **block** a user: sessions end, logins are refused, API keys stop working;
-- **suspend** a study: coders are refused (`study_suspended`); researchers can
-  still read, download, delete coders' data and delete the study;
-- move a study to another **owner**.
+- **delete** a registered user's account (§5);
+- **suspend** a study: coders are refused (`study_suspended`), and so is
+  every change by its researchers (403 `study_suspended`). They can still
+  read and download, delete coders' data, postpone a coder's deletion
+  request, and delete the study;
+- move a study to another **owner** (a researcher on the server).
 
-Every admin change is logged (`admin_log`).
+Every admin change is logged (`admin_log`). Changes of who is an admin are
+sensitive actions (`security.md` §1). The admin API needs a web session: an
+API key is never an admin.
 
-## 5. Second factor
+## 5. Deleting a study or an account
+
+Both can't be undone, so both are sensitive actions (a web session with a
+recent login, never an API key) and ask to type what goes; the server checks
+what was typed (400 `confirmation_mismatch`).
+
+**A study** (*Settings*, or the studies list; `DELETE /study/:id` with
+`{ confirm: <the study's name> }`; the study's ADMINs): its design versions,
+units, links, coders, answers and stored results downloads go, and coders'
+links stop working. Logged in the security log (`study_deleted`).
+
+**An account** (the account menu, *Delete account*; `DELETE /me` with
+`{ confirm: <the email address> }`): the user with their logins, sessions,
+roles in studies, API keys and security log. The dialog first says what
+happens to their studies (`GET /me/deletion`):
+
+| The user's part in a study | What happens |
+| --- | --- |
+| Owner, and nobody else has a role in it (no other user, no invitation, no email domain) | **Deleted** with the account, with all its data. The dialog lists these studies |
+| Owner, and others have a role in it | **Keeps the account** (`shared`): delete the study, take the others' roles away, or ask a server admin to give it another owner |
+| Not the owner, but its only ADMIN | **Keeps the account** (`last_admin`): give another user the ADMIN role first |
+| Any other role in someone else's study | The role goes; the study stays |
+
+The server's **only admin** can't delete their account either: make another
+user admin first. While something keeps the account, deleting answers 409
+(`account_has_studies` or `last_admin`) and nothing is deleted. So a study
+others work in never disappears with someone's account, and no study is left
+without an ADMIN.
+
+A server admin deletes a registered user's account the same way (*Server
+admin › Users*; `GET /admin/users/:id/deletion`, `DELETE /admin/users/:id`
+with the user's email address as `confirm`): the same rules, the same typed
+confirmation. Not their own account (409: that is done from the account
+menu). It is logged in `admin_log` with the studies that went.
+
+Coders' data is deleted per study (`coder-identity.md` §8), not here.
+
+## 6. Second factor
 
 Researchers work without it; server admin access needs it, and `GET /me`
 says how things stand (`twoFactor`). The session records it (`sessions.mfa`,
 `sessions.auth_time`). Sensitive actions need it recent and never work with an
 API key (`security.md` §1).
 
-## 6. Open points
+## 7. Open points
 
 - Groups other than email domains (e.g. a list of users sharing a plan).
 - Limits on storage in bytes.

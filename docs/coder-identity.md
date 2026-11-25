@@ -166,10 +166,9 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   Connect provider, by issuer URL. The server runs the authorization code flow
   with PKCE itself (`/auth/login`, `/api/auth/callback`), so tokens never reach
   the browser; it checks the ID token and starts its own session: a random key
-  in an httpOnly cookie, its hash in `sessions`, 14 days, sliding on the
-  server; the cookie itself is set at login for 14 days and not renewed, so
-  a browser is logged out 14 days after the login (`plans/go-live.md`,
-  P-17). Requests
+  in an httpOnly cookie, its hash in `sessions`, 14 days, sliding: a request
+  extends the session (at most once an hour), and the server then sends the
+  cookie again, so a browser stays logged in until 14 days without use. Requests
   need `x-annotinder: 1` (CSRF). Provider tokens aren't kept. Logging out
   (`POST /auth/logout`) ends our session, not the provider's.
 - **Identity is the login, not the email** (`accounts.md` §1). A login
@@ -217,13 +216,29 @@ sets `postponedAt`; the request stays until the data is deleted). Declining
 isn't a button: that is for the researcher's protocol. Any coder's data can be
 deleted (`POST /study/:studyId/coders/delete { sessionIds?, coders?, emails? }`,
 ADMIN): the sessions (device keys, coder id, the request) and all their
-answers, also retired ones. Unit versions stay. A deleted coder's browser
-later starts a new session from its link.
+answers, also retired ones, and the study's stored results downloads (a file
+made before holds the answers; a download link for it stops working). Unit
+versions stay. It is a sensitive action (`security.md` §1). A deleted
+coder's browser later starts a new session from its link.
 
 Every deletion is logged (`session_deletions`: session id, coder id,
-requested, deleted, by whom, answer count; no email), so the researcher can
+requested, deleted, by whom, answer count), so the researcher can
 also delete the coder from earlier downloads (`GET /study/:studyId/coders/deletions`,
-Results › Coders, `deleted_coders.csv`). The export also has `ended` = `quit`
+Results › Coders, `deleted_coders.csv`). The log holds no email address of
+the coder:
+
+- the session's email (`coder_sessions.email`, from signing in) is not
+  copied to it;
+- a coder id that is an email address (where coders sign in, the coder id
+  is their address) is kept as `sha256:<hash>`: the SHA-256 of the address
+  in lower case, in hex (`loggedCoder`, `shared/coderDeletion.ts`). It names
+  nobody, and still finds the coder in results downloaded earlier: hash the
+  coder ids there the same way and compare. In R:
+  `paste0("sha256:", digest::digest(tolower(coder), algo = "sha256", serialize = FALSE))`.
+- any other coder id (a panel id, a name the researcher gave) is kept as it
+  is.
+
+`deletedBy` is the researcher's address. The export also has `ended` = `quit`
 and a `deletion_requested` column.
 
 ## 9. Closing finished sessions

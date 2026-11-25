@@ -358,7 +358,7 @@ units (or draws a number of each type anew), and divides the rest over the
 coders. The Units page's split tooling makes `condition_set` or `part_set`
 (`splitIntoSets`).
 
-**Deploy checks** (server `shared/sets.ts`, `assignmentChecks`):
+**Deploy checks** (server `shared/deployChecks.ts`, `assignmentChecks`):
 
 - errors: expert coders without `coder_set` values; sign-in coders
   (`link: "login"`) whose values aren't all email addresses; an experiment
@@ -418,8 +418,14 @@ session:
   reserved). End items in the design are for ending early.
 - **URL parameters** (`urlParams`) are added to a link by whoever shares it:
   URL key `param` (default the name), required unless they have a `default`,
-  any value, a `pattern` (refused if it could backtrack catastrophically:
-  `slowPattern`) or a list of `values`. At most 256 characters. Missing: 400
+  any value, a `pattern` or a list of `values`. A pattern is a regular
+  expression the value must match in full (`[0-9a-f]{24}`), matched with RE2
+  (`re2js`; contracts `design/urlPattern.ts`), in time linear in the value
+  whatever the pattern: the value comes from anyone's link, before any
+  login, so a backtracking pattern can't stall the server. RE2 has no
+  backreferences (`\1`) and no lookahead (`(?=...)`): a design with such a
+  pattern doesn't pass validation ("This pattern is not supported"). A value
+  is at most 256 characters. Missing: 400
   `url_param_missing`; not fitting: 400 `url_param_invalid`.
 
 All are `$session.<name>`, stored on the session when it starts. Built in:
@@ -571,11 +577,14 @@ transaction.
 | `contracts/src/sets.ts` | role columns (`coder_set`, `condition_set`, `part_set`, `test_set`), `distributeUnits`, `splitIntoSets` |
 | `contracts/src/deployment.ts` | deployment, reset, status and preview schemas |
 | `contracts/src/endpoints/` | the API registries ([docs/api](api/README.md)) |
-| `server/src/app.ts` | the Hono app: all APIs under `/api`, plus the built client (`ANNOTINDER_CLIENT_DIR`) |
+| `server/src/app.ts` | the Hono app: all APIs under `/api`, the error response, `/api/health` and `/api/ready`, plus the built client (`ANNOTINDER_CLIENT_DIR`) |
+| `server/src/config.ts`, `index.ts` | the settings, read and checked at start (the server doesn't start on settings that only fit development); the Node entry point |
 | `server/src/coder.ts` | coder API routes: session cookie, coder resolution, units, answers, transfers |
-| `server/src/researcher/` | researcher API, one file per path; `auth.ts`, `login.ts` |
+| `server/src/researcher/` | researcher API, one file per path; `auth.ts`, `login.ts`; the admin API in `admin.ts` with a file per section (`admin.*.ts`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | researcher login, users and API keys, sessions |
-| `server/src/shared/` | queries shared by the APIs |
+| `server/src/shared/` | queries shared by the APIs; `results/` (the results summaries), `deployChecks.ts` (a design against the role columns) |
+| `server/src/shared/request.ts`, `http.ts` | reading a request (`parseJson`, `parseQuery`, `idParam`) and the one error shape |
+| `server/src/shared/bodyLimit.ts`, `rateLimit.ts`, `clientAddress.ts`, `requestLog.ts` | body sizes per route, rate limits, whose address a request is from, the request log and request ids |
 | `server/src/db/` | `schema/`, `index.ts` (open and migrate), `sql.ts` |
 | `server/src/runtime/registry.ts` | `Deployments`: one runtime per deployment, loaded lazily; revisions, status, preview tokens |
 | `server/src/runtime/runtime.ts` | `DeploymentRuntime`: a coder's units, distribution under locks, experiments' conditions |

@@ -40,8 +40,15 @@ the second factor) is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default
 600):
 
 - creating or revoking API keys;
-- resetting answers, deleting coders' data, deleting or exporting a study;
-- changing a study's ADMINs (`PUT /study/:id/users`) or the server admin role.
+- resetting answers, deleting coders' data, exporting a study;
+- deleting a study, and deleting an account (one's own, or an admin deleting
+  a registered user's). These also ask to type what goes: the study's name,
+  the account's email address (`accounts.md` §5);
+- changing who is a study's ADMIN (`PUT /study/:id/users`);
+- every change of who is a server admin: giving or taking the admin role
+  (also inviting someone as admin), and blocking, unblocking, restoring the
+  roles of, or withdrawing the invitation of someone who holds it;
+- linking a new login to an account while changing providers (below).
 
 Otherwise: 403 `step_up_required`, and the client sends the researcher to log
 in again with `?stepUp=1`. The server asks the provider for `max_age` and
@@ -66,9 +73,20 @@ logged at start and shown as hardening warnings.
   a provider that verifies but doesn't send the claim.
 
 **API keys** are for other clients (R, Python): made and revoked only in the
-web client with a fresh second factor; they count as having the second factor
-but never do sensitive actions (403 `not_with_api_key`). The operator can make
-one on the command line (`packages/server/README.md`, "API keys").
+web client with a fresh second factor. A key has no second factor and no
+expiry, so it can do less than its user:
+
+- it never does sensitive actions (403 `not_with_api_key`);
+- it is **never an admin**: an admin's key works as a researcher's, and the
+  admin API answers it 403 `admin_required`. Server admin work needs a web
+  session.
+
+The operator can make a key on the command line
+(`packages/server/README.md`, "API keys"); the same holds for it.
+
+**No role, no study.** A study the user has no role in answers 404, the same
+as a study that doesn't exist, so ids don't tell which studies a server has.
+403 is for a role that is too low.
 
 **Development mode** (`AUTH_DEV_MODE=1`): `x-dev-role` / `x-dev-email`
 headers instead of a login. The server refuses to start in this mode unless
@@ -87,8 +105,41 @@ it listens on localhost only. Never on a server others use.
 **Who someone is**: their login at the provider (`iss` + `sub`), not their
 address. Safeguards keep a later owner of an address from getting someone's
 roles (`accounts.md` §2, "Safeguards"). **Changing providers**: `accounts.md`,
-"Changing providers". Logins (provider, whether 2FA was used) and linked
-logins are written to `security_log`.
+"Changing providers".
+
+**Linking a login** (`/auth/login?link=1`) decides who can log in as a user
+from then on, so the server allows it only:
+
+- while the server moves providers (`OIDC_PREVIOUS_*` set, before
+  `OIDC_PREVIOUS_UNTIL`);
+- from a session that logged in with the previous provider;
+- for a user who has no login at the current provider yet (one per provider);
+- with a recent login: if the session's isn't recent, the server first asks
+  for a step-up login at the previous provider, then goes on;
+- with a login the current provider asks for then and there (`prompt=login`),
+  whatever session the browser has there;
+- with a login that isn't another account's already.
+
+Anything else comes back with `loginError=link_failed`.
+
+**The session.** A random key in an httpOnly, `SameSite=Lax` cookie
+(`Secure` over HTTPS); the database has only its hash. It lasts 14 days from
+its last use: the server extends it at most once an hour, and sends the
+cookie again when it does.
+
+**The security log** (`security_log`, per user) records:
+
+| Event | When | Details |
+| --- | --- | --- |
+| `login` | every login | the provider, whether a second factor was used, whether it was a step-up login, an unconfirmed address |
+| `identity_linked` | a login was linked to the account | the provider |
+| `api_key_created`, `api_key_revoked` | | the key's id and label |
+| `study_exported` | a study export was downloaded | the study |
+| `study_deleted` | | the study's id and name |
+| `study_users_changed` | a study's users were changed | who went from which role to which, roles restored |
+
+A user's log is deleted with their account. What admins do (also deleting a
+user) is in `admin_log`, with the admin's address.
 
 ## 2. Headers
 
@@ -122,33 +173,61 @@ The end-to-end tests fail on any policy violation
 ## 3. Rate limits
 
 Generous ceilings against floods and guessing, not fraud detection (that is
-what answer timings are for, `coder-identity.md` §10). Per minute
+what answer timings are for, `coder-identity.md` §10). Each kind of request is
+counted per address or per user, in windows of a fixed length
 (`shared/rateLimit.ts`):
 
-| Kind | Per | Default |
-| --- | --- | --- |
-| Coder requests without a session (new sessions, guessed links) | address | 300 |
-| Redeeming transfer tokens | address | 30 |
-| Logging in | address | 60 |
-| Researcher API | account, else address | 1200 |
-| All coder requests (in memory, per process) | address | 10,000 |
+| Kind | Per | Window | Default |
+| --- | --- | --- | --- |
+| New coder sessions: a device without a session in a study asking for one (also guessed links) | address | 10 minutes | 500 (`ANNOTINDER_NEW_SESSIONS_PER_ADDRESS`: a number, or `off`) |
+| Redeeming transfer tokens | address | 1 minute | 30 |
+| Logging in: starting a login and coming back from the provider | address | 1 minute | 60 |
+| Researcher API (`/study`, `/me`, `/admin`), before the request is authenticated | address | 1 minute | 6000 |
+| Researcher API, once authenticated | user | 1 minute | 1200 |
+| All coder requests (`/d`, `/coder`; in memory, per process) | address | 1 minute | 10,000 |
 
-A class behind one address stays well below them. Over a limit: 429
-`rate_limited` with `Retry-After: 60`; the coding client waits and retries.
-Counts live in an `UNLOGGED` Postgres table shared by all processes. Behind a
-proxy set `ANNOTINDER_TRUST_PROXY=1` (compose does): the address is then the
-last entry of `X-Forwarded-For`. With a second proxy in front (Cloudflare)
-that entry is the proxy, unless the first one is set up as in `hosting.md`,
-"The visitor's real address". `ANNOTINDER_RATE_LIMITS=off`
-turns them off (e.g. a load test).
+- **Per researcher user**: one user's requests are one count, whatever
+  address they come from and whether by session or by any of their API keys.
+  The limit per address comes first and is higher, so a department behind one
+  address fits, and requests with made-up credentials are still counted.
+- **New sessions** are only a brake: a class or a university network shares
+  one address, so the default is high. Lower it only if you know who codes.
+- Over a limit: 429 `rate_limited` with `Retry-After` (the seconds until the
+  window ends); the coding client waits and retries.
+- Counts live in an `UNLOGGED` Postgres table shared by all processes, except
+  the last row.
+- `ANNOTINDER_RATE_LIMITS=off` turns them all off (e.g. a load test from one
+  machine).
+
+**Whose address.** Anyone can send a header that names an address, so the
+server believes one only from what the operator says is in front of it,
+`ANNOTINDER_TRUST_PROXY` (`shared/clientAddress.ts`):
+
+| Value | In front of the server | The address is |
+| --- | --- | --- |
+| `none` (default) | nothing: browsers connect to it | the connection's |
+| `proxy` (`compose.yml` sets it) | one reverse proxy (Caddy, nginx), the only way in | the last entry of `X-Forwarded-For`, which that proxy wrote |
+| `cloudflare` | Cloudflare in front of that proxy | `CF-Connecting-IP`, for requests the proxy got from one of Cloudflare's addresses; for others as `proxy` |
+
+Any other value (also the earlier `1`) and the server doesn't start. It says
+at start-up where it takes addresses from. With `proxy` behind Cloudflare,
+all visitors behind one Cloudflare address share a count: `hosting.md`, "The
+visitor's real address".
 
 ## 4. Exported data
 
-Coders' text goes into the downloaded CSV files as written. Spreadsheets run
-a cell starting with `=`, `+`, `-` or `@` as a formula ("CSV injection"), so
-by default the download puts a `'` before such text (not before numbers like
-`-3`). `README.txt` in the download says how to strip it in R or Python; the
-option can be turned off at download.
+Coders' text goes into the downloaded CSV files as written: nothing is added
+or escaped, so R and Python read what the coder typed. Spreadsheets run a
+cell starting with `=`, `+`, `-` or `@` as a formula ("CSV injection"), so
+the CSV files are not for a spreadsheet program: the Download page says so
+next to the CSV choice, and `README.txt` in the download repeats it. For
+looking at the data in a spreadsheet the download offers Excel (.xlsx),
+whose text cells are plain text and never run as formulas
+(`client/src/lib/admin/xlsx.ts`).
+
+The stored results download (the raw export) and the study export hold
+coders' answers; who can get them, and when they are removed:
+`api/researcher.md` (`exportResults`, `exportStudy`).
 
 ## 5. Coders
 
@@ -175,6 +254,8 @@ option can be turned off at download.
 | `AUTH_DEV_MODE` | `1`: development headers, localhost only |
 | `ANNOTINDER_PUBLIC_URL` | the public address; `https` turns on HSTS |
 | `ANNOTINDER_FRAME_ANCESTORS` | origins that may frame AnnoTinder (§2) |
-| `ANNOTINDER_TRUST_PROXY` | `1` behind a proxy that sets `X-Forwarded-For` (§3) |
+| `ANNOTINDER_TRUST_PROXY` | `none` (default), `proxy` or `cloudflare`: what is in front of the server (§3) |
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (§3) |
-| `ANNOTINDER_SECRET` | signs login state and preview links |
+| `ANNOTINDER_NEW_SESSIONS_PER_ADDRESS` | new coder sessions per address per 10 minutes (default 500), or `off` (§3) |
+| `ANNOTINDER_SECRET` | signs login state, preview links and download links; at least 32 characters, required with `DATABASE_URL` |
+| `ANNOTINDER_ADMINS` | addresses that get the admin role at login, if the provider confirmed the address |
