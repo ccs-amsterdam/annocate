@@ -10,4 +10,4 @@ data=$(mktemp -d)
 trap 'rm -rf "$data"' EXIT
 cd packages/server
 PORT="${E2E_PORT:-8799}" PGLITE_DIR="$data" AUTH_DEV_MODE=1 ANNOTINDER_DEMO=1 \
-  ANNOTINDER_CLIENT_DIR="$(cd ../client/dist && pwd)" ANNOTINDER_SECRET=e2e npx tsx src/index.ts
+  ANNOTINDER_CLIENT_DIR="$(cd ../client/dist && pwd)" ANNOTINDER_SECRET=e2e-test-secret-not-for-any-real-server npx tsx src/index.ts
