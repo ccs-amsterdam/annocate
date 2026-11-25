@@ -6,6 +6,7 @@ import { defaultTransferUrl } from "../../session/coderSession";
 import type { StudyManager } from "../../studyManager/StudyManager";
 import { useStudyManager } from "../../studyManager/useStudyManager";
 import { SessionEnd } from "../SessionEnd";
+import { historyKey, useBrowserHistory } from "./browserHistory";
 import {
   useCodingDisplay,
   useDocumentTitle,
@@ -30,7 +31,14 @@ export function CodingScreen(props: CodingScreenProps) {
   const { manager, snapshot } = useStudyManager(coderApi);
   const [navDirection, setNavDirection] = useNavDirection(snapshot.navigation);
   const [display, screenRef] = useCodingDisplay(snapshot, coderApi);
-  const moves = codingMoves(manager, setNavDirection);
+  const screenMoves = codingMoves(manager, setNavDirection);
+  const history = useBrowserHistory({
+    enabled: !props.preview,
+    key: historyKey(snapshot),
+    onBack: screenMoves.back,
+    onForward: screenMoves.forward,
+  });
+  const moves = { ...screenMoves, ...history };
   // The keys that work whatever the mapping: arrows, Ctrl + arrows, Ctrl + Enter
   useBaseKeys({
     canGoBack: snapshot.navigation.canGoBack,

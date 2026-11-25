@@ -64,6 +64,9 @@ unit is saved when they go through that unit's last question. If a
 An answer outside the loops that a loop depends on (e.g. a role shown with
 every unit) can't be changed once the coder coded a unit in that loop.
 
+The browser's **Back** and **Forward** buttons (and a swipe on a phone) do the
+same as **<** and **>**. On the first question, Back leaves the page.
+
 ## Saving and resuming
 
 - An answer **outside a loop** is saved as soon as it is given.

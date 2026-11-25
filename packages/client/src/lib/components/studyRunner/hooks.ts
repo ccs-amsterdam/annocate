@@ -19,7 +19,7 @@ export function useLoginAvailable(): boolean | null {
 export type NavDirection = "next" | "previous";
 
 /** A number that grows as the coder moves forward (step, unit, question), to tell forward from back. */
-function positionOf(nav: StudyManagerNavigation): number {
+export function positionOf(nav: StudyManagerNavigation): number {
   const phaseIdx = nav.currentPhaseIndex;
   const phase = nav.phases[phaseIdx];
   if (!phase) return 0;

@@ -540,6 +540,16 @@ leader and held keys are handled once, before the scopes.
   (Alt + arrows too, for Macs where Ctrl + arrows are the system's),
   Ctrl + Enter continues an answered question, Ctrl + Space opens the
   instruction (`keyboard/commands.ts`).
+- **Browser history** (`studyRunner/browserHistory.ts`, only in the real
+  coding screen, never a preview). Each new place (`positionOf`) the coder
+  gets to pushes one entry with the same URL, keeping the router's state and
+  adding `{ codingStep: n }`; a `Trail` (keys per entry, the one shown) says
+  whether an entry is new. The browser's Back/Forward (`popstate`) call the
+  screen's own back/forward once per step. The screen's own buttons and keys
+  call `history.back()`/`forward()` where an entry is there, so both stay in
+  step and no entry is added (a new place after going back replaces the
+  entries ahead). On the first question Back leaves the page. After a reload
+  only the entries pushed since count.
 - **`useFocusAfterBack`** (`keyboard/hooks.ts`). Going back with the
   keyboard asks the controller to focus the answer (`requestFocus`), so the
   coder can change it at once. The question itself takes the request when it
