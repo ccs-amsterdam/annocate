@@ -20,6 +20,8 @@ export interface FileStore {
   /** The keys under a prefix (`exports/12/`). */
   list(prefix: string): Promise<string[]>;
   remove(key: string): Promise<void>;
+  /** Removes every file under a prefix (`exports/12/`). */
+  removeAll(prefix: string): Promise<void>;
 }
 
 /** Files on this server's disk, under `root`. */
@@ -84,6 +86,10 @@ export class DiskFileStore implements FileStore {
 
   async remove(key: string): Promise<void> {
     await rm(this.path(key), { force: true });
+  }
+
+  async removeAll(prefix: string): Promise<void> {
+    await rm(this.path(prefix.replace(/\/+$/, "")), { force: true, recursive: true });
   }
 }
 

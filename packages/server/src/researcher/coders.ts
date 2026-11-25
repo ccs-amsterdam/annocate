@@ -4,6 +4,7 @@ import type { Server, Env } from "../context.js";
 import { requireSensitive, requireStudyUser } from "./auth.js";
 import { listCoderProgress } from "../shared/progress.js";
 import { deleteCoders, listCoderDeletions, postponeDeletion } from "../shared/coderDeletion.js";
+import { removeResultsExports } from "../shared/resultsExport.js";
 import { DeleteCodersSchema } from "@annotinder/contracts";
 import { sql } from "drizzle-orm";
 import { rows } from "../db/index.js";
@@ -49,6 +50,8 @@ export function coders(server: Server): Hono<Env> {
     const body = await parseJson(c, DeleteCodersSchema);
     const studyId = c.get("studyId");
     const result = await deleteCoders(db, studyId, body, c.get("researcher").email);
+    // A results export made before holds their answers: its download link stops working
+    await removeResultsExports(server.files, studyId);
     return c.json(result);
   });
 

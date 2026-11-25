@@ -8,6 +8,7 @@ import { createGunzip, createGzip } from "node:zlib";
 import { PGlite } from "@electric-sql/pglite";
 import {
   DesignWriteSchema,
+  loginRequired,
   STUDY_EXPORT_FORMAT_VERSION,
   StudyExportManifestSchema,
   StudyWriteSchema,
@@ -49,6 +50,7 @@ import { CLIENT_VERSION } from "../version.js";
 import { effectiveLimits, getSettings, usage } from "./accounts.js";
 import { designVersionItems, designVersionUnits, itemsValid, type DesignVersionRow } from "./designVersions.js";
 import { HttpError, type RequestIssue } from "./http.js";
+import { deployedSession } from "./links.js";
 import type { StudyRow } from "./studies.js";
 
 // Study exports (contracts `StudyExportManifestSchema`, docs/hosting.md
@@ -235,6 +237,8 @@ export async function exportStudy(
         study: { name: study!.name },
         tables,
       };
+      // A coder's email address goes along only where coders sign in with it (the deployed design requires it)
+      const withEmail = loginRequired(await deployedSession(tx, studyId));
       const file = gzippedLines();
       await file.write(JSON.stringify(manifest));
       for (const { table } of EXPORTED) {
@@ -242,6 +246,7 @@ export async function exportStudy(
           for (const row of page) {
             // The owner is this server's user: the importer becomes the owner
             if (table === studies) row.owner_id = null;
+            if (table === coderSessions && !withEmail) row.email = null;
             await file.write(JSON.stringify({ table: nameOf(table), row }));
           }
         }

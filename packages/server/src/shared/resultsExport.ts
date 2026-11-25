@@ -175,8 +175,26 @@ async function* exportZip(tx: Db, studyId: number, studyName: string, batch: num
   yield* take();
 }
 
-/** Where a study's exports go. */
-const exportPrefix = (studyId: number) => `exports/${studyId}`;
+/** Where exports go: a folder per study. */
+const EXPORTS = "exports";
+const exportPrefix = (studyId: number) => `${EXPORTS}/${studyId}`;
+
+/**
+ * Removes the study's stored exports: after coders' data is deleted, answers
+ * are reset or the study is deleted, a file made before holds what is gone,
+ * and a download link handed out for it must stop working.
+ */
+export async function removeResultsExports(files: FileStore, studyId: number): Promise<void> {
+  await files.removeAll(exportPrefix(studyId));
+}
+
+/** Removes the stored exports of studies that no longer exist (deleted while this server was down, or by another one). */
+async function removeExportsOfDeletedStudies(db: Db, files: FileStore): Promise<void> {
+  const folders = await files.list(EXPORTS);
+  if (folders.length === 0) return;
+  const existing = new Set((await db.select({ id: studies.id }).from(studies)).map((s) => `${EXPORTS}/${s.id}`));
+  for (const folder of folders) if (!existing.has(folder)) await files.removeAll(folder);
+}
 
 /**
  * The study's raw export in `files`: the stored one if the study hasn't
@@ -202,5 +220,6 @@ export async function ensureResultsExport(
     accessMode: "read only",
   });
   for (const other of await files.list(exportPrefix(studyId))) if (other !== key) await files.remove(other);
+  await removeExportsOfDeletedStudies(db, files);
   return { key, size, filename };
 }

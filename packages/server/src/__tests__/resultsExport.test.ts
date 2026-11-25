@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +16,7 @@ import {
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { DiskFileStore, fileToken } from "../shared/files.js";
-import { ensureResultsExport } from "../shared/resultsExport.js";
+import { ensureResultsExport, removeResultsExports } from "../shared/resultsExport.js";
 import { emptyDb } from "./testDb.js";
 
 // The raw results export (docs/plans/exports-and-files.md): a zip of JSON
@@ -121,6 +122,64 @@ describe("results export", () => {
     const second = await ensureResultsExport(db, files, study);
     expect(second.key).not.toBe(first.key);
     expect(await readdir(join(files.root, "exports", String(study)))).toEqual([second.key.split("/").at(-1)]);
+  });
+
+  it("deleting a coder's data or resetting answers removes the stored export: its link stops working", async () => {
+    const study = await example("swipe-sentiment");
+    const post = (path: string, body: object) =>
+      app.request(`/api/study/${study}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+    const { rows: sessions } = await db.execute<{ id: number; variable: string }>(
+      sql`SELECT session_id AS id, min(variable) AS variable FROM annotation_values
+          WHERE study_id = ${study} AND unit_id IS NOT NULL GROUP BY session_id ORDER BY session_id`,
+    );
+    const stored = () => readdir(join(files.root, "exports", String(study))).catch(() => []);
+
+    const beforeDeletion = await exportOf(study);
+    expect((await app.request(beforeDeletion.url)).status).toBe(200);
+    expect((await post("/coders/delete", { sessionIds: [Number(sessions[0]!.id)] })).status).toBe(200);
+    expect(await stored()).toEqual([]);
+    expect((await app.request(beforeDeletion.url)).status).toBe(404);
+
+    const beforeReset = await exportOf(study);
+    expect((await post("/annotations/reset", { variables: [sessions[1]!.variable] })).status).toBe(200);
+    expect(await stored()).toEqual([]);
+    expect((await app.request(beforeReset.url)).status).toBe(404);
+  });
+
+  it("removes the stored exports of studies that are gone when it makes one", async () => {
+    const [gone, kept] = [await example("swipe-sentiment"), await example("swipe-sentiment")];
+    await ensureResultsExport(db, files, gone);
+    await db.execute(sql`DELETE FROM studies WHERE id = ${gone}`);
+    await ensureResultsExport(db, files, kept);
+    expect(await readdir(join(files.root, "exports"))).toEqual([String(kept)]);
+    // What deleting a study calls
+    await removeResultsExports(files, kept);
+    expect(await readdir(join(files.root, "exports"))).toEqual([]);
+  });
+
+  it("the deletion log keeps a hash where the coder id is an email address", async () => {
+    const study = await example("swipe-sentiment");
+    const { rows: sessions } = await db.execute<{ id: number }>(
+      sql`SELECT id FROM coder_sessions WHERE study_id = ${study} ORDER BY id LIMIT 2`,
+    );
+    const [withAddress, withName] = sessions.map((s) => Number(s.id));
+    await db.execute(sql`UPDATE coder_sessions SET coder = 'Ann@Uni.nl' WHERE id = ${withAddress}`);
+    await db.execute(sql`UPDATE coder_sessions SET coder = 'coder-7' WHERE id = ${withName}`);
+    const res = await app.request(`/api/study/${study}/coders/delete`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ sessionIds: [withAddress, withName] }),
+    });
+    expect(res.status).toBe(200);
+    const log = (await (await app.request(`/api/study/${study}/coders/deletions`, { headers })).json()) as {
+      sessionId: number;
+      coder: string;
+    }[];
+    const logged = new Map(log.map((d) => [d.sessionId, d.coder]));
+    expect(logged.get(withName!)).toBe("coder-7");
+    // The address in lower case, hashed: found again from results downloaded earlier, and names nobody
+    expect(logged.get(withAddress!)).toBe(`sha256:${createHash("sha256").update("ann@uni.nl").digest("hex")}`);
+    expect(JSON.stringify(await db.execute(sql`SELECT coder FROM session_deletions`))).not.toMatch(/uni\.nl/i);
   });
 
   it("refuses expired, altered and unknown links, and studies the user can't read", async () => {

@@ -1,5 +1,6 @@
 import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
-import type { CoderDeletion, DeleteCoders, DeleteCodersResponse } from "@annotinder/contracts";
+import { createHash } from "node:crypto";
+import { isEmail, type CoderDeletion, type DeleteCoders, type DeleteCodersResponse } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
 import { annotationValues as a, sessionDeletions, coderSessions, units } from "../db/schema/index.js";
@@ -11,8 +12,8 @@ import { annotationValues as a, sessionDeletions, coderSessions, units } from ".
  * retired ones. Selected by session id, coder id or email, within the study.
  * Units nobody has answers for any more can be deleted again. Unit
  * versions stay: they hold unit content, not the coder's. Each deleted coder
- * is logged (`session_deletions`), with the ids downloaded results use (not
- * the email address).
+ * is logged (`session_deletions`), with the ids downloaded results use;
+ * never an email address (`loggedCoder`).
  */
 export async function deleteCoders(
   db: Db,
@@ -51,9 +52,14 @@ export async function deleteCoders(
       })
       .from(coderSessions)
       .where(theirs);
-    await tx
-      .insert(sessionDeletions)
-      .values(logged.map((c) => ({ ...c, requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null, deletedBy })));
+    await tx.insert(sessionDeletions).values(
+      logged.map((c) => ({
+        ...c,
+        coder: loggedCoder(c.coder),
+        requestedAt: c.requestedAt ? new Date(c.requestedAt.at) : null,
+        deletedBy,
+      })),
+    );
     const removed = await tx
       .delete(a)
       .where(and(eq(a.studyId, studyId), inArray(a.sessionId, ids)))
@@ -73,6 +79,17 @@ export async function deleteCoders(
       .where(and(eq(units.studyId, studyId), anyOf(units.id, touched)));
     return { sessionIds: ids, answers: removed.length };
   });
+}
+
+/**
+ * A deleted coder's id as the deletion log keeps it. Where coders sign in,
+ * the coder id is their email address: the log then keeps
+ * `sha256:<hash of the address in lower case>`, which finds the coder in
+ * results downloaded earlier (hash the addresses there) and names nobody.
+ */
+export function loggedCoder(coder: string | null): string | null {
+  if (coder === null || !isEmail(coder)) return coder;
+  return `sha256:${createHash("sha256").update(coder.toLowerCase()).digest("hex")}`;
 }
 
 /** Deletes later: the request stays, marked postponed, and is no longer brought up. Returns false if there is none. */

@@ -325,6 +325,21 @@ describe("study exports", { timeout: 60_000 }, () => {
     expect(moved!.ids).not.toEqual([first.id, second.id]);
   });
 
+  it("leaves coders' email addresses out, unless the deployed design has coders sign in", async () => {
+    const study = await exampleStudy();
+    await query(db, "UPDATE coder_sessions SET email = 'coder' || id || '@uni.nl' WHERE study_id = $1", [study]);
+    const emails = async () => rowsOf(unpacked(await exported(study)).rows, "coder_sessions").map((s) => s.email);
+    expect((await emails()).length).toBeGreaterThan(0);
+    expect((await emails()).every((email) => email === null)).toBe(true);
+    await query(
+      db,
+      `UPDATE design_versions SET session = jsonb_set(session, '{invite}', '{"mode": "crowd", "login": true}')
+       WHERE id = (SELECT design_version_id FROM deployments WHERE study_id = $1)`,
+      [study],
+    );
+    expect((await emails()).every((email) => /^coder\d+@uni\.nl$/.test(String(email)))).toBe(true);
+  });
+
   it("an export read in small pages holds the same rows, each once", async () => {
     const study = await exampleStudy();
     const whole = unpacked((await exportStudy(db, study)).bytes);
