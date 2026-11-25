@@ -21,7 +21,10 @@ with the runtime in `src/runtime/`. Client side:
 Two more paths, without authentication, for monitoring (`hosting.md`):
 `GET /health` (`{ ok: true, service, release, commit }`; asks nothing of the
 database) and `GET /ready` (`{ ok, service, database }`; 503 when the
-database doesn't answer within 3 seconds).
+database doesn't answer within 3 seconds). And one for the client's "About
+this server" page: `GET /info` (`ServerInfoSchema`, `contracts/src/serverInfo.ts`):
+what the server's operator set about who runs it, where it is hosted, the
+contact, privacy statement and terms (null where not set), and the version.
 
 ## Authentication
 

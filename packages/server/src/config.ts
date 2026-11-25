@@ -1,3 +1,4 @@
+import type { ServerOperatorInfo } from "@annotinder/contracts";
 import type { AppOptions } from "./app.js";
 import { parseMfaClaim, type OidcOptions } from "./oidc.js";
 import { TRUST_PROXY, TRUST_PROXY_SOURCE, type TrustProxy } from "./shared/clientAddress.js";
@@ -32,6 +33,11 @@ import type { RateLimits } from "./shared/rateLimit.js";
 // ANNOTINDER_RATE_LIMITS=off (no rate limits; docs/security.md); ANNOTINDER_NEW_SESSIONS_PER_ADDRESS
 // (new coder sessions per address per 10 minutes: default 500, or off); ANNOTINDER_FILES_DIR
 // (where exports are kept; default a temp folder: they are a cache).
+//
+// The "About this server" page (all optional): ANNOTINDER_OPERATOR (who runs
+// the server), ANNOTINDER_HOSTING (where it is hosted), ANNOTINDER_CONTACT
+// (an email address or other text), ANNOTINDER_PRIVACY_URL and
+// ANNOTINDER_TERMS_URL (web addresses).
 
 /** Environment variables, as `process.env` has them. */
 export type Environment = Record<string, string | undefined>;
@@ -59,6 +65,8 @@ export interface Config {
   /** Undefined: no rate limits. */
   rateLimits: Partial<RateLimits> | undefined;
   trustProxy: TrustProxy;
+  /** What the "About this server" page says (null: not set). */
+  info: ServerOperatorInfo;
 }
 
 /** Development mode only on this machine: never on a server other people reach. */
@@ -96,6 +104,7 @@ export function readConfig(env: Environment): Config {
     https: env.ANNOTINDER_PUBLIC_URL?.startsWith("https://") ?? false,
     rateLimits: readRateLimits(env),
     trustProxy: readTrustProxy(env),
+    info: readInfo(env),
   };
 }
 
@@ -206,6 +215,23 @@ function readTrustProxy(env: Environment): TrustProxy {
   if (!TRUST_PROXY.includes(trustProxy))
     throw new Error(`ANNOTINDER_TRUST_PROXY must be ${TRUST_PROXY.join(", ")}, not "${trustProxy}" (docs/hosting.md)`);
   return trustProxy;
+}
+
+/** What the operator says about the server, for its "About this server" page. */
+function readInfo(env: Environment): ServerOperatorInfo {
+  const text = (name: string) => env[name]?.trim() || null;
+  const url = (name: string) => {
+    const value = text(name);
+    if (value && !/^https?:\/\//.test(value)) throw new Error(`${name} must be a web address, not "${value}"`);
+    return value;
+  };
+  return {
+    operator: text("ANNOTINDER_OPERATOR"),
+    hosting: text("ANNOTINDER_HOSTING"),
+    contact: text("ANNOTINDER_CONTACT"),
+    privacyUrl: url("ANNOTINDER_PRIVACY_URL"),
+    termsUrl: url("ANNOTINDER_TERMS_URL"),
+  };
 }
 
 /** What the server says of its settings when it starts: `lines`, and `warnings` for what weakens it. */

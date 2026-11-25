@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { join } from "node:path";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono, type Context } from "hono";
+import { SERVER_INFO_PATH, type ServerInfo, type ServerOperatorInfo } from "@annotinder/contracts";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import type { Env, Server } from "./context.js";
@@ -85,6 +86,8 @@ export interface AppOptions {
   rateLimits?: Partial<RateLimits>;
   /** What is in front of the server (`ANNOTINDER_TRUST_PROXY`): where the client's address comes from (shared/clientAddress.ts). Default none. */
   trustProxy?: TrustProxy;
+  /** What the operator says about the server (`ANNOTINDER_OPERATOR` and the others, config.ts); absent: nothing set. */
+  info?: ServerOperatorInfo;
   /** Writes a line per API request (shared/requestLog.ts); absent: no request log (tests). The server logs to the console. */
   log?: (line: string) => void;
 }
@@ -104,7 +107,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   // x-annotinder header, researcher/auth.ts).
   app.use("*", compress({ encoding: "gzip" }));
   app.onError(errorResponse);
-  app.route("/api", api(server, options.log));
+  app.route("/api", api(server, options));
   if (options.clientDir) serveClient(app, options.clientDir);
   return app;
 }
@@ -160,11 +163,12 @@ function errorResponse(err: Error, c: Context<Env>) {
 }
 
 /** The APIs, all under /api (contracts endpoint paths are relative to it). */
-function api(server: Server, log: AppOptions["log"]): Hono<Env> {
+function api(server: Server, options: AppOptions): Hono<Env> {
   const api = new Hono<Env>();
   api.onError(errorResponse);
-  api.use("*", requestLog(log));
+  api.use("*", requestLog(options.log));
   healthRoutes(api, server);
+  infoRoute(api, options.info);
   mountLimits(api, server);
   coderRoutes(api, server);
   researcherRoutes(api, server);
@@ -182,6 +186,20 @@ function healthRoutes(api: Hono<Env>, server: Server): void {
     const database = await databaseAnswers(server.db);
     return c.json({ ok: database, service: "annotinder", database }, database ? 200 : 503);
   });
+}
+
+const NOTHING_SET: ServerOperatorInfo = {
+  operator: null,
+  hosting: null,
+  contact: null,
+  privacyUrl: null,
+  termsUrl: null,
+};
+
+/** The "About this server" page's content: what the operator set, and the version. No authentication. */
+function infoRoute(api: Hono<Env>, info: ServerOperatorInfo = NOTHING_SET): void {
+  const serverInfo: ServerInfo = { ...info, version: CLIENT_VERSION };
+  api.get(SERVER_INFO_PATH, (c) => c.json(serverInfo));
 }
 
 /** How large a request may be and how many there may be, before any route reads one. */

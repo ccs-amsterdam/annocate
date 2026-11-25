@@ -20,6 +20,7 @@ import { TAB_SLUGS, type TabId } from "./lib/admin/tabs";
 import { HttpResearcherApi } from "./lib/api/httpResearcherApi";
 import { ServerApi } from "./lib/api/serverApi";
 import { useTheme } from "./lib/context/theme";
+import { AboutLink, AboutPage } from "./pages/AboutPage";
 import { WelcomePage } from "./pages/WelcomePage";
 import { CodeHomePage } from "./pages/CodeHomePage";
 import { CodePage } from "./pages/CodePage";
@@ -27,7 +28,8 @@ import { Logo, LogoSmoke } from "./components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 
 // The app (docs/client.md): a welcome page, the researcher section
-// (/research) and the coder section (/code). The server serves it
+// (/research), the coder section (/code) and what the server's operator
+// says about it (/about). The server serves it
 // for every path outside /api (docs/hosting.md), on its own origin
 // (session cookies are same-origin only); in development Vite serves it
 // and forwards /api (vite.config.ts).
@@ -303,6 +305,15 @@ const welcomeRoute = createRoute({
     </WithHeader>
   ),
 });
+const aboutRoute = createRoute({
+  getParentRoute: () => researcherPagesRoute,
+  path: "/about",
+  component: () => (
+    <WithHeader>
+      <AboutPage apiUrl={API_URL} />
+    </WithHeader>
+  ),
+});
 const researchRoute = createRoute({
   getParentRoute: () => researcherPagesRoute,
   path: "/research",
@@ -335,6 +346,7 @@ const codeHomeRoute = createRoute({
     return (
       <WithHeader>
         <CodeHomePage apiUrl={API_URL} dev={dev} canLogIn={!!state?.options.login && !state.me} />
+        <AboutLink />
       </WithHeader>
     );
   },
@@ -368,6 +380,7 @@ const codeRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   researcherPagesRoute.addChildren([
     welcomeRoute,
+    aboutRoute,
     researchRoute.addChildren([researchIndexRoute, serverAdminRoute, studyRoute, studyTabRoute]),
     codeHomeRoute,
   ]),

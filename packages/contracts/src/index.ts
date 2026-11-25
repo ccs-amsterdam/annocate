@@ -55,6 +55,7 @@ export * from "./results.js";
 export * from "./endpoints/index.js";
 
 export * from "./version.js";
+export * from "./serverInfo.js";
 export * from "./frame.js";
 export * from "./design/coderCodebook.js";
 export * from "./userSettings.js";

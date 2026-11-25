@@ -63,6 +63,30 @@ describe("the server's settings", () => {
     expect(config).toMatchObject({ secret: undefined, filesDir: undefined, trustProxy: "none" });
   });
 
+  it("read what the operator says about the server: nothing by default, links only as web addresses", () => {
+    const nothing = { operator: null, hosting: null, contact: null, privacyUrl: null, termsUrl: null };
+    expect(readConfig({}).info).toEqual(nothing);
+    expect(readConfig({ ANNOTINDER_OPERATOR: " ", ANNOTINDER_PRIVACY_URL: "" }).info).toEqual(nothing);
+    const info = readConfig({
+      ANNOTINDER_OPERATOR: " The Example Lab, Example University ",
+      ANNOTINDER_HOSTING: "A university data centre in Exampletown",
+      ANNOTINDER_CONTACT: "annotinder@example.org",
+      ANNOTINDER_PRIVACY_URL: "https://example.org/privacy",
+      ANNOTINDER_TERMS_URL: "https://example.org/terms",
+    }).info;
+    expect(info).toEqual({
+      operator: "The Example Lab, Example University",
+      hosting: "A university data centre in Exampletown",
+      contact: "annotinder@example.org",
+      privacyUrl: "https://example.org/privacy",
+      termsUrl: "https://example.org/terms",
+    });
+    expect(() => readConfig({ ANNOTINDER_PRIVACY_URL: "javascript:alert(1)" })).toThrow(
+      'ANNOTINDER_PRIVACY_URL must be a web address, not "javascript:alert(1)"',
+    );
+    expect(() => readConfig({ ANNOTINDER_TERMS_URL: "example.org/terms" })).toThrow("ANNOTINDER_TERMS_URL must be");
+  });
+
   it("development mode only where the server listens on localhost", () => {
     expect(readConfig({ AUTH_DEV_MODE: "1" })).toMatchObject({ devMode: true, host: "localhost" });
     expect(readConfig({ AUTH_DEV_MODE: "1", HOST: "127.0.0.1" }).host).toBe("127.0.0.1");

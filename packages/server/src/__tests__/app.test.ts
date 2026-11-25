@@ -4,7 +4,14 @@ import { emptyDb, query } from "./testDb.js";
 import { createApp } from "../app.js";
 import { DbStore } from "../runtime/dbStore.js";
 import { HttpError } from "../shared/http.js";
-import { DESIGN_FORMAT_VERSION, splitDesignItems, type DesignItem, type VariableValue } from "@annotinder/contracts";
+import {
+  DESIGN_FORMAT_VERSION,
+  ServerInfoSchema,
+  splitDesignItems,
+  type DesignItem,
+  type VariableValue,
+} from "@annotinder/contracts";
+import { CLIENT_VERSION } from "../version.js";
 
 /** Who codes, chosen (deploying needs it): a crowd, unless the design says otherwise. */
 function chosen<T extends { session?: object }>(design: T): T {
@@ -716,6 +723,32 @@ describe("health checks", () => {
     const hangs = { execute: () => new Promise(() => undefined) } as unknown as Db;
     expect(await databaseAnswers(hangs, 20)).toBe(false);
     expect(await databaseAnswers(db)).toBe(true);
+  });
+});
+
+describe("the server's information page", () => {
+  it("/api/info gives what the operator set and the version, without authentication", async () => {
+    const info = {
+      operator: "The Example Lab",
+      hosting: "A university data centre in Exampletown",
+      contact: "annotinder@example.org",
+      privacyUrl: "https://example.org/privacy",
+      termsUrl: null,
+    };
+    const res = await createApp(db, { info }).request("/api/info");
+    expect(res.status).toBe(200);
+    expect(ServerInfoSchema.parse(await json(res))).toEqual({ ...info, version: CLIENT_VERSION });
+  });
+
+  it("says null for what is not set", async () => {
+    expect(await json(await app.request("/api/info"))).toEqual({
+      operator: null,
+      hosting: null,
+      contact: null,
+      privacyUrl: null,
+      termsUrl: null,
+      version: CLIENT_VERSION,
+    });
   });
 });
 

@@ -13,6 +13,7 @@ How the web client (`packages/client`) works and why. Server side:
 | `/research`                        | The researcher UI: the studies                                                                                                                        |
 | `/research/studies/<id>/<page>`    | A study's page (`overview`, `design`, `units`, `deploy`, `links`, `results`, `settings`, `preview`); `design` takes `?version=<n>`                    |
 | `/research/admin`                  | The server admin page                                                                                                                                 |
+| `/about`                           | About this server: who runs it, where it is hosted, contact, privacy statement, terms and version, as its operator set them (`pages/AboutPage.tsx`, `GET /api/info`); linked under the start page and the coder home |
 | `/code`                            | The coder home: studies on this device, and a logged-in coder's sessions on other devices (`pages/CodeHomePage.tsx`); those open with `?login=1` (`session/studies.ts`, `continueUrl`) |
 | `/code/<deployment>?link=<secret>` | Coding (`pages/CodePage.tsx`; `<deployment>` is the study's public id), plus the link's URL parameters; `?transfer=<token>` continues on another device; without either, this device's session. `?login=1`: the coder chose to code with their account; read once, then taken out of the URL, like `transfer` (`useLoginChoice`; the API then sends `x-use-login: 1`, `coder-identity.md` §5) |
 

@@ -183,6 +183,12 @@ Generate the two secrets with `openssl rand -hex 32` (hex needs no quoting).
 | `OIDC_ACCOUNT_URL` | `https://auth.societal-analytics.nl/realms/idp/account` | Where users set up a second factor (`<OIDC_HOST>/account` for Keycloak). Required unless `AUTH_INSECURE_DISABLE_2FA` |
 | `ANNOTINDER_ADMINS` | e.g. `a.researcher@vu.nl,b.researcher@vu.nl` | The first admins: these verified addresses get the admin role at login |
 
+Also fill in what the server's "About this server" page (`/about`) tells
+coders and researchers: `ANNOTINDER_OPERATOR`, `ANNOTINDER_HOSTING`,
+`ANNOTINDER_CONTACT`, `ANNOTINDER_PRIVACY_URL` and `ANNOTINDER_TERMS_URL`
+([Settings](#settings)). They are optional, but a line you leave out reads
+"Not stated".
+
 `compose.yml` sets `DATABASE_URL` and `ANNOTINDER_TRUST_PROXY=proxy` (the app is
 reachable only through Caddy, so rate limits use `X-Forwarded-For`); the image
 sets `PORT` and `ANNOTINDER_CLIENT_DIR`. Never set `AUTH_DEV_MODE` or
@@ -722,9 +728,10 @@ A server on the open internet, for researchers of any institution. Same
 software, same steps. What differs: strangers find it, so it needs
 protection in front; more people depend on it; and it needs legal texts
 (`legal/README.md`). **This guide and the app say nothing about where a
-server is hosted**: each server states that itself, on its own information
-page (release plan, P-A3) and in its privacy statement, for every part: the
-VM, the database, the backups and the proxy.
+server is hosted**: each server states that itself, on its "About this
+server" page (`ANNOTINDER_HOSTING`, [Settings](#settings)) and in its
+privacy statement, for every part: the VM, the database, the backups and
+the proxy.
 
 ### One VM, several processes or several VMs?
 
@@ -1113,7 +1120,11 @@ those for `compose.yml`.
 | `ANNOTINDER_RATE_LIMITS` | `off`: no rate limits (e.g. a load test from one machine) |
 | `ANNOTINDER_NEW_SESSIONS_PER_ADDRESS` | How many new coder sessions one address may ask for per 10 minutes (default 500: a brake only, since a whole class can share one address), or `off` |
 | `ANNOTINDER_FRAME_ANCESTORS` | Origins (space or comma separated) that may frame AnnoTinder, e.g. `https://amcat.example.org` |
-| `ANNOTINDER_COMMIT` | The commit recorded with each deployment; a build argument of the image |
+| `ANNOTINDER_OPERATOR` | Who runs this server (a person, lab or organisation), shown on its "About this server" page (`/about`, linked from the start page and the coder home; `GET /api/info`). This and the next four are optional; what is not set shows as "Not stated" |
+| `ANNOTINDER_HOSTING` | Where the server is hosted, in your own words, for every part: the VM, the database, the backups and a proxy in front |
+| `ANNOTINDER_CONTACT` | How to reach whoever runs the server: an email address (shown as a link) or other text |
+| `ANNOTINDER_PRIVACY_URL`, `ANNOTINDER_TERMS_URL` | The web addresses (`https://...`) of this server's privacy statement and terms of use. Anything else: the server doesn't start |
+| `ANNOTINDER_COMMIT` | The commit recorded with each deployment and shown on the "About this server" page; a build argument of the image |
 | `POSTGRES_PASSWORD` | Compose only: the database password |
 | `PORT` | Default 8787 |
 | `HOST` | Where to listen. Default all addresses (development mode: localhost) |

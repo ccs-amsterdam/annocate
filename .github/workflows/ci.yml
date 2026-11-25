@@ -1,0 +1,102 @@
+# The checks of CLAUDE.md on every push and pull request, the server's tests
+# on Postgres, and a secret scan. The end-to-end tests take minutes: they
+# run only when started by hand (Actions › CI › Run workflow).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, types and tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      # The pnpm version is package.json's packageManager
+      - uses: pnpm/action-setup@v4.1.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # First: the other packages import the contracts' build
+      - name: Contracts build
+        run: pnpm --filter @annotinder/contracts build
+      - run: pnpm -r lint
+      - name: Contracts tests
+        run: pnpm --filter @annotinder/contracts test
+      - name: Server types
+        working-directory: packages/server
+        run: npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p tsconfig.test.json
+      - name: Server tests
+        run: pnpm --filter @annotinder/server test
+      - name: Client types
+        working-directory: packages/client
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Client tests
+        run: pnpm --filter @annotinder/client test
+
+  postgres:
+    name: Server tests on Postgres
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        # Its default user is a superuser, which coderHome.pg.test.ts needs
+        image: postgres:18.7-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: pnpm/action-setup@v4.1.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @annotinder/contracts build
+      - run: pnpm --filter @annotinder/server test:pg
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          # The whole history: a secret that was committed and removed is still one
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The action asks an organisation's repository for a (free) licence key
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  e2e:
+    name: End-to-end tests
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: pnpm/action-setup@v4.1.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Chromium for Playwright
+        run: pnpm --filter @annotinder/e2e exec playwright install --with-deps chromium
+      # Builds the client and starts the server itself (packages/e2e/start-server.sh)
+      - run: pnpm test:e2e

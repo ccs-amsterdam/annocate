@@ -40,8 +40,10 @@ studies. Units and answers are not encrypted in the browser.
 AnnoTinder is software: each server is run by someone, such as your lab,
 your university or a public service. Who that is, where the server, its
 backups and any proxy in front of it are located, and which privacy
-statement applies differ per server. Ask the people who run the server you
-use, and put their answer in your data management plan. You can also run
+statement applies differ per server. The server's **About this server**
+page (`/about`, linked under the start page) says what the people who run
+it have stated; ask them for anything it leaves out, and put the answer in
+your data management plan. You can also run
 the same software on your institution's server, to keep sensitive data
 in-house.
 

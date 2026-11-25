@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, FileCheck2, FlaskConical, Layers, PenTool, Users } from "lucide-react";
 import { Logo } from "../components/Logo";
+import { AboutLink } from "./AboutPage";
 import type { LucideIcon } from "lucide-react";
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
@@ -63,6 +64,7 @@ export function WelcomePage() {
           ))}
         </section>
       </main>
+      <AboutLink />
     </div>
   );
 }
