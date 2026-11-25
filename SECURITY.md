@@ -5,10 +5,8 @@
 Please report a vulnerability in AnnoTinder privately, not in a public
 issue:
 
-> **TODO (owner, before the release): the address for security reports
-> goes here.** For example a mailbox the maintainers read, or "the
-> *Report a vulnerability* button on this repository's Security tab" once
-> private vulnerability reporting is turned on in the repository's settings.
+> Send an email to [k.welbers@vu.nl](mailto:k.welbers@vu.nl)
+
 
 Say what you found, how to reproduce it, and which version or commit it is
 in (a server shows both on its "About this server" page, `/about`). Please
