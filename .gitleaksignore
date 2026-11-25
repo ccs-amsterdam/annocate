@@ -1,0 +1,2 @@
+# Test placeholders, not secrets (gitleaks fingerprints: commit:file:rule:line)
+9dbc1be5a4bf6265791f13c0078acc87f78d6a45:packages/server/src/__tests__/config.test.ts:generic-api-key:11

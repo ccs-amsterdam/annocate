@@ -107,7 +107,9 @@ pnpm --filter @annotinder/server db:generate
 
 writes a new migration in `migrations/` (with its snapshot in
 `migrations/meta/`). Read it, and commit it with the schema change; an
-applied migration is never edited. For something the schema can't say,
+applied migration is never edited. Released migrations are listed with their
+SHA-256 in `src/__tests__/migrationsFrozen.test.ts`, which fails when one
+changes: add a migration there when it is released. For something the schema can't say,
 `pnpm --filter @annotinder/server exec drizzle-kit generate --custom --name <what>`
 makes an empty migration to write by hand.
 

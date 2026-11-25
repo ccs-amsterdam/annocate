@@ -35,6 +35,11 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p tsconfig.test.json
       - name: Server tests
         run: pnpm --filter @annotinder/server test
+      # The schema files and the migrations agree: generating writes nothing new
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @annotinder/server db:generate
+          test -z "$(git status --porcelain -- packages/server/migrations)"
       - name: Client types
         working-directory: packages/client
         run: npx tsc --noEmit -p tsconfig.app.json
@@ -78,11 +83,16 @@ jobs:
         with:
           # The whole history: a secret that was committed and removed is still one
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2.3.9
+      # The gitleaks program itself (MIT), checked against its release checksum: no action, no licence key
+      - name: gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # The action asks an organisation's repository for a (free) licence key
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          VERSION: 8.30.1
+          SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfL -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks git . --redact --no-banner
 
   e2e:
     name: End-to-end tests

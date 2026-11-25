@@ -339,16 +339,16 @@ The server applies new migrations at start. Run the smoke test afterwards (it
 prints the new commit). The server is away for some seconds while its
 container is replaced: update at a quiet hour.
 
-- **Before the first release tag, a database can't always be updated.** Until
-  then the first migration is regenerated in place when the schema changes
-  (release plan, B7-01, D24), and the server skips a migration it has
-  already applied without noticing that the file changed: the database then
-  no longer fits the code. A server installed before the tag is a pilot:
-  expect to start it again with an empty database at the release, and tell
-  researchers to keep their downloads. Study export files from before the tag
-  are not supported either.
-- **From the release tag on, migrations only add.** An update never needs a
-  reset; exports from older releases open on newer ones.
+- **A server installed before 0.9.0 can't be updated.** Until 0.9.0 the
+  first migration was regenerated in place when the schema changed, and the
+  server skips a migration it has already applied without noticing that the
+  file changed: such a database no longer fits the code. Start it again with
+  an empty database, after researchers have taken their downloads. Study
+  export files from before 0.9.0 are not supported either.
+- **From 0.9.0 on, migrations only add.** An update never needs a reset;
+  exports from older releases open on newer ones. Released migrations are
+  frozen: a test (`migrationsFrozen.test.ts`) fails when one is edited, and CI
+  fails when the schema files and the migrations disagree.
 - **Going back** to an older version after an update that changed the
   database: restore the dump made before the update (the first line above),
   then check out and build the older version. Answers given in between are
