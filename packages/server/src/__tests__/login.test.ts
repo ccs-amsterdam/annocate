@@ -441,6 +441,8 @@ describe("researcher login", () => {
     const stop = sweepExpiredSessions(db, 10);
     await vi.waitFor(async () => expect(await left()).toBe(1));
     stop();
+    // A sweep that started before stop() may still be running: let it finish first
+    await new Promise((resolve) => setTimeout(resolve, 50));
     await expire();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(await left()).toBe(2);
