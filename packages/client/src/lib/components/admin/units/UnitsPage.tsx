@@ -13,7 +13,7 @@ import { CodersSummary } from "./CodersSummary";
 import { UnassignedNotice } from "../coders/UnassignedNotice";
 import { HelpButton } from "../../../help/HelpButton";
 import { clampOffset, existingSelection, roleCells } from "../../../admin/unitsTable";
-import { Pager } from "./Pager";
+import { Pager } from "../Pager";
 import { SetsBar, type ShownSet } from "./SetsBar";
 import { SelectionBar } from "./SelectionBar";
 import { UnitTable } from "./UnitTable";

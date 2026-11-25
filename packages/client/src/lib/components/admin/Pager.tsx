@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-/** Which units of the table are shown, with the previous and next page; nothing when all fit on one page. */
+/** Which rows of the table are shown, with the previous and next page; nothing when all fit on one page. */
 export function Pager({
   offset,
   total,

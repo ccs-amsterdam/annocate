@@ -10,6 +10,7 @@ import {
 } from "../../../admin/codersTable";
 import { formatWhen } from "../../../admin/format";
 import { DraftMarker } from "./DraftMarker";
+import { usePage } from "../usePage";
 
 const NUMBERS: CoderColumn[] = ["assigned", "assignedDraft", "done", "remaining"];
 const align = (column: CoderColumn) => (NUMBERS.includes(column) ? "text-right" : "text-left");
@@ -34,32 +35,36 @@ export function CodersTable({
   actions: (coder: CoderResponse) => ReactNode;
 }) {
   const columns = coderColumns(kind);
+  const { rows: pageRows, pager } = usePage(coders);
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/50 text-xs text-muted-foreground">
-            {columns.map((column) => (
-              <ColumnHeader key={column} column={column} sort={sort} onSort={onSort} />
-            ))}
-            <th className="p-2">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {coders.map((coder) => (
-            <tr key={coder.id} className="border-b last:border-0">
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50 text-xs text-muted-foreground">
               {columns.map((column) => (
-                <td key={column} className={`p-2 ${align(column)}`}>
-                  <CoderCell coder={coder} column={column} />
-                </td>
+                <ColumnHeader key={column} column={column} sort={sort} onSort={onSort} />
               ))}
-              <td className="p-2 text-right whitespace-nowrap">{actions(coder)}</td>
+              <th className="p-2">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pageRows.map((coder) => (
+              <tr key={coder.id} className="border-b last:border-0">
+                {columns.map((column) => (
+                  <td key={column} className={`p-2 ${align(column)}`}>
+                    <CoderCell coder={coder} column={column} />
+                  </td>
+                ))}
+                <td className="p-2 text-right whitespace-nowrap">{actions(coder)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pager}
     </div>
   );
 }

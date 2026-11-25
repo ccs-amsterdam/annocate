@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { UnitField, UnitResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { Pager } from "./Pager";
+import { Pager } from "../Pager";
 import { UnitTable } from "./UnitTable";
 
 afterEach(() => {
