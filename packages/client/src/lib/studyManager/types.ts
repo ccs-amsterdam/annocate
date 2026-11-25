@@ -9,16 +9,23 @@ import type {
   VariableValue,
 } from "@annotinder/contracts";
 import type { RenderedTemplate } from "../codebook/renderTemplate";
-import type { QuestionTexts } from "../components/Question";
 
 // What StudyManager publishes to the coding screen (docs/client.md §2 "StudyManager").
 
 export type StudyManagerPhase = "loading" | "user_variable" | "unit_variable" | "finished" | "error";
 
+/** A question's texts, rendered as templates (docs/client.md §4 "Questions and instructions"). */
+export interface QuestionTexts {
+  question?: RenderedTemplate;
+  /** In a unit loop: how to apply the question, opened from the question (? button or key). */
+  instruction?: RenderedTemplate;
+  /** The instruction opens by itself now (`instructionOpen`). */
+  openInstruction?: boolean;
+}
+
 export interface NavigationUnitItem {
   index: number;
   id: number;
-  externalId: string;
   isCurrent: boolean;
 }
 
@@ -34,7 +41,7 @@ export interface NavigationUnitQuestion {
 export interface NavigationPhase {
   index: number;
   name: string;
-  type: "unit_loop" | "branch" | "question" | "end";
+  type: "unit_loop" | "question" | "end";
   label: string;
   isCurrent: boolean;
   isCompleted: boolean;
@@ -54,7 +61,6 @@ export interface StudyManagerNavigation {
   phases: NavigationPhase[];
   currentPhaseIndex: number;
   currentUnitIndex?: number;
-  totalUnitsInHistory: number;
   maxReachedTopIndex: number;
 }
 

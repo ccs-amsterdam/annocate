@@ -427,3 +427,108 @@ describe("data download", () => {
     });
   });
 });
+
+describe("the annotations table, per unit and coder", () => {
+  const span = (id: string, text: string) => ({
+    id,
+    field: "text",
+    value: "actor",
+    slices: [{ offset: 0, length: text.length, text }],
+  });
+  const people = (...spans: ReturnType<typeof span>[]) => ({ done: true, skip: false, spans });
+  const links = (fromId: string, toId: string) => ({
+    done: true,
+    skip: false,
+    relations: [{ id: "r1", fromId, toId, value: "criticizes" }],
+  });
+  const cell = (table: ReturnType<typeof annotationsTable>, rowIndex: number, column: string) =>
+    table.rows[rowIndex][table.headers.indexOf(column)];
+
+  it("a relation names its spans by their text: the spans of the same unit and coder, from any question", () => {
+    const table = annotationsTable(
+      [
+        row(1, 1, "people", people(span("s1", "Lena"))),
+        row(1, 1, "places", people(span("s2", "Paris"))),
+        row(1, 1, "links", links("s1", "s2")),
+      ],
+      [coder(1)],
+      ["people", "places", "links"],
+    );
+    expect(cell(table, 0, "links")).toBe("criticizes: Lena → Paris");
+    expect(JSON.parse(cell(table, 0, "links.json"))).toEqual([
+      { id: "r1", value: "criticizes", fromId: "s1", toId: "s2" },
+    ]);
+  });
+
+  it("never by another coder's spans, or another unit's: a span that isn't there shows as its id", () => {
+    const table = annotationsTable(
+      [
+        row(1, 1, "people", people(span("s1", "Lena"), span("s2", "Tom"))),
+        row(1, 2, "links", links("s1", "s2")),
+        row(2, 1, "links", links("s1", "s2")),
+      ],
+      [coder(1), coder(2)],
+    );
+    expect(table.rows.map((_, i) => cell(table, i, "links"))).toEqual([
+      "",
+      "criticizes: s1 → s2",
+      "criticizes: s1 → s2",
+    ]);
+  });
+
+  it("a span of several fragments is its fragments, joined with …", () => {
+    const split = {
+      id: "s1",
+      field: "text",
+      value: "actor",
+      slices: [
+        { offset: 0, length: 4, text: "Lena" },
+        { offset: 20, length: 5, text: "Meyer" },
+      ],
+    };
+    const table = annotationsTable([row(1, 1, "people", people(split)), row(1, 1, "links", links("s1", "s1"))], []);
+    expect(cell(table, 0, "people")).toBe("actor: Lena … Meyer");
+    expect(cell(table, 0, "links")).toBe("criticizes: Lena … Meyer → Lena … Meyer");
+  });
+
+  it("a unit one coder answered on two of its versions is one row: the version of the first answer, each question's latest answer", () => {
+    const answer = (value: string) => ({ done: true, skip: false, values: [{ value }] });
+    const table = annotationsTable(
+      [
+        { ...row(1, 1, "topic", answer("politics")), unitVersionId: 7 },
+        { ...row(1, 1, "tone", answer("positive")), unitVersionId: 7 },
+        { ...row(1, 1, "topic", answer("sports"), 5), unitVersionId: 8 },
+      ],
+      [coder(1)],
+      ["topic", "tone"],
+    );
+    expect(table.rows).toHaveLength(1);
+    expect(cell(table, 0, "unit_version_id")).toBe("7");
+    expect(cell(table, 0, "topic")).toBe("sports");
+    expect(cell(table, 0, "tone")).toBe("positive");
+    expect(cell(table, 0, "last_change")).toBe(new Date(at.getTime() + 5 * 60_000).toISOString());
+  });
+});
+
+describe("the coders table's finished columns", () => {
+  it("coders who did different loops: a column per loop any of them has, 0 where a coder has none", () => {
+    const table = codersTable([
+      coder(1, { finished: [{ loop: "loop_1", title: "Training", units: 4 }] }),
+      coder(2, {
+        finished: [
+          { loop: "loop_1", title: "Training", units: 2 },
+          { loop: "loop_2", title: "Main", units: 9 },
+        ],
+      }),
+      coder(3, { finished: [] }),
+    ]);
+    const finished = table.headers.filter((h) => h.startsWith("finished_"));
+    expect(finished).toEqual(["finished_loop_1", "finished_loop_2"]);
+    const from = table.headers.indexOf("finished_loop_1");
+    expect(table.rows.map((r) => r.slice(from, from + 2))).toEqual([
+      ["4", "0"],
+      ["2", "9"],
+      ["0", "0"],
+    ]);
+  });
+});

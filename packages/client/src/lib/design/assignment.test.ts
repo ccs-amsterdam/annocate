@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SetGroupResponse } from "@annotinder/contracts";
-import { coderSummary, columnValues, shareLabel, shareSources, shareSummary } from "./assignment";
+import { coderSummary, columnValues, shareSources, shareSummary } from "./assignment";
 
 const group = (name: SetGroupResponse["name"], sets: string[]): SetGroupResponse => ({
   name,
@@ -35,10 +35,5 @@ describe("share summaries", () => {
     expect(shareSummary(sources, "post")).toBe(
       "A session gets the units of its coder × framing; this loop only those of part “post”.",
     );
-    expect(shareLabel("coder_set=anna,condition_set=control | part post | overlap before")).toBe(
-      "anna · condition control, only post",
-    );
-    expect(shareLabel("all")).toBe("all units");
-    expect(shareLabel("session 12 as 1")).toBe("each coder's units of the previous loop");
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateDesignItems } from "@annotinder/contracts";
-import { keepFields, parseSimpleLayout, placeField, placedFields, removeField, simpleTemplate } from "./simpleLayout";
+import { parseSimpleLayout, placeField, placedFields, removeField, simpleTemplate } from "./simpleLayout";
 
 describe("simple layouts", () => {
   it("write a template and read it back", () => {
@@ -49,10 +49,9 @@ describe("simple layouts", () => {
     expect(placedFields(layout)).toEqual(["source", "notes", "headline", "text"]);
   });
 
-  it("remove a field, and keep only fields that exist", () => {
+  it("remove a field", () => {
     const layout = { title: "headline", byline: "source", body: ["text", "notes"] };
     expect(removeField(layout, "source")).toEqual({ title: "headline", body: ["text", "notes"] });
     expect(removeField(layout, "notes")).toEqual({ title: "headline", byline: "source", body: ["text"] });
-    expect(keepFields(layout, ["text", "source"])).toEqual({ byline: "source", body: ["text"] });
   });
 });

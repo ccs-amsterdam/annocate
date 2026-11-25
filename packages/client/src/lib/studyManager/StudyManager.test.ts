@@ -465,7 +465,7 @@ describe("StudyManager navigation, backwards navigation, and answer re-editing",
     await manager.answer({ values: [{ value: "B" }] } as unknown as VariableValue);
     // Now on unit 3
     expect(manager.getSnapshot().currentUnit?.id).toBe(3);
-    expect(manager.getSnapshot().navigation.totalUnitsInHistory).toBe(3);
+    expect(manager.getSnapshot().navigation.phases[0].unitCount).toBe(3);
 
     // Jump directly to unit index 0 (unit id 1)
     await manager.jumpToUnit(0);

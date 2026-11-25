@@ -37,21 +37,6 @@ export const VARIABLE_TYPE_OPTIONS_UNIT: UnitVariableType["type"][] = [
   "relation",
 ];
 
-/** How answer types are named in the editor. */
-export const VARIABLE_TYPE_LABELS: Record<AnyVariableType["type"], string> = {
-  nominal: "Nominal (categories)",
-  ordinal: "Ordinal (ordered options)",
-  numeric: "Numeric (interval/ratio)",
-  scale: "Scale (items on the same options)",
-  swipe: "Swipe",
-  confirm: "Confirm",
-  text: "Open answer (typed text)",
-  experiment: "Random condition (drawn, not asked)",
-  span: "Span (select text)",
-  relation: "Relation (link spans)",
-  unspecified: "Not chosen yet",
-};
-
 /** A new variable of an answer type, with example options. */
 function defaultVariable(type: string): AnyVariableType {
   switch (type) {

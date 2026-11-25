@@ -20,6 +20,7 @@ import { staticTemplate, type RenderedTemplate } from "../codebook/renderTemplat
 import { TemplateMarkdown } from "./TemplateMarkdown";
 import { QuestionInstruction } from "./QuestionInstruction";
 import { isHeadingQuestion } from "./questionHeading";
+import type { QuestionTexts } from "../studyManager/types";
 
 import type { QuestionItem } from "./answerFields/types";
 
@@ -35,15 +36,6 @@ interface QuestionProps {
   texts?: QuestionTexts | null;
   /** A comment changed after answering (the comment box left): saved with the answer, without moving on. */
   onComment?: (comment: string) => void;
-}
-
-/** A question's texts, rendered as templates (docs/client.md §4 "Questions and instructions"). */
-export interface QuestionTexts {
-  question?: RenderedTemplate;
-  /** In a unit loop: how to apply the question, opened from the question (? button or key). */
-  instruction?: RenderedTemplate;
-  /** The instruction opens by itself now (`instructionOpen`). */
-  openInstruction?: boolean;
 }
 
 const TEXT_COMPONENTS = { p: ({ children }: { children?: ReactNode }) => <p className="m-0">{children}</p> };

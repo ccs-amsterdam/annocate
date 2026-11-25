@@ -1,36 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronLeft,
-  Code2,
-  Eye,
-  GitBranch,
-  Heading1,
-  Image,
-  Paintbrush,
-  Puzzle,
-  Text,
-} from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { AnyVariableType, Condition } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConditionEditor } from "./ConditionEditor";
 import type { TemplateEditorApi } from "./jsonEditor/TemplateCodeEditor";
-
-/** Text inside a Monaco snippet: `$`, `}` and `\` are literal. */
-const literal = (text: string) => text.replace(/[\\$}]/g, (c) => `\\${c}`);
-/** A block around the selection (or an empty line for the cursor). */
-const block = (fence: string) => `${literal(fence)}\n\${TM_SELECTED_TEXT}$0\n:::`;
-
-const STYLES: { label: string; css: string }[] = [
-  { label: "Box", css: "border: 1px solid var(--border); border-radius: 8px; padding: 0.75em 1em" },
-  { label: "Small grey text", css: "color: var(--muted-foreground); font-size: 90%" },
-  { label: "Large text", css: "font-size: 120%" },
-  { label: "Centered", css: "text-align: center" },
-  { label: "Custom CSS…", css: "property: value" },
-];
-
-type Step = "menu" | "headline" | "text" | "image" | "snippet" | "from" | "style";
+import { InsertMenu, InsertSectionList } from "./templateInsert/InsertMenu";
+import { block, insertSections, type SectionKey } from "./templateInsert/sections";
 
 /**
  * "Insert" above the unit template: unit fields (as headline, text or
@@ -54,63 +30,27 @@ export function TemplateInsertMenu({
   /** The loop's snippets. */
   snippets: string[];
 }) {
-  const [step, setStep] = useState<Step | null>(null);
+  // Closed, the first list, or one of its sections
+  const [step, setStep] = useState<"menu" | SectionKey | null>(null);
   const [condition, setCondition] = useState<Condition | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-
+  // Open: pressing outside the menu closes it
   useEffect(() => {
     if (step === null) return;
     const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setStep(null);
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, [step]);
+  const sections = insertSections({ fields, loopQuestions, snippets });
 
   const insert = (snippet: string) => {
     setStep(null);
     editor?.insertSnippet(snippet);
   };
-  const fieldSnippet: Record<"headline" | "text" | "image", (f: string) => string> = {
-    headline: (f) => `# ${literal(`$unit.${f}`)}\n$0`,
-    text: (f) => `${literal(`$unit.${f}`)}\n$0`,
-    image: (f) => `${literal(`$unit.${f}::image`)}\n$0`,
+  const askCondition = () => {
+    setStep(null);
+    setCondition({ script: "" });
   };
-
-  const item = (icon: typeof Text, label: string, onClick: () => void, detail?: string) => {
-    const Icon = icon;
-    return (
-      <button
-        key={label}
-        type="button"
-        onClick={onClick}
-        className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-muted"
-      >
-        <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
-        <span className="flex flex-col">
-          <span className="font-medium">{label}</span>
-          {detail && <span className="text-[10px] text-muted-foreground">{detail}</span>}
-        </span>
-      </button>
-    );
-  };
-  const back = (title: string) => (
-    <div className="flex items-center gap-1 px-1 pb-1">
-      <button
-        type="button"
-        title="Back"
-        onClick={() => setStep("menu")}
-        className="cursor-pointer rounded p-0.5 text-muted-foreground hover:bg-muted"
-      >
-        <ChevronLeft className="h-3.5 w-3.5" />
-      </button>
-      <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{title}</span>
-    </div>
-  );
-  const list = (names: string[], empty: string, pick: (name: string) => void) =>
-    names.length === 0 ? (
-      <p className="px-2.5 py-1.5 text-xs text-muted-foreground">{empty}</p>
-    ) : (
-      names.map((name) => item(Code2, name, () => pick(name)))
-    );
 
   return (
     <div ref={ref} className="relative">
@@ -126,54 +66,10 @@ export function TemplateInsertMenu({
       </Button>
       {step && (
         <div className="absolute top-full right-0 z-50 mt-1 max-h-80 w-64 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-          {step === "menu" && (
-            <>
-              {item(Heading1, "Headline", () => setStep("headline"), "a unit field as a heading")}
-              {item(Text, "Text", () => setStep("text"), "a unit field (span questions can select in it)")}
-              {item(Image, "Image", () => setStep("image"), "a unit field with an image URL")}
-              {item(Puzzle, "Snippet", () => setStep("snippet"), "a named piece of this layout")}
-              <div className="my-1 border-t border-border" />
-              {item(
-                GitBranch,
-                "Show if…",
-                () => {
-                  setStep(null);
-                  setCondition({ script: "" });
-                },
-                "only when a condition holds",
-              )}
-              {item(Eye, "Show from…", () => setStep("from"), "from a question of the loop on")}
-              {item(Paintbrush, "Style…", () => setStep("style"), "colours, size, a box")}
-              {item(Code2, "HTML block", () => insert(block("::: html")), "your own HTML, shown in a sandbox")}
-            </>
-          )}
-          {(step === "headline" || step === "text" || step === "image") && (
-            <>
-              {back("Which field?")}
-              {list(fields, "This study's units have no fields yet: upload units first.", (f) =>
-                insert(fieldSnippet[step](f)),
-              )}
-            </>
-          )}
-          {step === "snippet" && (
-            <>
-              {back("Which snippet?")}
-              {list(snippets, "This loop has no snippets yet: add them below the template.", (n) =>
-                insert(`${literal(`[[${n}]]`)}\n$0`),
-              )}
-            </>
-          )}
-          {step === "from" && (
-            <>
-              {back("From which question?")}
-              {list(loopQuestions, "This loop has no questions yet.", (q) => insert(block(`::: from ${q}`)))}
-            </>
-          )}
-          {step === "style" && (
-            <>
-              {back("Style")}
-              {STYLES.map((s) => item(Paintbrush, s.label, () => insert(block(`::: style ${s.css}`)), s.css))}
-            </>
+          {step === "menu" ? (
+            <InsertMenu sections={sections} onOpen={setStep} onCondition={askCondition} onInsert={insert} />
+          ) : (
+            <InsertSectionList section={sections[step]} onBack={() => setStep("menu")} onInsert={insert} />
           )}
         </div>
       )}

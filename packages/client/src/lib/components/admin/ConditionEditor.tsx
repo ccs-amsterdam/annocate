@@ -1,38 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { Code2, ListFilter, Plus, Trash2 } from "lucide-react";
+import { Code2, ListFilter, Plus } from "lucide-react";
 import {
   KIND_METHODS,
-  optionLabel,
   parseSimpleCondition,
   questionKind,
   referenceOptions,
   type AnyVariableType,
   type DesignIssue,
   type Condition,
-  type OptionValue,
 } from "@annotinder/contracts";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { scriptSyntaxError } from "../../codebook/expression";
 import {
   conditionToRows,
   defaultRow,
-  findTarget,
-  rawOperatorLabel,
   rowProblems,
   rowsToScript,
-  ruleOperators,
   ruleTargets,
   type RuleRow,
   type RuleRows,
   type RuleTarget,
 } from "../../design/conditionRules";
+import { selectClass } from "./conditionEditor/classes";
+import { RuleRowEditor } from "./conditionEditor/RuleRowEditor";
 import { SegmentedToggle } from "./designEditor/SegmentedToggle";
 import { IssueList } from "./IssueList";
 import { HelpButton } from "../../help/HelpButton";
-
-const selectClass = "h-8 rounded-md border border-input bg-background px-2 text-xs";
 
 type Mode = "rules" | "script";
 
@@ -156,167 +150,6 @@ function RulesEditor({
       ) : (
         <p className="text-[11px] text-muted-foreground">There are no earlier questions to refer to here.</p>
       )}
-    </div>
-  );
-}
-
-/** A rule target as one select value: `question` or `question.item`. */
-const targetKey = (t: { question: string; item?: string }) => (t.item ? `${t.question}.${t.item}` : t.question);
-
-/** One rule: a question (or scale item), an operator and its values, with its problems below. */
-function RuleRowEditor({
-  label,
-  row,
-  targets,
-  onChange,
-  onRemove,
-}: {
-  label: string;
-  row: RuleRow;
-  targets: RuleTarget[];
-  onChange: (row: RuleRow) => void;
-  onRemove: () => void;
-}) {
-  const target = findTarget(targets, row);
-  const operators = target ? ruleOperators(target) : [];
-  const operator = operators.find((o) => o.key === row.operator);
-  // Special answers (don't know) are values for equality, not for comparing order
-  const ordered = operator?.method && ["gt", "gte", "lt", "lte"].includes(operator.method);
-  const options = [...(target?.options ?? []), ...(ordered ? [] : (target?.specials ?? []))];
-  const problems = rowProblems(row, targets);
-  const isOption = (value: OptionValue) => options.some((o) => o.value === value);
-  const invalid = "border-destructive text-destructive";
-
-  const setOperator = (key: string) => {
-    const next = operators.find((o) => o.key === key)!;
-    let args = row.args;
-    if (next.args === "none") args = [];
-    else if (next.args === "range") args = [Number(args[0] ?? 0), Number(args[1] ?? 1)];
-    else if (next.args === "number") args = [Number(args[0] ?? 0)];
-    else if (next.args === "one") args = args.length ? [args[0]] : options[0] ? [options[0].value] : [];
-    onChange({ ...row, operator: key, args });
-  };
-
-  let argsInput = null;
-  if (!operator) {
-    // No operator fits: show the values as they are; choosing an operator fixes the row.
-    argsInput = row.args.length > 0 && (
-      <span className="font-mono text-destructive">{row.args.map((a) => JSON.stringify(a)).join(", ")}</span>
-    );
-  } else if (operator.args === "one" && options.length) {
-    const current = row.args[0];
-    argsInput = (
-      <select
-        className={`${selectClass} ${current !== undefined && !isOption(current) ? invalid : ""}`}
-        value={JSON.stringify(current ?? null)}
-        onChange={(e) => onChange({ ...row, args: [JSON.parse(e.target.value) as OptionValue] })}
-      >
-        {current !== undefined && !isOption(current) && (
-          <option value={JSON.stringify(current)}>{JSON.stringify(current)} (not an option)</option>
-        )}
-        {options.map((o) => (
-          <option key={String(o.value)} value={JSON.stringify(o.value)}>
-            {optionLabel(o)}
-          </option>
-        ))}
-      </select>
-    );
-  } else if (operator.args === "several") {
-    const toggle = (value: OptionValue) =>
-      onChange({ ...row, args: row.args.includes(value) ? row.args.filter((v) => v !== value) : [...row.args, value] });
-    argsInput = (
-      <div className="flex flex-wrap gap-1">
-        {row.args
-          .filter((v) => !isOption(v))
-          .map((v) => (
-            <button
-              key={`invalid-${JSON.stringify(v)}`}
-              type="button"
-              title="Not an option: click to remove"
-              onClick={() => toggle(v)}
-              className="rounded border border-destructive px-1.5 py-0.5 text-[11px] text-destructive line-through"
-            >
-              {JSON.stringify(v)}
-            </button>
-          ))}
-        {options.map((o) => (
-          <button
-            key={String(o.value)}
-            type="button"
-            onClick={() => toggle(o.value)}
-            className={`rounded border px-1.5 py-0.5 text-[11px] ${
-              row.args.includes(o.value)
-                ? "border-primary bg-primary/15 text-primary"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            {optionLabel(o)}
-          </button>
-        ))}
-      </div>
-    );
-  } else if (operator.args === "number" || operator.args === "range") {
-    const n = operator.args === "range" ? 2 : 1;
-    argsInput = (
-      <div className="flex items-center gap-1">
-        {Array.from({ length: n }, (_, k) => (
-          <Input
-            key={k}
-            type="number"
-            className="h-8 w-20 text-xs"
-            value={typeof row.args[k] === "number" ? row.args[k] : ""}
-            onChange={(e) => {
-              const args = [...row.args];
-              args[k] = e.target.value === "" ? 0 : Number(e.target.value);
-              onChange({ ...row, args });
-            }}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="w-6 text-muted-foreground">{label}</span>
-        <select
-          className={`${selectClass} font-mono ${target ? "" : invalid}`}
-          value={targetKey(row)}
-          onChange={(e) => {
-            const next = targets.find((t) => targetKey(t) === e.target.value);
-            if (next) onChange(defaultRow(next));
-          }}
-        >
-          {!target && <option value={targetKey(row)}>{targetKey(row)} (not available)</option>}
-          {targets.map((t) => (
-            <option key={targetKey(t)} value={targetKey(t)}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={`${selectClass} ${operator ? "" : invalid}`}
-          value={row.operator}
-          onChange={(e) => setOperator(e.target.value)}
-        >
-          {!operator && <option value="">{rawOperatorLabel(row)}</option>}
-          {operators.map((o) => (
-            <option key={o.key} value={o.key}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        {argsInput}
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Remove rule">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      {problems.map((problem) => (
-        <p key={problem} className="pl-8 text-xs text-destructive">
-          {problem}
-        </p>
-      ))}
     </div>
   );
 }

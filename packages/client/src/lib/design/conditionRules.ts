@@ -289,3 +289,29 @@ export function defaultRow(target: RuleTarget): RuleRow {
             : [];
   return { question: target.question, ...(target.item ? { item: target.item } : {}), operator: operator.key, args };
 }
+
+/**
+ * The values a rule can pick: the target's options, and its special answers
+ * (don't know), which are values for equality but not for comparing order.
+ */
+export function ruleValueOptions(target: RuleTarget | undefined, operator: RuleOperator | undefined): Option[] {
+  const ordered = operator?.method && ["gt", "gte", "lt", "lte"].includes(operator.method);
+  return [...(target?.options ?? []), ...(ordered ? [] : (target?.specials ?? []))];
+}
+
+/** A row's values when its operator changes: what the new operator can keep of them. */
+export function argsForOperator(operator: RuleOperator, args: OptionValue[], options: Option[]): OptionValue[] {
+  switch (operator.args) {
+    case "none":
+      return [];
+    case "range":
+      return [Number(args[0] ?? 0), Number(args[1] ?? 1)];
+    case "number":
+      return [Number(args[0] ?? 0)];
+    case "one":
+      if (args.length) return [args[0]];
+      return options[0] ? [options[0].value] : [];
+    case "several":
+      return args;
+  }
+}

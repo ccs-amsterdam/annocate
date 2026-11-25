@@ -84,10 +84,3 @@ export function placeField(layout: SimpleLayout, field: string, slot: LayoutSlot
   index = Math.max(0, Math.min(index, next.body.length));
   return { ...next, body: [...next.body.slice(0, index), field, ...next.body.slice(index)] };
 }
-
-/** The layout with only the fields that exist (e.g. after other units were uploaded). */
-export function keepFields(layout: SimpleLayout, fields: readonly string[]): SimpleLayout {
-  return placedFields(layout)
-    .filter((f) => !fields.includes(f))
-    .reduce(removeField, layout);
-}

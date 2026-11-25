@@ -43,6 +43,8 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
     "@types/mdast": "^4.0.4",
     "@types/node": "26.6.1",
     "@types/react": "^19.0.7",
@@ -53,6 +55,7 @@
     "eslint": "10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "happy-dom": "21.0.4",
     "postcss": "^8.4.49",
     "shadcn": "4.21.0",
     "tailwindcss": "^4.3.3",

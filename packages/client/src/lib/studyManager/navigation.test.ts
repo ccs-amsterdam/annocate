@@ -260,12 +260,12 @@ describe("going back and forward", () => {
     const m = await started(server);
     await m.answer(yes);
     expect(where(m)).toBe("1:q1");
-    await m.jumpToUnitQuestion(1, 1);
+    await m.jumpToLoopStep(1);
     expect(where(m)).toBe("1:q1");
     await m.answer(pick("A"));
-    await m.jumpToUnitQuestion(1, 0);
+    await m.jumpToLoopStep(0);
     expect(where(m)).toBe("1:q1");
-    await m.jumpToUnitQuestion(1, 1);
+    await m.jumpToLoopStep(1);
     expect(where(m)).toBe("1:q2");
   });
 });
@@ -961,24 +961,7 @@ describe("the server ends the session (gold checks) while the coder goes on", ()
     await settle();
     expect(seen).toEqual(["1:q1", "2:q1", "finished"]);
     expect(m.getSnapshot().ending?.item.name).toBe("low_quality");
-    expect(m.getSnapshot().navigation.totalUnitsInHistory).toBe(0);
-  });
-});
-
-describe("preview navigation (free)", () => {
-  it("next goes ahead without answers, and a unit far ahead can be opened", async () => {
-    server = fakeCoderServer({ items: basic(), units: { loop_1: units(1, 2, 3) } });
-    const m = await started(server);
-    expect(m.canGoForward(true)).toBe(true);
-    await m.goForward(true);
-    expect(where(m)).toBe("1:q1");
-    await m.goForward(true);
-    expect(where(m)).toBe("1:q2");
-    await m.jumpToUnit(2, true);
-    expect(where(m)).toBe("3:q1");
-    expect(m.getSnapshot().navigation.phases[1].units?.map((u) => u.id)).toEqual([1, 2, 3]);
-    await m.jumpToPhase(2, true);
-    expect(where(m)).toBe("q:outro");
+    expect(m.getSnapshot().navigation.currentUnitIndex).toBeUndefined();
   });
 });
 

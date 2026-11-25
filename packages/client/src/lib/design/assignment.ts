@@ -1,12 +1,4 @@
-import {
-  ALL_UNITS_SET,
-  CODER_SET,
-  CONDITION_SET,
-  type Invite,
-  type RoleColumn,
-  type SetGroupResponse,
-} from "@annotinder/contracts";
-import { roleLabel } from "../admin/setKinds";
+import { CODER_SET, CONDITION_SET, type Invite, type RoleColumn, type SetGroupResponse } from "@annotinder/contracts";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md),
 // as the editor shows it: expert coders by the units' `coder_set`, and the
@@ -77,32 +69,4 @@ export function shareSummary(sources: readonly ShareSource[], part?: string): st
       : `A session gets the units of its ${sources.map((s) => s.label).join(" × ")}`;
   if (part === undefined) return `${whose}.`;
   return `${whose}; this loop only those of part “${part}”.`;
-}
-
-/**
- * A share's key from the server's progress (`coder_set=anna,condition_set=control
- * | part post | overlap before`) as people read it: "anna · condition
- * control, only post".
- */
-export function shareLabel(key: string): string {
-  if (key === ALL_UNITS_SET) return "all units";
-  const [values, ...rest] = key.split(" | ");
-  const who =
-    values === "all"
-      ? "all units"
-      : values.includes(" as ")
-        ? "each coder's units of the previous loop"
-        : values
-            .split(",")
-            .map((pair) => pair.split("="))
-            .map(([column, value]) =>
-              column === CODER_SET
-                ? value
-                : column === CONDITION_SET
-                  ? `condition ${value}`
-                  : `${roleLabel(column)} ${value}`,
-            )
-            .join(" · ");
-  const part = rest.find((r) => r.startsWith("part "));
-  return part ? `${who}, only ${part.slice("part ".length)}` : who;
 }

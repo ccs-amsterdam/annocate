@@ -43,4 +43,44 @@ describe("toXlsx", () => {
     expect(sheet).toContain('<c r="A2" t="inlineStr"><is><t xml:space="preserve">1e5</t></is></c>');
     expect(sheet).toContain('<c r="B2" t="inlineStr"><is><t xml:space="preserve">-2E+3</t></is></c>');
   });
+
+  /** The first sheet of a workbook with one table. */
+  const sheetOf = (headers: string[], ...rows: string[][]) =>
+    strFromU8(unzipSync(toXlsx([{ name: "t", table: { headers, rows } }]))["xl/worksheets/sheet1.xml"]);
+  const textOf = (sheet: string, cell: string) =>
+    new RegExp(`<c r="${cell}" t="inlineStr"><is><t xml:space="preserve">([^<]*)</t>`).exec(sheet)?.[1];
+
+  it("cuts a cell over Excel's 32,767 characters, ending it with …", () => {
+    const sheet = sheetOf(["fits", "long"], ["a".repeat(32767), "b".repeat(32768)]);
+    expect(textOf(sheet, "A2")).toBe("a".repeat(32767));
+    expect(textOf(sheet, "B2")).toBe("b".repeat(32766) + "…");
+  });
+
+  it("leaves out the control characters XML can't hold, keeps tabs and line breaks", () => {
+    const sheet = sheetOf(["text"], ["bell\u0007 null\u0000 escape\u001B tab\t line\nbreak\r"]);
+    expect(textOf(sheet, "A2")).toBe("bell null escape tab\t line\nbreak\r");
+  });
+
+  it("writes a number of more than 15 digits as text (a spreadsheet would round it), and a header never as a number", () => {
+    const sheet = sheetOf(["2024"], ["123456789012345", "1234567890123456"]);
+    expect(textOf(sheet, "A1")).toBe("2024");
+    expect(sheet).toContain('<c r="A2"><v>123456789012345</v></c>');
+    expect(textOf(sheet, "B2")).toBe("1234567890123456");
+  });
+
+  it("writes no cell for an empty value, and names columns beyond Z", () => {
+    const row = Array.from({ length: 28 }, (_, i) => (i === 1 ? "" : "x"));
+    const sheet = sheetOf(row, row);
+    expect(sheet).not.toContain('r="B2"');
+    expect(sheet).toContain('r="Z2"');
+    expect(sheet).toContain('r="AA2"');
+    expect(sheet).toContain('r="AB2"');
+  });
+
+  it("names sheets as Excel takes them: 31 characters, without \\ / ? * [ ] :, unique whatever the case", () => {
+    const names = ["a/b:c", "A/B:C", "x".repeat(40), "x".repeat(40), ""];
+    const files = unzipSync(toXlsx(names.map((name) => ({ name, table: { headers: ["h"], rows: [] } }))));
+    const sheets = [...strFromU8(files["xl/workbook.xml"]).matchAll(/<sheet name="([^"]*)"/g)].map((m) => m[1]);
+    expect(sheets).toEqual(["a_b_c", "A_B_C_2", "x".repeat(31), `${"x".repeat(28)}_2`, "Sheet"]);
+  });
 });
