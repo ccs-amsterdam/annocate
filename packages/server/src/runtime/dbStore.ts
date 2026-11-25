@@ -25,7 +25,7 @@ import { listFinished } from "../shared/finished.js";
 import { HttpError } from "../shared/http.js";
 import { getSettings } from "../shared/accounts.js";
 import { checkAnswerSize, studyLimits } from "../shared/limits.js";
-import { lockUnits, servedUnits } from "../shared/units.js";
+import { servedUnits } from "../shared/units.js";
 import type {
   AnnotationWrite,
   Coder,
@@ -42,7 +42,7 @@ import type {
   Transfer,
   Unit,
 } from "./types.js";
-import { advisoryLock, inTurn } from "../db/locks.js";
+import { advisoryLock, inTurn, lockUnits } from "../db/locks.js";
 import { insertCodings, putAnnotation } from "../shared/annotations.js";
 import { addDevice, findOrCreateCoder, knownCoder } from "./startSession.js";
 import { abandonedBefore, type Store } from "./store.js";

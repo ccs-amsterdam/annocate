@@ -309,7 +309,7 @@ export async function link() {
 export async function reach(c: ReturnType<typeof coder>, name: string) {
   const res = await c.call(`/experiment/${name}`, { method: "POST" });
   expect(res.status).toBe(200);
-  return ((await res.json()) as { value: VariableValue }).value.values;
+  return ((await res.json()) as { value: VariableValue }).value.values ?? [];
 }
 
 /** A Session item (contracts SessionItemSchema). */

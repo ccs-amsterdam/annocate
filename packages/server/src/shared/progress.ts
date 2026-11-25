@@ -10,7 +10,7 @@ import {
 } from "@annotinder/contracts";
 import { designVersionItems } from "./designVersions.js";
 import { and, asc, count, countDistinct, eq, gte, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
-import type { Db } from "../db/index.js";
+import { rows, type Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
 import {
   annotationValues as a,
@@ -208,4 +208,32 @@ async function activityPerDay(db: Db, studyId: number, now: Date): Promise<Study
     .groupBy(day);
   const byDay = new Map(rows.map((r) => [r.day, r]));
   return days.map((day) => ({ day, answers: byDay.get(day)?.answers ?? 0, coders: byDay.get(day)?.coders ?? 0 }));
+}
+
+/**
+ * Per coder id, the units their sessions answered (`coded`: they stay with
+ * the coder when units are redistributed or moved), and the ones they were
+ * sent but didn't answer (`served`).
+ */
+export function coderUnits(db: Db, studyId: number): Promise<{ coder: string; coded: number[]; served: number[] }[]> {
+  return rows<{ coder: string; coded: number[]; served: number[] }>(
+    db,
+    sql`SELECT coder,
+          coalesce(array_agg(unit_id ORDER BY unit_id) FILTER (WHERE coded), '{}') AS "coded",
+          coalesce(array_agg(unit_id ORDER BY unit_id) FILTER (WHERE NOT coded), '{}') AS "served"
+        FROM (
+          SELECT s.coder, seen.unit_id, bool_or(seen.coded) AS coded
+          FROM (
+            SELECT session_id, unit_id, false AS coded FROM unit_serves WHERE study_id = ${studyId}
+            UNION ALL
+            SELECT session_id, unit_id, true AS coded FROM annotation_values
+              WHERE study_id = ${studyId} AND unit_id IS NOT NULL AND retired_at IS NULL
+          ) seen
+          JOIN coder_sessions s ON s.id = seen.session_id
+          WHERE s.coder IS NOT NULL
+          GROUP BY s.coder, seen.unit_id
+        ) per_unit
+        GROUP BY coder
+        ORDER BY coder`,
+  );
 }

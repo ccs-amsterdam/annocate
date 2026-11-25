@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
 import { sessions, users } from "../db/schema/index.js";
 import { accountRole } from "../db/sql.js";
@@ -72,4 +72,9 @@ export async function userForSession(
 
 export async function deleteSession(db: Db, key: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.keyHash, sha256Hex(key)));
+}
+
+/** Removes the sessions that have expired (at each login: nothing else ends them). */
+export async function deleteExpiredSessions(db: Db): Promise<void> {
+  await db.delete(sessions).where(lte(sessions.expires, sql`now()`));
 }

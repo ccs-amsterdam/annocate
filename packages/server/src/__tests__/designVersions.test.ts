@@ -21,6 +21,7 @@ function row(overrides: Partial<DesignVersionRow>): DesignVersionRow {
     id: 1,
     studyId: 1,
     note: null,
+    formatVersion: 1,
     items: [question("q")],
     session: {},
     units: { fields: [] },

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DraftItemsSchema } from "./design/designVersion.js";
 import { PublicInfoSchema, SessionSpecSchema } from "./design/session.js";
 import { UnitDataSchema } from "./common.js";
+import { StudyNameSchema } from "./study.js";
 import { RoleColumnSchema, SetNameSchema } from "./sets.js";
 import { UnitsSpecSchema } from "./unitFields.js";
 
@@ -16,7 +17,7 @@ import { UnitsSpecSchema } from "./unitFields.js";
  */
 export const RecipeSchema = z.object({
   /** The new study's name. */
-  name: z.string().min(1).max(256),
+  name: StudyNameSchema,
   /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
   /** The columns with a role (`coder_set`, `test_set`, ...: stored as sets), by the units' ids (a set's units in order; `ordered`: that order was given). */

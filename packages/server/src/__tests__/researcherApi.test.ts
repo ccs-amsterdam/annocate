@@ -75,7 +75,9 @@ const question = (name: string) => ({
 });
 
 /** A study with two units and a one-question loop, deployed; returns its id. */
-async function setUpStudy(key: string): Promise<{ studyId: number; unitIds: number[]; linkSecret: string }> {
+async function setUpStudy(
+  key: string,
+): Promise<{ studyId: number; publicId: string; unitIds: number[]; linkSecret: string }> {
   const study = (await call(key, "createStudy", {}, { name: "From R" })).data;
   const units = (
     await call(

@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import type { VariableValue } from "@annotinder/contracts";
+import { own, type VariableValue } from "@annotinder/contracts";
 import type { Coder, CoderValue, CoderValuesWrite } from "../runtime/types.js";
 import type { Db } from "../db/index.js";
 import { annotationValues as a, coderSessions } from "../db/schema/index.js";
@@ -59,7 +59,7 @@ export async function coderAnswers(db: Db, studyId: number, sessionId: number): 
  * Assigned and frozen answers are left as they are.
  */
 export async function putCoderValues(db: Db, studyId: number, write: CoderValuesWrite): Promise<void> {
-  const timing = (variable: string) => write.timings?.[variable] ?? null;
+  const timing = (variable: string) => own(write.timings, variable) ?? null;
   for (const [variable, value] of Object.entries(write.values)) {
     await db
       .insert(a)
@@ -90,7 +90,7 @@ export async function putCoderValues(db: Db, studyId: number, write: CoderValues
       });
   }
   for (const variable of Object.keys(write.timings ?? {})) {
-    if (variable in write.values) continue;
+    if (Object.hasOwn(write.values, variable)) continue;
     await db
       .update(a)
       .set({ timing: timing(variable) })

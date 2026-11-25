@@ -8,6 +8,7 @@ import { anyOf } from "../db/sql.js";
 import { annotationValues as a, deployments } from "../db/schema/index.js";
 import { parseJson } from "../shared/request.js";
 import { removeResultsExports } from "../shared/resultsExport.js";
+import { securityLog } from "../shared/securityLog.js";
 
 // Reset: retire the live values of these variables (e.g. a loop's
 // questions), so the units are coded again. Nothing is deleted.
@@ -23,6 +24,7 @@ export function annotationsReset(server: Server): Hono<Env> {
       const body = await parseJson(c, ResetAnnotationsSchema);
       const studyId = c.get("studyId");
       const retired = await db.transaction((tx) => retireAnnotations(tx, studyId, body));
+      await securityLog(db, c.get("researcher").userId, "answers_reset", { studyId, retired });
       await server.deployments.bumpRevision(studyId);
       // A results export made before shows the reset answers as live
       await removeResultsExports(server.files, studyId);

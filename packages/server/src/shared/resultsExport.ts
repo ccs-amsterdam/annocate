@@ -1,5 +1,5 @@
 import { RESULTS_EXPORT_FORMAT_VERSION } from "@annotinder/contracts";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "./crypto.js";
 import { Zip, ZipDeflate, strToU8 } from "fflate";
 import { asc, eq, sql, type SQL } from "drizzle-orm";
 import { RELEASE } from "@annotinder/contracts";
@@ -48,10 +48,7 @@ export async function exportStamp(db: Db, studyId: number): Promise<string> {
       (SELECT md5(string_agg(concat_ws('/', m.set_id, m.unit_id, m.position), ',' ORDER BY m.set_id, m.unit_id))
         FROM unit_set_members m JOIN unit_sets s ON s.id = m.set_id WHERE s.study_id = ${studyId}) AS sets`,
   );
-  return createHash("sha256")
-    .update(JSON.stringify([RESULTS_EXPORT_FORMAT_VERSION, row]))
-    .digest("hex")
-    .slice(0, 16);
+  return sha256Hex(JSON.stringify([RESULTS_EXPORT_FORMAT_VERSION, row])).slice(0, 16);
 }
 
 /** Answers in `AnnotationRow`'s shape (contracts annotations.ts), also reset ones, in the order written. */

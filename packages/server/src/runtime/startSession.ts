@@ -56,7 +56,7 @@ export async function addDevice(
 }
 
 /** The latest session in this study linked to an email (one per email: docs/coder-identity.md §5). */
-async function sessionOfEmail(db: Db, studyId: number, email: string): Promise<CoderRow | undefined> {
+export async function sessionOfEmail(db: Db, studyId: number, email: string): Promise<CoderRow | undefined> {
   const [found] = await db
     .select()
     .from(coderSessions)

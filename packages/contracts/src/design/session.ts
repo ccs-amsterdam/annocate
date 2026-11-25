@@ -12,6 +12,9 @@ import { urlPatternError } from "./urlPattern.js";
 /** Session values that can't be declared: the coder (who the coder is), and the `source` URL parameter. */
 export const RESERVED_SESSION_NAMES = ["coder", "source"] as const;
 
+/** The coder link's own query names (`/code/<study>?link=…`, a transfer, the return from logging in): no URL parameter can use them. */
+export const RESERVED_URL_KEYS: readonly string[] = ["link", "transfer", "login"];
+
 /** The longest value a session parameter takes (coder ids are short; it also bounds a pattern match). */
 export const MAX_SESSION_VALUE = 256;
 

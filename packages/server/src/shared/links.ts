@@ -14,9 +14,9 @@ import {
 } from "@annotinder/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../db/index.js";
-import { deployments, designVersions, links as linksTable } from "../db/schema/index.js";
+import { links as linksTable } from "../db/schema/index.js";
 import { groupSets } from "./sets.js";
-import { designVersionItems } from "./designVersions.js";
+import { deployedDesignItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
 
 /** A row of `links`: a link (docs/architecture.md §7). */
@@ -70,15 +70,17 @@ export async function checkLinkCount(
 /** A new link's label: its values, or "Open link" without. */
 const linkLabel = (values: Record<string, string>) => Object.values(values).join(" · ") || "Open link";
 
+/** The deployed design's items, if deployed (and valid, as a deployed design is). */
+async function deployedItems(db: Db, studyId: number): Promise<DesignItem[] | null> {
+  const items = await deployedDesignItems(db, studyId);
+  const parsed = items ? DesignItemsSchema.safeParse(items) : null;
+  return parsed?.success ? parsed.data : null;
+}
+
 /** The deployed design's Study entry, if deployed. */
 export async function deployedSession(db: Db, studyId: number): Promise<SessionItem | null> {
-  const [deployed] = await db
-    .select({ items: designVersions.items, session: designVersions.session })
-    .from(deployments)
-    .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
-    .where(eq(deployments.studyId, studyId));
-  const parsed = deployed ? DesignItemsSchema.safeParse(designVersionItems(deployed)) : null;
-  return parsed?.success ? sessionItem(parsed.data) : null;
+  const items = await deployedItems(db, studyId);
+  return items ? sessionItem(items) : null;
 }
 
 /**
@@ -91,14 +93,9 @@ export async function deployedSession(db: Db, studyId: number): Promise<SessionI
  * Returns the number of active links.
  */
 export async function syncLinks(db: Db, studyId: number, options: { secrets?: string[] } = {}): Promise<number> {
-  const [deployed] = await db
-    .select({ items: designVersions.items, session: designVersions.session })
-    .from(deployments)
-    .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
-    .where(eq(deployments.studyId, studyId));
-  const parsed = deployed ? DesignItemsSchema.safeParse(designVersionItems(deployed)) : null;
-  if (!parsed?.success) return 0;
-  const wanted = await linksOf(db, studyId, parsed.data, true);
+  const items = await deployedItems(db, studyId);
+  if (!items) return 0;
+  const wanted = await linksOf(db, studyId, items, true);
   const rows = await db
     .select({ id: linksTable.id, linkKey: linksTable.linkKey })
     .from(linksTable)

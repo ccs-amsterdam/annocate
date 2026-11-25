@@ -18,28 +18,27 @@ import { parseJson } from "./shared/request.js";
  */
 export function coderAccount(server: Server): Hono<Env> {
   const app = new Hono<Env>();
-  app.get("/coder/sessions", async (c) => {
+  const SETTINGS = "keep your settings on every device";
+  /** The logged-in person; without a login, 401 with what logging in is `needed` for. */
+  const loggedIn = async (c: Context<Env>, needed: string) => {
     requireClientHeader(c);
     const cookie = getCookie(c, SESSION_COOKIE);
     const user = cookie ? await userForSession(server.db, cookie) : null;
-    if (!user) throw new HttpError(401, "Log in to see your studies on other devices", "auth_required");
+    if (!user) throw new HttpError(401, `Log in to ${needed}`, "auth_required");
+    return user;
+  };
+  app.get("/coder/sessions", async (c) => {
+    const user = await loggedIn(c, "see your studies on other devices");
     return c.json(await coderStudies(server.db, sql`lower(${coderSessions.email}) = lower(${user.email})`));
   });
   // The logged-in person's own settings (theme, keys): on every device
-  const loggedIn = async (c: Context<Env>) => {
-    requireClientHeader(c);
-    const cookie = getCookie(c, SESSION_COOKIE);
-    const user = cookie ? await userForSession(server.db, cookie) : null;
-    if (!user) throw new HttpError(401, "Log in to keep your settings on every device", "auth_required");
-    return user;
-  };
   app.get("/coder/settings", async (c) => {
-    const user = await loggedIn(c);
+    const user = await loggedIn(c, SETTINGS);
     const [row] = await server.db.select({ settings: users.settings }).from(users).where(eq(users.id, user.id));
     return c.json(row?.settings ?? {});
   });
   app.put("/coder/settings", async (c) => {
-    const user = await loggedIn(c);
+    const user = await loggedIn(c, SETTINGS);
     const body = await parseJson(c, UserSettingsSchema);
     await server.db.update(users).set({ settings: body }).where(eq(users.id, user.id));
     return c.json(body);

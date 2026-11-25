@@ -2,8 +2,8 @@ import { parseArgs } from "node:util";
 import { describeDatabase, openDatabase } from "./database.js";
 import { createApiKey, ensureUser, listApiKeys, revokeApiKey, setServerRole } from "./shared/accounts.js";
 
-// Managing researchers' API keys from the server's machine, e.g. to give
-// the first researcher a key (there is no researcher login yet):
+// Managing researchers' API keys from the server's machine, e.g. a key
+// for a researcher's scripts:
 //
 //   pnpm --filter @annotinder/server keys create --email a@uni.nl --label "R scripts" --role researcher
 //   pnpm --filter @annotinder/server keys list --email a@uni.nl

@@ -6,7 +6,13 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { identities, users } from "../db/schema/index.js";
 import type { LoginState } from "../oidc.js";
 import { loginUser } from "../shared/accounts.js";
-import { createSession, deleteSession, SESSION_TTL_MS, userForSession } from "../shared/sessions.js";
+import {
+  createSession,
+  deleteExpiredSessions,
+  deleteSession,
+  SESSION_TTL_MS,
+  userForSession,
+} from "../shared/sessions.js";
 import { isSecure } from "../shared/cookies.js";
 import { securityLog } from "../shared/securityLog.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
@@ -208,6 +214,10 @@ export function login(server: Server): Hono<Env> {
       ...(result.emailVerified ? {} : { emailVerified: false }),
       ...(state.stepUp ? { stepUp: true } : {}),
     });
+    // The session this login replaces ends now, not when it expires
+    const replaced = getCookie(c, SESSION_COOKIE);
+    if (replaced) await deleteSession(server.db, replaced);
+    await deleteExpiredSessions(server.db);
     setSessionCookie(c, await createSession(server.db, user.id, login));
     // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
     if (state.stepUp && !isFresh(login, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))

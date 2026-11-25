@@ -1,5 +1,5 @@
 import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { sha256Hex } from "./crypto.js";
 import { isEmail, type CoderDeletion, type DeleteCoders, type DeleteCodersResponse } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { anyOf } from "../db/sql.js";
@@ -89,7 +89,7 @@ export async function deleteCoders(
  */
 export function loggedCoder(coder: string | null): string | null {
   if (coder === null || !isEmail(coder)) return coder;
-  return `sha256:${createHash("sha256").update(coder.toLowerCase()).digest("hex")}`;
+  return `sha256:${sha256Hex(coder.toLowerCase())}`;
 }
 
 /** Deletes later: the request stays, marked postponed, and is no longer brought up. Returns false if there is none. */

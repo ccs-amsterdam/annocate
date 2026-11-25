@@ -7,6 +7,7 @@ import { parseSimpleCondition, simpleConditionCalls, type Condition, type Simple
 import { CHECKABLE_TYPES, supportsAgreement, type LoopUnits } from "./unitLoop.js";
 import {
   RESERVED_SESSION_NAMES,
+  RESERVED_URL_KEYS,
   STUDY_END_NAME,
   inviteOf,
   sessionItem,
@@ -644,7 +645,7 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
     }
   }
 
-  /** The Study entry: first, once, top level; its URL parameters' names and keys unique; the invitation's agreement question. */
+  /** The Study entry: first, once, top level; its URL parameters' names and keys unique, and none the link's own; the invitation's agreement question. */
   function checkSession(item: RawItem, itemPath: Path, index: number, nested: boolean) {
     if (nested || index !== 0) issue([...itemPath, "type"], "The Session item comes first in the design, at the top");
     if (items.filter((i) => (i as { type?: unknown } | null)?.type === "session").length > 1)
@@ -663,6 +664,11 @@ export function semanticIssues(items: unknown[]): DesignIssue[] {
       if (keys.indexOf(key) !== i) issue([...itemPath, "urlParams"], `Two URL parameters use the key '${key}'`);
       if (key === "source")
         issue([...itemPath, "urlParams"], "'source' is always accepted as a URL parameter (tracking): use another key");
+      if (key !== undefined && RESERVED_URL_KEYS.includes(key))
+        issue(
+          [...itemPath, "urlParams"],
+          `'${key}' is part of every study link (${RESERVED_URL_KEYS.join(", ")}): use another key`,
+        );
     });
     params.forEach((p, i) => {
       if (p?.default !== undefined && p.values && !p.values.some((v) => v.value === p.default))

@@ -8,6 +8,7 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import pg from "pg";
 import * as schema from "./schema/index.js";
+import { MIGRATION_LOCK } from "./locks.js";
 
 /**
  * The database: Postgres, through `pg` (a real server, `DATABASE_URL`) or
@@ -85,10 +86,10 @@ export async function openPostgres(connectionString: string, limits = DEFAULT_TI
   try {
     // Waiting for another process's migrations, and the migrations themselves, may take long
     await client.query("SET statement_timeout = 0");
-    await client.query("SELECT pg_advisory_lock(7130001)");
+    await client.query("SELECT pg_advisory_lock($1)", [MIGRATION_LOCK]);
     await migratePg(drizzlePg({ client, ...options }), { migrationsFolder });
   } finally {
-    await client.query("SELECT pg_advisory_unlock(7130001)").catch(() => {});
+    await client.query("SELECT pg_advisory_unlock($1)", [MIGRATION_LOCK]).catch(() => {});
     await client.query("RESET statement_timeout").catch(() => {});
     client.release();
   }

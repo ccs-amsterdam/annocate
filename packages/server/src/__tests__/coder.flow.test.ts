@@ -3,6 +3,7 @@ import type { CoderProgress, SessionResponse } from "@annotinder/contracts";
 import { query } from "./testDb.js";
 import { DEMO_PUBLIC_ID } from "../db/publicId.js";
 import { ensureUser } from "../shared/accounts.js";
+import { putCoderValues } from "../shared/coders.js";
 
 import {
   adminHeaders,
@@ -51,6 +52,26 @@ describe("coder flow", () => {
 
     expect((await c.next())?.externalId).toBe("unit-2");
     expect((await c.session()).progress).toEqual([{ loop: "loop_1", doneUnitIds: [first!.id], totalUnits: 3 }]);
+  });
+
+  it("stores coder-level answers and timings under names every object has (toString, __proto__)", async () => {
+    const { sessionId } = await coder("coder-a").session();
+    const [version] = await query<{ id: number }>(db, "SELECT design_version_id AS id FROM deployments");
+    const write = { sessionId, designVersionId: Number(version!.id) };
+    const timing = { firstMs: 5, totalMs: 9, hiddenMs: 0, edits: 1 };
+    const names = ["__proto__", "toString"];
+    const each = <T>(value: T) => Object.fromEntries(names.map((name) => [name, value]));
+    const stored = () =>
+      query(db, "SELECT variable, timing FROM annotation_values WHERE unit_id IS NULL ORDER BY variable");
+    await putCoderValues(db, 1, {
+      ...write,
+      values: each({ done: true, skip: false, values: [{ value: "x" }] }),
+      timings: {},
+    });
+    expect(await stored()).toEqual(names.map((variable) => ({ variable, timing: null })));
+    // A timing alone (the answer was looked at again) updates the answer's timing
+    await putCoderValues(db, 1, { ...write, values: {}, timings: each(timing) });
+    expect(await stored()).toEqual(names.map((variable) => ({ variable, timing })));
   });
 
   it("rejects invalid annotations without writing them", async () => {

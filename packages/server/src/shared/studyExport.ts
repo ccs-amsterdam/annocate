@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -50,6 +50,7 @@ import { CLIENT_VERSION } from "../version.js";
 import { effectiveLimits, getSettings, usage } from "./accounts.js";
 import { designVersionItems, designVersionUnits, itemsValid, type DesignVersionRow } from "./designVersions.js";
 import { HttpError, type RequestIssue } from "./http.js";
+import { randomToken, sha256Hex } from "./crypto.js";
 import { deployedSession } from "./links.js";
 import type { StudyRow } from "./studies.js";
 
@@ -636,7 +637,7 @@ function transform(
       return { ...r, codings_basis: null };
     case "session_devices":
       // A device's key is a hash of its cookie: the browsers are on the old server
-      return { ...r, key_hash: createHash("sha256").update(randomBytes(32)).digest("hex") };
+      return { ...r, key_hash: sha256Hex(randomToken()) };
     case "coder_sessions":
       return { ...r, ...sessionWithUnitIds(r, unitIds) };
     default:

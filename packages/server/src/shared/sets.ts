@@ -15,7 +15,8 @@ import { deployments, designVersions, unitSetMembers, unitSets, units } from "..
 import { designVersionItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { firstDuplicate } from "./lists.js";
-import { getUnitFields, lockUnits, setUnitFields, unitIds } from "./units.js";
+import { getUnitFields, setUnitFields, unitIds } from "./units.js";
+import { lockUnits } from "../db/locks.js";
 
 // The columns with a role (docs/plans/unit-sets.md: `coder_set`,
 // `condition_set`, `part_set`, `test_set`), stored as sets

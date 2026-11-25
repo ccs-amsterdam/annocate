@@ -240,7 +240,7 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
  * past two weeks, the last a few days ago, and code three units a day, a
  * few minutes apart. Never in the future.
  */
-export function exampleTime(now: number, coder: number, coders: number, unit: number): Date {
+function exampleTime(now: number, coder: number, coders: number, unit: number): Date {
   const day = 24 * 60 * 60 * 1000;
   const startDay = 13 - Math.round((coder * 10) / Math.max(1, coders - 1));
   const start = now - startDay * day + ((coder * 3) % 8) * 60 * 60 * 1000;

@@ -6,9 +6,12 @@ export const DEFAULT_REOPEN_MINUTES = 24 * 60;
 /** The longest reopen time short of "always": a year. */
 export const MAX_REOPEN_MINUTES = 365 * 24 * 60;
 
+/** A study's name, without spaces around it (deleting a study is confirmed by typing its name). */
+export const StudyNameSchema = z.string().trim().min(1).max(256);
+
 /** A study: the top-level entity, owning its designs, units, coders and answers (CONTRACTS.md). */
 export const StudyWriteSchema = z.object({
-  name: z.string().min(1).max(256),
+  name: StudyNameSchema,
   /** Left out: a new study isn't archived; `PUT` keeps what it was. */
   archived: z.boolean().optional(),
   /**
@@ -82,7 +85,7 @@ export type ExampleSummary = z.infer<typeof ExampleSummarySchema>;
 /** Body of `POST /study/from-example`: which example, and the new study's name (default: the example's). */
 export const StudyFromExampleSchema = z.object({
   example: z.string().min(1),
-  name: z.string().min(1).max(256).optional(),
+  name: StudyNameSchema.optional(),
 });
 export type StudyFromExample = z.infer<typeof StudyFromExampleSchema>;
 

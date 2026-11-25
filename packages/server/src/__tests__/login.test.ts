@@ -417,6 +417,19 @@ describe("researcher login", () => {
     expect(sessionCookie(await b.api("/api/me"))).toBeUndefined();
   });
 
+  it("a new login ends the session it replaces, and removes expired sessions", async () => {
+    const b = browser();
+    await b.logIn(verified);
+    const first = b.cookies.get("annotinder_session")!;
+    await query(db, "INSERT INTO sessions (user_id, key_hash, expires) VALUES (1, 'old', now() - interval '1 minute')");
+    await b.logIn(verified);
+    expect(b.cookies.get("annotinder_session")).not.toBe(first);
+    expect((await b.api("/api/me")).status).toBe(200);
+    const withFirst = { cookie: `annotinder_session=${first}`, "x-annotinder": "1" };
+    expect((await app.request("/api/me", { headers: withFirst })).status).toBe(401);
+    expect(await query(db, "SELECT count(*)::int AS n FROM sessions")).toEqual([{ n: 1 }]);
+  });
+
   it("logs out: the session no longer works", async () => {
     const b = browser();
     await b.logIn(verified);

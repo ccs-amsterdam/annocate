@@ -3,7 +3,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { type Db } from "../db/index.js";
 import { annotationValues, unitCodings, unitLeases, units, unitVersions } from "../db/schema/index.js";
 import { HttpError } from "./http.js";
-import { lockUnits } from "./units.js";
+import { lockUnits } from "../db/locks.js";
 import type { AnnotationWrite, Coding } from "../runtime/types.js";
 
 // Writing a coder's answers to a unit (`Store.putAnnotation`), and the codings they finish.

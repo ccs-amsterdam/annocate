@@ -72,7 +72,7 @@ export function coderApi(server: Server): Hono {
     const deploymentId = c.req.param("deployment")!;
     const device = readDevice(c);
     if (!device || isPreviewId(deploymentId)) throw nothingHere();
-    const runtime = await server.deployments.admit(deploymentId, await proofOf(c));
+    const runtime = await server.deployments.admit(deploymentId, await proofOf(server, c));
     const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParamsOf(c)));
     const [study] = await coderStudies(
       server.db,
@@ -108,7 +108,7 @@ export function coderApi(server: Server): Hono {
   const session = new Hono<Env>();
   session.use("*", async (c, next) => {
     requireClientHeader(c);
-    const runtime = await loadRuntime(server, c, await proofOf(c));
+    const runtime = await loadRuntime(server, c, await proofOf(server, c));
     versionGuard(c, runtime);
     const { coder, deviceId, canLogIn } = await resolveRequestCoder(server, c, runtime);
     c.set("runtime", runtime);

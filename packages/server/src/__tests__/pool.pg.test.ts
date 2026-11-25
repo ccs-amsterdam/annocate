@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import pg from "pg";
 import { sql } from "drizzle-orm";
-import { openPostgres, withoutTimeLimits, type Database } from "../db/index.js";
+import { openPostgres, rows, withoutTimeLimits, type Database } from "../db/index.js";
 import { postgresCode } from "../shared/http.js";
 
 // The connection pool on a real Postgres (PGlite has no pool): run with
@@ -46,7 +46,7 @@ describe.skipIf(!url)("the connection pool", () => {
     await admin.end();
     // The pool hears of it (an unhandled "error" event would fail this test), and goes on with a new connection
     await vi.waitFor(() => expect(logged).toHaveBeenCalledWith(expect.stringContaining("lost an idle connection")));
-    expect((await db.execute(sql`SELECT 1 AS one`)).rows).toEqual([{ one: 1 }]);
+    expect(await rows(db, sql`SELECT 1 AS one`)).toEqual([{ one: 1 }]);
   });
 
   it("ends a statement that runs too long, and a transaction that sits idle too long", async () => {
@@ -64,7 +64,7 @@ describe.skipIf(!url)("the connection pool", () => {
     expect(idle).toBeInstanceOf(Error);
     expect([IDLE_IN_TRANSACTION_TIMEOUT, undefined]).toContain(postgresCode(idle)); // the connection is closed
     // The pool goes on
-    expect((await db.execute(sql`SELECT 1 AS one`)).rows).toEqual([{ one: 1 }]);
+    expect(await rows(db, sql`SELECT 1 AS one`)).toEqual([{ one: 1 }]);
   });
 
   it("a transaction can lift the limits for itself, and only for itself", async () => {

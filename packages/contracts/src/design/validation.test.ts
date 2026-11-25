@@ -200,6 +200,14 @@ describe("the Session item", () => {
         session({ urlParams: [{ name: "a", param: "PID" }], invite: { mode: "crowd", coderParam: { param: "PID" } } }),
       ]),
     ).toEqual(["Two URL parameters use the key 'PID'"]);
+    // The keys of the coder link itself (/code/<study>?link=...&transfer=...&login=...)
+    expect(messages([session({ urlParams: [{ name: "link" }, { name: "a", param: "transfer" }] })])).toEqual([
+      "'link' is part of every study link (link, transfer, login): use another key",
+      "'transfer' is part of every study link (link, transfer, login): use another key",
+    ]);
+    expect(messages([session({ invite: { mode: "crowd", coderParam: { param: "login" } } })])).toEqual([
+      "'login' is part of every study link (link, transfer, login): use another key",
+    ]);
     expect(messages([session({ urlParams: [{ name: "source" }] })])).toContain(
       "coder and source are built in: choose another name",
     );

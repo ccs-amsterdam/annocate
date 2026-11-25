@@ -134,6 +134,14 @@ describe("coder login", () => {
     expect((await session("laptop", null)).body.sessionId).toBe(phone.body.sessionId);
     // A transfer link works too
     expect((await send("phone", "/transfer", { method: "POST" })).status).toBe(200);
+    // Also after a restart (the study isn't in memory): the login's session shows the request belongs here
+    useServer(restart());
+    await loggedIn("desktop", "a@example.org");
+    expect((await session("desktop", null)).body.sessionId).toBe(phone.body.sessionId);
+    // A login without a session in the study shows nothing
+    useServer(restart());
+    await loggedIn("stranger", "b@example.org");
+    expect(await session("stranger", null)).toMatchObject({ status: 404, body: { code: "link_not_found" } });
 
     const coders = (await listOf("coders")) as CoderProgress[];
     expect(coders.find((c) => c.id === phone.body.sessionId)?.email).toBe("a@example.org");
@@ -149,6 +157,10 @@ describe("coder login", () => {
     expect(after.body).toMatchObject({ sessionId: before.body.sessionId, login: "c@example.org" });
     await loggedIn("desktop", "c@example.org");
     expect((await session("desktop", secret, SIGN_IN)).body.sessionId).toBe(before.body.sessionId);
+    // From the coder home on a new device, without the link, also when the study isn't in memory
+    useServer(restart());
+    await loggedIn("laptop", "c@example.org");
+    expect((await session("laptop", null, SIGN_IN)).body.sessionId).toBe(before.body.sessionId);
 
     // One session per email in a study: a device that started its own, then logs in, continues the email's session
     const own = await session("phone", secret);

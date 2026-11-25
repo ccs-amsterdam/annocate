@@ -267,6 +267,8 @@ function serveClient(app: Hono<Env>, root: string): void {
     if (c.res.ok) c.header("cache-control", "public, max-age=31536000, immutable");
   });
   app.use("*", serveStatic({ root }));
+  // A built file that isn't there (an older version's): not the app's page under its name
+  app.get("/assets/*", (c) => c.text("Not found", 404));
   // Everything else outside /api is the app (it reads its state from the URL).
   app.get("*", serveStatic({ path: join(root, "index.html") }));
 }

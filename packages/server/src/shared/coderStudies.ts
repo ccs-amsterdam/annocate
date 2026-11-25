@@ -11,14 +11,29 @@ import { annotationValues as a, coderSessions, deployments, designVersions, stud
  * deployed and not suspended. `where`: which coders.
  */
 export async function coderStudies(db: Db, where: SQL | undefined): Promise<CoderStudy[]> {
+  const rows = await coderStudiesQuery(db, where);
+  return rows.map((r) => {
+    const lastActive = r.lastActive ? new Date(r.lastActive) : null;
+    return {
+      deployment: r.publicId,
+      title: r.title,
+      started: r.created,
+      lastActive: lastActive && lastActive > r.created ? lastActive : r.created,
+      ended: r.ended?.outcome ?? null,
+      units: r.units,
+    };
+  });
+}
+
+/** The query of `coderStudies`. Its subqueries name the study too: the index `annotation_values_coder` starts with it. */
+export function coderStudiesQuery(db: Db, where: SQL | undefined) {
+  const ofSession = and(eq(a.studyId, coderSessions.studyId), eq(a.sessionId, coderSessions.id));
   const unitsAnswered = db
     .select({ n: sql<number>`count(DISTINCT ${a.unitId})::int` })
     .from(a)
-    .where(and(eq(a.sessionId, coderSessions.id), isNotNull(a.unitId), isNull(a.retiredAt)));
-  const lastAnswer = sql<
-    string | null
-  >`(SELECT max(${a.updated}) FROM ${a} WHERE ${a.sessionId} = ${coderSessions.id})`;
-  const rows = await db
+    .where(and(ofSession, isNotNull(a.unitId), isNull(a.retiredAt)));
+  const lastAnswer = sql<string | null>`(SELECT max(${a.updated}) FROM ${a} WHERE ${ofSession})`;
+  return db
     .select({
       publicId: studies.publicId,
       title: sql<string | null>`${designVersions.public}->>'title'`,
@@ -33,15 +48,4 @@ export async function coderStudies(db: Db, where: SQL | undefined): Promise<Code
     .innerJoin(designVersions, eq(designVersions.id, deployments.designVersionId))
     .where(and(isNull(studies.suspendedAt), where))
     .orderBy(desc(sql`COALESCE(${lastAnswer}, ${coderSessions.created})`));
-  return rows.map((r) => {
-    const lastActive = r.lastActive ? new Date(r.lastActive) : null;
-    return {
-      deployment: r.publicId,
-      title: r.title,
-      started: r.created,
-      lastActive: lastActive && lastActive > r.created ? lastActive : r.created,
-      ended: r.ended?.outcome ?? null,
-      units: r.units,
-    };
-  });
 }

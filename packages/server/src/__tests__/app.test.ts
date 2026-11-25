@@ -521,6 +521,9 @@ describe("annotations: finished counts and resets", () => {
       body: JSON.stringify({ variables: ["q1"], unitIds: [units[0].id] }),
     });
     expect(await json(res)).toEqual({ retired: 1 });
+    expect(await query(db, "SELECT event, details FROM security_log WHERE event = 'answers_reset'")).toEqual([
+      { event: "answers_reset", details: { studyId: study.id, retired: 1 } },
+    ]);
     expect((await finished(["q1"])).map((f) => f.unitId)).toEqual([units[1].id]);
     // recoded after the reset: a new live row next to the retired one
     await put(units[0].id, { q1: value("b") });
@@ -730,7 +733,7 @@ describe("security headers", () => {
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'sha256-");
 
     // The client's pages get the policy
-    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
     const dir = mkdtempSync(join(tmpdir(), "client-"));
@@ -738,6 +741,17 @@ describe("security headers", () => {
     const page = await createApp(db, { clientDir: dir }).request("/some/page");
     expect(page.headers.get("content-security-policy")).toContain("default-src 'self'");
     expect(page.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+
+    // Built files are cached for good; one that isn't there is not the app's page under a script's name
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "assets", "index-abc.js"), "1");
+    const client = createApp(db, { clientDir: dir });
+    const asset = await client.request("/assets/index-abc.js");
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    const missing = await client.request("/assets/index-old.js");
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("cache-control")).toBeNull();
 
     const secure = createApp(db, { https: true });
     expect((await secure.request("/api/health")).headers.get("strict-transport-security")).toBe("max-age=31536000");

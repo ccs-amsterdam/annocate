@@ -208,6 +208,8 @@ export const CoderErrorCodeSchema = z.enum([
   "answer_too_large",
   /** The request body is larger than the server allows. */
   "request_too_large",
+  /** Too many requests from this address: try again after the response's `retry-after` seconds (429). */
+  "rate_limited",
 ]);
 export type CoderErrorCode = z.infer<typeof CoderErrorCodeSchema>;
 

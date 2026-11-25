@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { CLIENT_VERSION } from "../version.js";
 import {
   loopTitle,
@@ -26,6 +25,7 @@ import {
 } from "../db/schema/index.js";
 import { designVersionItems, itemsValid, toDesignVersion, type DesignVersionRow } from "./designVersions.js";
 import { HttpError } from "./http.js";
+import { sha256Hex } from "./crypto.js";
 import { listFinished } from "./finished.js";
 import type { DeploymentSpec } from "../runtime/types.js";
 import { runtimeSets } from "./sets.js";
@@ -276,9 +276,7 @@ export async function getPreviewSpec(db: Db, studyId: number): Promise<Deploymen
     liveUnits: false,
     newUnitsMessage: null,
   });
-  const digest = createHash("sha256")
-    .update(JSON.stringify([spec.design, spec.sets]))
-    .digest("hex");
+  const digest = sha256Hex(JSON.stringify([spec.design, spec.sets]));
   return { ...spec, version: (parseInt(digest.slice(0, 7), 16) % 2 ** 30) + 1 };
 }
 

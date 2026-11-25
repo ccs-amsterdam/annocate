@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { HttpError } from "../shared/http.js";
+import { isSecure } from "../shared/cookies.js";
 
 // Coder sessions (docs/coder-identity.md §4): a browser keeps one random
 // device id in an httpOnly cookie, for every study, so page scripts (and XSS)
@@ -40,8 +41,8 @@ export function writeDevice(c: Context, deviceId: string): void {
     path: "/api/d",
     httpOnly: true,
     sameSite: "Lax",
-    // Plain http only in local development (behind a TLS proxy: its X-Forwarded-Proto).
-    secure: new URL(c.req.url).protocol === "https:" || c.req.header("x-forwarded-proto") === "https",
+    // Plain http only in local development
+    secure: isSecure(c),
     maxAge: MAX_AGE_S,
   });
 }

@@ -42,6 +42,17 @@ const storedExports = () => readdir(join(files.root, "exports")).catch(() => [])
 const studyCount = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM studies"))[0]!.n;
 
 describe("deleting a study", () => {
+  it("a name given with spaces around it is stored without them, so it can be typed to confirm", async () => {
+    const body = JSON.stringify({ name: "  Spaced out " });
+    const made = StudyResponseSchema.parse(
+      await (await app.request("/api/study", { method: "POST", headers, body })).json(),
+    );
+    expect(made.name).toBe("Spaced out");
+    const renamed = await app.request(`/api/study/${made.id}`, { method: "PUT", headers, body });
+    expect(StudyResponseSchema.parse(await renamed.json()).name).toBe("Spaced out");
+    expect((await remove(`/api/study/${made.id}`, { confirm: "  Spaced out " })).status).toBe(204);
+  });
+
   it("needs the study's name, typed out", async () => {
     const study = await studyWithExport();
     expect((await remove(`/api/study/${study.id}`)).status).toBe(400);

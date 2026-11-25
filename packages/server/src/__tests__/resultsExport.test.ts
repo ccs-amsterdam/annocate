@@ -13,7 +13,7 @@ import {
   StudyResponseSchema,
   UnitVersionSchema,
 } from "@annotinder/contracts";
-import type { Db } from "../db/index.js";
+import { rows, type Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { DiskFileStore, fileToken } from "../shared/files.js";
 import { ensureResultsExport, removeResultsExports } from "../shared/resultsExport.js";
@@ -128,7 +128,8 @@ describe("results export", () => {
     const study = await example("swipe-sentiment");
     const post = (path: string, body: object) =>
       app.request(`/api/study/${study}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
-    const { rows: sessions } = await db.execute<{ id: number; variable: string }>(
+    const sessions = await rows<{ id: number; variable: string }>(
+      db,
       sql`SELECT session_id AS id, min(variable) AS variable FROM annotation_values
           WHERE study_id = ${study} AND unit_id IS NOT NULL GROUP BY session_id ORDER BY session_id`,
     );
@@ -159,7 +160,8 @@ describe("results export", () => {
 
   it("the deletion log keeps a hash where the coder id is an email address", async () => {
     const study = await example("swipe-sentiment");
-    const { rows: sessions } = await db.execute<{ id: number }>(
+    const sessions = await rows<{ id: number }>(
+      db,
       sql`SELECT id FROM coder_sessions WHERE study_id = ${study} ORDER BY id LIMIT 2`,
     );
     const [withAddress, withName] = sessions.map((s) => Number(s.id));

@@ -7,6 +7,7 @@ import { linkInfo } from "../shared/links.js";
 import { DeploymentRuntime, DEFAULT_RUNTIME_OPTIONS, type RuntimeOptions } from "./runtime.js";
 import { nothingHere, sha256 } from "./session.js";
 import { DbStore } from "./dbStore.js";
+import { sessionOfEmail } from "./startSession.js";
 import type { Store } from "./store.js";
 import { PreviewStore, previewToken, verifyPreviewToken } from "./preview.js";
 
@@ -19,12 +20,15 @@ export const isPreviewId = (deploymentId: string) => deploymentId.endsWith(".pre
 /**
  * What a coder request shows to belong to a deployment (`Deployments.admit`):
  * a link's secret (or a preview token), the keys its device may have a
- * session under (session.ts `possibleCoderKeys`), or a transfer token.
+ * session under (session.ts `possibleCoderKeys`), a transfer token, or a
+ * login (a coder opening their study on a new device, without the link).
  */
 export interface Proof {
   linkSecret?: string;
   deviceKeys?: string[];
   transferToken?: string;
+  /** The request's login, read only when nothing else shows it belongs: its email has a session in the study. */
+  login?: () => Promise<{ email: string } | null>;
 }
 
 interface Loaded {
@@ -85,7 +89,7 @@ export class Deployments {
     return (this.loaded(deploymentId) ?? this.load(deploymentId, studyId)).runtime;
   }
 
-  /** Whether a link, device or transfer token of the request is this study's: an indexed lookup each. */
+  /** Whether a link, device, transfer token or login of the request is this study's: an indexed lookup each. */
   private async belongs(studyId: number, proof: Proof): Promise<boolean> {
     if (proof.linkSecret && (await linkInfo(this.db, proof.linkSecret))?.studyId === studyId) return true;
     if (proof.deviceKeys?.length) {
@@ -96,7 +100,8 @@ export class Deployments {
       const transfer = and(eq(transfers.studyId, studyId), eq(transfers.tokenHash, await sha256(proof.transferToken)));
       if ((await this.db.$count(transfers, transfer)) > 0) return true;
     }
-    return false;
+    const login = await proof.login?.();
+    return !!login && (await sessionOfEmail(this.db, studyId, login.email)) !== undefined;
   }
 
   private async studyId(publicId: string): Promise<number | null> {

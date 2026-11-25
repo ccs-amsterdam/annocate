@@ -9,6 +9,7 @@ import {
   type UnitResponse,
 } from "@annotinder/contracts";
 import { row, rows, type Db } from "../db/index.js";
+import { lockUnits } from "../db/locks.js";
 import {
   annotationValues,
   designVersions,
@@ -100,24 +101,6 @@ export async function draftFieldValues(
     .innerJoin(unitFieldNames, eq(unitFieldNames.id, unitDraft.fieldId))
     .innerJoin(unitValues, eq(unitValues.id, unitDraft.valueId))
     .where(and(eq(units.studyId, studyId), eq(unitFieldNames.name, field)));
-}
-
-/** The advisory lock key of a study's units (`lockUnits`). */
-const UNITS_LOCK = 24026;
-
-/**
- * Serializes a study's unit writes with its deploys (`write`), and answer
- * writes against them (`read`, shared): a deploy deletes versions nobody
- * answered and values nothing refers to, which a concurrent upload or
- * answer could be about to use. Held until the transaction ends: call it
- * inside one.
- */
-export async function lockUnits(db: Db, studyId: number, mode: "write" | "read"): Promise<void> {
-  await db.execute(
-    mode === "write"
-      ? sql`SELECT pg_advisory_xact_lock(${UNITS_LOCK}, ${studyId})`
-      : sql`SELECT pg_advisory_xact_lock_shared(${UNITS_LOCK}, ${studyId})`,
-  );
 }
 
 /** The study's latest design version (the draft, or the deployed one if there is no draft). */

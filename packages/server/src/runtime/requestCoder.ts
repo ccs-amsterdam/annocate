@@ -41,13 +41,24 @@ export async function loadRuntime(server: Server, c: Context, proof: Proof): Pro
   return runtime;
 }
 
-/** What a request shows to belong to a deployment, before its runtime is loaded: its link and its device. */
-export async function proofOf(c: Context): Promise<Proof> {
+/** What a request shows to belong to a deployment, before its runtime is loaded: its link, its device and its login. */
+export async function proofOf(server: Server, c: Context): Promise<Proof> {
   const device = readDevice(c);
   const deploymentId = c.req.param("deployment")!;
   return {
     linkSecret: c.req.header("x-link-secret"),
     deviceKeys: device ? await possibleCoderKeys(device, deploymentId, urlParamsOf(c)) : [],
+    login: loginOf(server, c),
+  };
+}
+
+/** Reads the request's login (the same as researchers', docs/coder-identity.md §5) when asked. Never in previews. */
+function loginOf(server: Server, c: Context): (() => Promise<{ email: string } | null>) | undefined {
+  const cookie = getCookie(c, SESSION_COOKIE);
+  if (!cookie || isPreviewId(c.req.param("deployment")!)) return undefined;
+  return async () => {
+    const user = await userForSession(server.db, cookie);
+    return user ? { email: user.email } : null;
   };
 }
 
@@ -84,18 +95,6 @@ export async function resolveRequestCoder(
   const existingDevice = readDevice(c);
   const device = existingDevice ?? newDeviceId();
   const key = await coderKey(device, deploymentId, coderFromUrl(runtime, urlParams));
-  // A login (the same as researchers', §5) counts only where the study
-  // requires sign-in or the coder chose to (`x-use-login`), and is read
-  // only when it matters: to link a session to its email once, or to find
-  // the email's session on a new device. Never in previews.
-  const loginCookie = getCookie(c, SESSION_COOKIE);
-  const login =
-    loginCookie && !isPreviewId(deploymentId)
-      ? async () => {
-          const user = await userForSession(server.db, loginCookie);
-          return user ? { email: user.email } : null;
-        }
-      : undefined;
   const resolved = await runtime.resolveCoder({
     coderKey: key,
     linkSecret,
@@ -103,7 +102,10 @@ export async function resolveRequestCoder(
     // The coder asked for a new session (a coder id that already has one elsewhere)
     newSession: c.req.header("x-new-session") === "1",
     device: deviceDetails(c.req.header("user-agent")),
-    login,
+    // A login counts only where the study requires sign-in or the coder
+    // chose to (`x-use-login`), and is read only when it matters: to link a
+    // session to its email once, or to find the email's session on a new device.
+    login: loginOf(server, c),
     useLogin: c.req.header("x-use-login") === "1",
     beforeNewSession: () => countNewSession(server, c),
     // Coders can always sign in on a link (to continue on other devices); where the study requires it, they must.

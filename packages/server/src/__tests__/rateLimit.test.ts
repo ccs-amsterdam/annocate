@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CoderErrorCodeSchema } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import { TooManyRequests } from "../shared/http.js";
@@ -26,6 +27,8 @@ describe("the rate limiter", () => {
     const refused = await limits.count("researcher", 7).catch((err: unknown) => err);
     expect(refused).toBeInstanceOf(TooManyRequests);
     expect(refused).toMatchObject({ status: 429, code: "rate_limited" });
+    // A code the coding client knows
+    expect(CoderErrorCodeSchema.safeParse((refused as TooManyRequests).code).success).toBe(true);
     expect((refused as TooManyRequests).retryAfter).toBeGreaterThan(0);
     expect((refused as TooManyRequests).retryAfter).toBeLessThanOrEqual(60);
     expect(await counts()).toEqual([
