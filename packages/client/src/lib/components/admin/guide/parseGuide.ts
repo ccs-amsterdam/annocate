@@ -51,7 +51,6 @@ export interface GuideSection {
 
 const HEADING = /^## +(.*)$/;
 const TITLE_AND_ID = /^(.+?) +\{#([a-z0-9-]+)\}$/;
-const COMMENT = /^<!--(.*)-->$/;
 
 const isTab = (page: string | undefined): page is TabId => page !== undefined && page in TAB_SLUGS;
 const isOneOf = <T extends string>(list: readonly T[], value: string | undefined): value is T =>
@@ -100,14 +99,21 @@ function parseDirective(comment: string, where: string): Pick<GuideStep, "sample
   return step;
 }
 
+/** A line that is a whole HTML comment (`<!-- ... -->`): its text, trimmed; else null. */
+function commentText(line: string | undefined): string | null {
+  const text = line?.trim() ?? "";
+  if (!text.startsWith("<!--") || !text.endsWith("-->") || text.length < 7) return null;
+  return text.slice(4, -3).trim();
+}
+
 function parseStep(heading: string, lines: string[], file: string): GuideStep {
   const match = TITLE_AND_ID.exec(heading.trim());
   if (!match) throw new Error(`${file}: "## ${heading}" needs an id, as in "## Title {#id}"`);
   const [, title, id] = match;
-  const comment = COMMENT.exec(lines[0]?.trim() ?? "");
-  const directive = comment ? parseDirective(comment[1].trim(), `${file} #${id}`) : {};
+  const comment = commentText(lines[0]);
+  const directive = comment !== null ? parseDirective(comment, `${file} #${id}`) : {};
   const body = lines
-    .slice(comment ? 1 : 0)
+    .slice(comment !== null ? 1 : 0)
     .join("\n")
     .trim();
   if (!body) throw new Error(`${file} #${id}: the step has no text`);
