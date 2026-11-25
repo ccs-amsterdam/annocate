@@ -1,6 +1,7 @@
 import { CoderStudySchema, type CoderStudy } from "@annotinder/contracts";
 import { z } from "zod";
 import { CLIENT_HEADERS } from "../api/httpCoderApi";
+import { withLoginChoice } from "./coderSession";
 
 // The studies this browser took part in, for the coder home (`/code`):
 // the server keeps a device's sessions apart per study (docs/coder-identity.md
@@ -44,13 +45,18 @@ export function rememberStudy(study: OpenedStudy): void {
   write([study, ...read().filter((s) => !same(s, study))]);
 }
 
-/** Where a study continues: its page, with its URL parameters (no link: the device's cookie resumes the session). */
-export function continueUrl(study: OpenedStudy): string {
-  const query = new URLSearchParams(study.params).toString();
-  return `/code/${encodeURIComponent(study.deployment)}${query ? `?${query}` : ""}`;
-}
-
 export type StudyEntry = OpenedStudy & { study: CoderStudy; elsewhere: boolean };
+
+/**
+ * Where a study continues: its page, with its URL parameters (no link: the
+ * device's cookie resumes the session). A session of the login on another
+ * device has no cookie here: the page is told to code with the account.
+ */
+export function continueUrl(entry: Pick<StudyEntry, "deployment" | "params" | "elsewhere">): string {
+  const query = new URLSearchParams(entry.params).toString();
+  const page = `/code/${encodeURIComponent(entry.deployment)}${query ? `?${query}` : ""}`;
+  return entry.elsewhere ? withLoginChoice(page) : page;
+}
 
 /**
  * The studies to show: this browser's (asked one by one; forgotten when the

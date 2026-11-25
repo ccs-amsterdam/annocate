@@ -89,6 +89,12 @@ export interface HttpCoderApiConfig {
    * Sent with the first request only: the server moves this device to a new session.
    */
   newSession?: boolean;
+  /**
+   * The coder chose to code with their account (sent as `x-use-login`):
+   * without it the server leaves a login in the browser out of the session,
+   * unless the study requires sign-in.
+   */
+  useLogin?: boolean;
   /** On a link where coders pick their name: the name picked (sent as `x-coder-name`; read when a session starts). */
   coderName?: string;
 }
@@ -120,6 +126,7 @@ export class HttpCoderApi implements CoderApi {
       ...scopeHeaders(this.config),
     };
     if (this.newSession) headers["x-new-session"] = "1";
+    if (this.config.useLogin) headers["x-use-login"] = "1";
     if (this.config.coderName) headers["x-coder-name"] = encodeURIComponent(this.config.coderName);
     if (this.version !== null) headers["x-annotinder-version"] = String(this.version);
     const query = new URLSearchParams(this.config.urlParams ?? {}).toString();

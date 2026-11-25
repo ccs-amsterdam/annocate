@@ -125,7 +125,7 @@ const LINK_NOTICES = new Map<string, { title: string; text: string }>([
     "link_not_found",
     {
       title: "This link doesn't work",
-      text: "Check that you opened the whole link you were given. If it still doesn't work, contact the researchers.",
+      text: "A study opens from the link the researchers gave you: check that you opened the whole link. If it still doesn't work, contact the researchers.",
     },
   ],
   [

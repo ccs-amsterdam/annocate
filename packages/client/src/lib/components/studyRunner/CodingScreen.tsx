@@ -99,12 +99,14 @@ export function CodingScreen(props: CodingScreenProps) {
 }
 
 /** The session's API: the same one until what starts the session changes. */
-function useCoderApi({ baseUrl, linkSecret, urlParams, newSession, coderName }: CodingScreenProps): HttpCoderApi {
+function useCoderApi(props: CodingScreenProps): HttpCoderApi {
+  const { baseUrl, linkSecret, urlParams, newSession, coderName, useLogin } = props;
   // By content: a new object with the same params must not restart the session.
   const urlParamsKey = JSON.stringify(urlParams ?? {});
   return useMemo(
-    () => new HttpCoderApi({ baseUrl, linkSecret, urlParams: JSON.parse(urlParamsKey), newSession, coderName }),
-    [baseUrl, linkSecret, urlParamsKey, newSession, coderName],
+    () =>
+      new HttpCoderApi({ baseUrl, linkSecret, urlParams: JSON.parse(urlParamsKey), newSession, coderName, useLogin }),
+    [baseUrl, linkSecret, urlParamsKey, newSession, coderName, useLogin],
   );
 }
 

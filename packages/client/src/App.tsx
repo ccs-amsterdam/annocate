@@ -346,16 +346,19 @@ const codeRoute = createRoute({
     const { deployment } = useParams({ from: "/code/$deployment" });
     const search = useSearch({ from: "/code/$deployment" });
     const navigate = useNavigate();
+    /** Takes a parameter that did its work out of the URL. */
+    const dropFromUrl = (name: string) => {
+      const rest = { ...search };
+      delete rest[name];
+      void navigate({ to: "/code/$deployment", params: { deployment }, search: rest, replace: true });
+    };
     return (
       <CodePage
         deployment={deployment}
         apiUrl={API_URL}
         search={search}
-        onTransferRedeemed={() => {
-          const rest = { ...search };
-          delete rest.transfer;
-          void navigate({ to: "/code/$deployment", params: { deployment }, search: rest, replace: true });
-        }}
+        onTransferRedeemed={() => dropFromUrl("transfer")}
+        onLoginChoiceRead={() => dropFromUrl("login")}
       />
     );
   },

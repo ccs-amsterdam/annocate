@@ -107,7 +107,7 @@ export function TransferMenu({
               size="sm"
               variant="outline"
               className="w-full"
-              onClick={() => window.location.assign(coderLoginUrl())}
+              onClick={() => window.location.assign(coderLoginUrl({ useLogin: true }))}
             >
               Log in
             </Button>

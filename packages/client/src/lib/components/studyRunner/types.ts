@@ -4,6 +4,8 @@ export interface StudyRunnerProps {
   linkSecret?: string;
   /** The page's other query parameters: the coder id and the design's URL parameters (the server stores the ones it needs when the coder starts). */
   urlParams?: Record<string, string>;
+  /** The coder chose to code with their account: a login in the browser counts for the session (`x-use-login`). */
+  useLogin?: boolean;
   /** Token from a "Continue on another device" link: redeemed for the session's coder key. */
   transferToken?: string;
   /** Called once a transfer token was redeemed, e.g. to remove it from the URL. */

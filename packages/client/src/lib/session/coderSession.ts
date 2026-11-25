@@ -51,9 +51,27 @@ export function defaultTransferUrl(token: string): string {
 // on this origin. A logged-in coder continues on another device by logging
 // in there, without a transfer link.
 
-/** Where the browser goes to log in; it comes back to this page. */
-export function coderLoginUrl(): string {
-  return `/api/auth/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+/**
+ * A study page's address (path and query) with the coder's choice to code
+ * with their account: `login=1`. The page reads it once, sends
+ * `x-use-login` from then on, and takes it out of the address (CodePage),
+ * so a copied link never carries the choice to someone else.
+ */
+export function withLoginChoice(address: string): string {
+  const [path, query = ""] = address.split("?");
+  const params = new URLSearchParams(query);
+  params.set("login", "1");
+  return `${path}?${params.toString()}`;
+}
+
+/**
+ * Where the browser goes to log in; it comes back to this page.
+ * `useLogin`: the coder chose to sign in where the study doesn't require
+ * it, so the page they come back to codes with their account.
+ */
+export function coderLoginUrl({ useLogin = false }: { useLogin?: boolean } = {}): string {
+  const page = window.location.pathname + window.location.search;
+  return `/api/auth/login?returnTo=${encodeURIComponent(useLogin ? withLoginChoice(page) : page)}`;
 }
 
 /** Whether this server offers login at all. */
