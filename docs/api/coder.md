@@ -61,8 +61,14 @@ once (on a request with this study's link, while the session has no email),
 or to find the email's session on a device without a session here
 (`coder-identity.md` §5). Never in previews. Where the invitation requires
 sign-in, a new session without a login gets 401 `auth_required` (401 means
-nothing else), and an email that isn't one of the coders 403
+nothing else). Where expert coders sign in, the session's coder is the one
+whose email address the login has (`coder-identity.md` §2, §5); a login
+that isn't the address of a coder in the coder set gets 403
 `email_not_allowed`.
+
+A crowd's coder id (`coderParam`, or the login's email where a crowd signs
+in) that is new makes a coder of the study; one that is an expert coder of
+the study gets 409 `coder_is_expert`.
 
 The client sends `x-use-login: 1` after the coder clicked **Log in** on the
 coding screen, and for a study opened from the coder home's list of the

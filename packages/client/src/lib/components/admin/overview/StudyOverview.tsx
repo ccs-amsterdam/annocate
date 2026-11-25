@@ -16,7 +16,7 @@ import { ActivityChart } from "./ActivityChart";
 import { TeamSettings } from "./TeamSettings";
 import { ExampleNotice } from "./ExampleNotice";
 
-type OverviewTarget = "Units" | "Links" | "Coders";
+type OverviewTarget = "Units" | "Links" | "Coders" | "Results";
 
 interface StudyOverviewProps {
   client: ResearcherApi;
@@ -102,7 +102,7 @@ export function StudyOverview({ client, onNavigate, onOpenDesign }: StudyOvervie
             value={
               overview ? `${count(overview.codings, "finished unit")} · ${count(overview.answers, "answer")}` : "…"
             }
-            onClick={() => onNavigate("Coders")}
+            onClick={() => onNavigate("Results")}
           />
           <Fact
             label="Last activity"

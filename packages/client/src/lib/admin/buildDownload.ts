@@ -2,6 +2,7 @@ import { strToU8 } from "fflate";
 import { designFile, type TopLevelItem } from "@annotinder/contracts";
 import {
   annotationsTable,
+  coderListTable,
   codersTable,
   deletedCodersTable,
   devicesTable,
@@ -108,13 +109,14 @@ function downloadTables(
   const numeric = numericCodeQuestions(live);
   const labels = withLabels ? new Labels(designVersions, liveDesignVersionId) : undefined;
   const tables: [string, Table][] = [
-    ["annotations", annotationsTable(annotations, raw.coders, order, labels, nested, numberOf, numeric)],
-    ["coders", codersTable(raw.coders, order, labels, nested, numeric)],
+    ["annotations", annotationsTable(annotations, raw.sessions, order, labels, nested, numberOf, numeric)],
+    ["sessions", codersTable(raw.sessions, order, labels, nested, numeric)],
+    ["coders", coderListTable(raw.coders)],
     ["units", unitsTable(raw.units, annotations, raw.sets)],
     ["variables", variablesTable(designVersions, numberOf)],
-    ["timings", timingsTable(annotations, raw.coders)],
+    ["timings", timingsTable(annotations, raw.sessions)],
     ["devices", devicesTable(raw.devices)],
-    ["display_changes", displayChangesTable(raw.coders)],
+    ["display_changes", displayChangesTable(raw.sessions)],
     ["deleted_coders", deletedCodersTable(raw.deletions)],
   ];
   if (withReset) tables.push(["reset_answers", resetAnswersTable(rows, labels, numberOf, numeric)]);

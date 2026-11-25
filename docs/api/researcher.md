@@ -12,8 +12,8 @@ are relative to `/api`. Called by the researcher UI (`ResearcherApi`), scripts
 
 **From R or Python**: create a study, upload units ([createUnits](#createunits))
 and a design version, deploy it (which makes the links), send coders a link,
-then download the answers ([listAnnotations](#listannotations)) and the coders
-([listCoders](#listcoders)). `server/src/__tests__/researcherApi.test.ts` does
+then download the answers ([listAnnotations](#listannotations)) and the coder
+sessions ([listSessions](#listsessions)). `server/src/__tests__/researcherApi.test.ts` does
 exactly this.
 
 **Authentication.** A researcher is a user (a login at the provider). Requests
@@ -109,10 +109,13 @@ also has `requestId`):
 | [revokeLink](#revokelink) | `POST /study/:studyId/links/:id/revoke` | WRITE | – | `LinkResponseSchema` |
 | [reopenLink](#reopenlink) | `POST /study/:studyId/links/:id/reopen` | WRITE | – | `LinkResponseSchema` |
 | [renewLinkSecret](#renewlinksecret) | `POST /study/:studyId/links/:id/secret` | WRITE | – | `LinkResponseSchema` |
-| [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `{ coders: CoderProgressSchema[], next? }` |
+| [listCoders](#listcoders) | `GET /study/:studyId/coders` | READ | – | `CoderListSchema` (`{ coders, next?, unassigned }`) |
+| [createCoders](#createcoders) | `POST /study/:studyId/coders` | WRITE | `CodersCreateSchema` | `CodersCreatedSchema` |
+| [updateCoder](#updatecoder) | `PATCH /study/:studyId/coders/:coder` | WRITE | `CoderPatchSchema` | `CoderResponseSchema` |
 | [listCoderUnits](#listcoderunits) | `GET /study/:studyId/coders/units` | READ | – | `CoderUnitsSchema` |
 | [deleteCoders](#deletecoders) | `POST /study/:studyId/coders/delete` | ADMIN | `DeleteCodersSchema` | `DeleteCodersResponseSchema` |
-| [postponeDeletion](#postponedeletion) | `POST /study/:studyId/coders/:id/deletion-request/postpone` | ADMIN | – | – |
+| [listSessions](#listsessions) | `GET /study/:studyId/sessions` | READ | – | `{ sessions: CoderProgressSchema[], next? }` |
+| [postponeDeletion](#postponedeletion) | `POST /study/:studyId/sessions/:id/deletion-request/postpone` | ADMIN | – | – |
 | [listCoderDeletions](#listcoderdeletions) | `GET /study/:studyId/coders/deletions` | READ | – | `CoderDeletionSchema[]` |
 | **Deploying** | | | | |
 | [getDeployment](#getdeployment) | `GET /study/:studyId/deployment` | READ | – | `DeploymentResponseSchema \| null` |
@@ -269,10 +272,12 @@ The study's `origin` is the example's id. 404 for an unknown example.
 recipe (`contracts/src/recipe.ts`), as importing a design file writes one, like
 `createStudy` (the same role, limits and ownership), in one transaction:
 
-- `units` (`{ id, data }`; the first unit's fields become the study's) and
-  `sets`: role columns by the units' ids (`[{ group, sets: [{ name, units,
-  ordered? }] }]`, `group` one of `coder_set`, `condition_set`, `part_set`,
-  `test_set`);
+- `units` (`{ id, data }`; the first unit's fields become the study's),
+  `coders`: its expert coders (`[{ coder, email? }]`, as
+  [createCoders](#createcoders)), and `sets`: role columns by the units' ids
+  (`[{ group, sets: [{ name, units, ordered? }] }]`, `group` one of
+  `coder_set`, `condition_set`, `part_set`, `test_set`). A `coder_set` names
+  the recipe's `coders` only (400 otherwise);
 - `design` (`{ note?, public?, session?, units?, items }`): the first version, saved as a draft that
   may have issues (e.g. questions without an answer type yet). With
   `deploy: true` it is deployed, and must then pass validation. `units`:
@@ -319,15 +324,18 @@ included, as gzipped JSON lines (a manifest, `StudyExportManifestSchema`,
 then the rows). Study ADMIN, and sensitive: a web session with a recent
 second factor (403 `step_up_required`), never an API key (403
 `not_with_api_key`). Logged in `security_log` (`study_exported`). Coders'
-email addresses are in the file only if the deployed design asks coders to
-sign in. See `docs/hosting.md` "Moving a study".
+email addresses (the ones sessions signed in with, and the ones the
+researchers gave expert coders) are in the file only if the deployed design
+asks coders to sign in. See `docs/hosting.md` "Moving a study".
 
 ### importStudy
 
 `POST /study/import` with the export's bytes as the body → `StudyResponseSchema`
 (201): a new study from it, owned by the importer (a researcher, within
 their limits). Query: `name` (else the exported one), `coders=false`
-(without coders, their devices and answers; links' uses start at 0). The
+(without coders' sessions, devices and answers, and without a crowd's
+coders; the expert coders come along, since the units' `coder_set` names
+them; links' uses start at 0). The
 export's rows are migrated to this release first; every id is new and
 links get new secrets. 400 `export_invalid` for a file that isn't an
 export, comes from a newer release or from a database this release doesn't
@@ -526,7 +534,9 @@ declares it in the draft as a unit field (type `set`; `test_set`:
 a role column (400 otherwise); `test_set` takes only `overlap`,
 `practice` and `gold`, one per unit (400). The unit ids in order: the order coders get
 them in, for loops in set order. Only the study's own units (400
-otherwise).
+otherwise). `coder_set`'s set names are ids of the study's expert coders
+([createCoders](#createcoders)), as written: with any other name the
+request is refused, 400 `unknown_coders`, listing them.
 
 ### deleteSetGroup
 
@@ -542,7 +552,8 @@ contracts `sets.ts`), which then writes it with
 ## Links and coders
 
 Schemas: [`contracts/src/coder.ts`](../../packages/contracts/src/coder.ts).
-Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
+Implementation: [`researcher/links.ts`](../../packages/server/src/researcher/links.ts), [`shared/links.ts`](../../packages/server/src/shared/links.ts), [`coders.ts`](../../packages/server/src/researcher/coders.ts), [`shared/studyCoders.ts`](../../packages/server/src/shared/studyCoders.ts), [`shared/coderDeletion.ts`](../../packages/server/src/shared/coderDeletion.ts), [`shared/progress.ts`](../../packages/server/src/shared/progress.ts).
+The coders and their ids: [`docs/coder-identity.md`](../coder-identity.md) §2.
 See [`docs/coder-identity.md`](../coder-identity.md) for what links do.
 
 Links are not created by hand: deploying makes one, or for expert coders
@@ -584,7 +595,52 @@ coders who already started keep working.
 
 ### listCoders
 
-`GET /study/:studyId/coders` → `{ coders: CoderProgressSchema[], next? }` (a [list](README.md#lists)): per coder session
+`GET /study/:studyId/coders` → `CoderListSchema`: `{ coders:
+CoderResponseSchema[], next?, unassigned }` (a [list](README.md#lists), in
+the order the coders were made; `?kind=expert` or `?kind=crowd` for one
+kind). Per coder:
+
+- `coder` (their id), `kind` (`expert`: made by the researchers; `crowd`:
+  made when a session with a new coder id started), `email` (the address an
+  expert coder signs in with, or null; every role in the study sees it) and
+  `created`. `id` is only the list's cursor (`after`).
+- Their units, for expert coders (null for a crowd's): `assigned`, the units
+  of their set in the deployed `coder_set`; `assignedDraft`, in the
+  draft's; `draftDiffers`, whether those are other units (deploying the
+  units applies the draft); `remaining`, the deployed ones none of their
+  sessions answered.
+- `done`: the units their sessions answered (also test units, and units
+  that were theirs before); `sessions`: how many sessions they started;
+  `lastActive`: their latest answer, or null.
+
+`unassigned`: the units no expert coder has, test units aside: `live`, of
+the deployed units with the deployed sets (null before the first deploy;
+e.g. after a coder was deleted), and `draft`. The list is not sorted for
+the reader: clients sort it (the researcher UI does, by any column).
+
+### createCoders
+
+`POST /study/:studyId/coders` (`CodersCreateSchema`: `{ coders: [{ coder,
+email? }] }`, 1 to 5000) → 201 `{ coders: CoderResponseSchema[] }`. WRITE.
+Makes expert coders. A coder id is 1 to 64 characters, without spaces at
+its ends, control characters, `;` or `#` (400): a name, a number, an email
+address. All or nothing: an id or an email address that is given twice, or
+that a coder of the study has already (expert or crowd, ignoring case),
+refuses the request with 409 `coder_exists`, naming them. Email addresses
+are stored in lower case.
+
+### updateCoder
+
+`PATCH /study/:studyId/coders/:coder` (`{ email }`: an address, or null for
+none) → `CoderResponseSchema`. WRITE. Sets or clears an expert coder's email
+address; the id (in the path, as written) can't be changed. 404 for an
+unknown coder, 400 for a crowd's coder, 409 `coder_exists` for another
+coder's address. Signing in uses the new address from then on; a session
+keeps the address it started with.
+
+### listSessions
+
+`GET /study/:studyId/sessions` → `{ sessions: CoderProgressSchema[], next? }` (a [list](README.md#lists)): per coder session
 (`id`) the link, the coder id (`coder`), started, last active, live answers, `finished`: per
 loop of the live design version (in design order) `{ loop, title, units }` (the loop's id, its label or else its id, the units finished), `testUnits`: the deployed test units
 (`test_set`: `overlap`, `gold`, `practice`) they finished, of how many (for
@@ -605,22 +661,35 @@ answered (`coded`; retired answers left out) and the ones they were sent
 but didn't answer (`served`: prefetched, or on their screen). The
 researcher UI keeps coded units with their coders when it makes the coder
 set (`coder_set`) again (contracts `distributeUnits`) or moves units
-between coders (the Units page's coders panel, `admin/moveUnits.ts`).
+between coders (a row action on the Coders page, `admin/moveUnits.ts`).
 
 ### deleteCoders
 
 `POST /study/:studyId/coders/delete` (`DeleteCodersSchema`: `{ sessionIds?,
-coders?, emails? }`, at least one) → `{ sessionIds, answers }`. ADMIN.
+coders?, emails? }`, at least one) → `{ sessionIds, answers, coders }`. ADMIN.
 Deletes the matching coder sessions of the study and all their answers, also reset
 ones, for good (a coder withdrew; docs/coder-identity.md §8), and the
 study's stored results downloads. Sensitive, as `createApiKey`. Units
 nobody has answers for any more can be deleted again; unit versions stay.
-Each deleted coder is logged (listCoderDeletions); `deletedBy` is the
+Each deleted session is logged (listCoderDeletions); `deletedBy` is the
 researcher's email.
+
+- `sessionIds`: those sessions. An expert coder stays; a crowd's coder
+  whose last session this was goes too.
+- `coders` (coder ids, as written): the coders, with every session of
+  theirs. Also a coder who never started.
+- `emails`: the sessions that signed in with the address, and the coder the
+  researchers gave it to.
+
+Deleting a coder (`coders` in the response) also removes their row and
+email address, takes them out of the units' `coder_set` in the draft and as
+deployed (their units then have no coder: `unassigned` of
+[listCoders](#listcoders)), and revokes their own link. The id can be made
+again afterwards.
 
 ### postponeDeletion
 
-`POST /study/:studyId/coders/:id/deletion-request/postpone` → 204 (404 without a
+`POST /study/:studyId/sessions/:id/deletion-request/postpone` → 204 (404 without a
 request). ADMIN. Delete later: sets `postponedAt` on the request, which the
 UI then no longer brings up. The request stays until the coder is deleted.
 
@@ -630,8 +699,8 @@ UI then no longer brings up. The request stays until the coder is deleted.
 per deleted coder session `sessionId`, `coder`, `requestedAt` (if
 they asked), `deletedAt`, `deletedBy` and `answers` (rows deleted). Kept
 after the data is gone, with the ids downloaded results use, so the coder
-can be deleted from those too. Not the email address: a `coder` that is an
-email address (coders who sign in) is `sha256:<hex>`, the SHA-256 of the
+can be deleted from those too. No units, and not the email address: a `coder` that looks like an
+email address (a crowd that signs in, or an id the researchers chose) is `sha256:<hex>`, the SHA-256 of the
 address in lower case, which still matches the coder in earlier downloads
 (`docs/coder-identity.md` §8). Nothing that identifies the person is kept.
 
@@ -662,8 +731,8 @@ out: unchanged, the first deploy: "{n} new units were added for you.";
 1. check that the design version passes validation (400 with `issues` if not:
    drafts may be saved with issues, coders only get valid designs), and
    check it against the role columns (400 `assignment_invalid` with the
-   errors: expert coders without `coder_set` values, coders who sign in
-   whose values aren't all email addresses, an experiment that selects
+   errors: expert coders without `coder_set` values, coders of it without
+   an email address where coders sign in (named), an experiment that selects
    units without `condition_set` or with listed conditions it has no units
    for; `shared/deployChecks.ts` `assignmentChecks`);
 2. with `units`: new versions of the units the draft changed (versions
@@ -767,7 +836,7 @@ or balanced groups), marked `assigned`.
   reset (by a researcher), with `retiredAt`. A coder's earlier answer that
   they changed themselves is not kept.
 - Coder-level values (rows without a unit) also come with the coders
-  ([listCoders](#listcoders), `variables`). Resetting answers
+  ([listSessions](#listsessions), `variables`). Resetting answers
   ([resetAnnotations](#resetannotations)) applies to unit answers only.
 
 ### listUnitVersions
@@ -841,8 +910,10 @@ file while the study is unchanged.
 
 The export is a zip of JSON-lines files, one per table, rows in this API's
 shapes: `answers.jsonl` (`AnnotationRow`, also reset answers with
-`retiredAt`), `units.jsonl` (`UnitVersion`), `coders.jsonl`
-(`CoderProgress`), `design_versions.jsonl` (`DesignVersion` plus its
+`retiredAt`), `units.jsonl` (`UnitVersion`), `sessions.jsonl`
+(`CoderProgress`), `coders.jsonl` (the study's coders, also ones who
+haven't started: `coder`, `kind`, `created`, and `email` where the deployed
+design has coders sign in), `design_versions.jsonl` (`DesignVersion` plus its
 `number`), `deployments.jsonl`, `sets.jsonl`, `devices.jsonl`,
 `deletions.jsonl`, and `manifest.json` (`ResultsExportManifestSchema`) with
 the rows per file. The manifest is written last: a zip without it, or with

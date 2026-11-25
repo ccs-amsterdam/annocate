@@ -2,7 +2,6 @@ import {
   addToSets,
   CODER_SET,
   distributeUnits,
-  isEmail,
   isRoleColumn,
   TEST_SET,
   type RoleColumn,
@@ -24,7 +23,7 @@ export const ROLE_LABELS: Record<RoleColumn, string> = {
 
 /** What each role column does, for a tooltip. */
 export const ROLE_INFO: Record<RoleColumn, string> = {
-  coder_set: "Who codes which units (expert coders): per unit the coders' names or email addresses.",
+  coder_set: "Who codes which units: per unit the ids of its expert coders (made on the Coders page).",
   condition_set: "The units of each condition of the experiment that selects units.",
   part_set: "Parts of the study, e.g. pre and post: a unit loop shows one part.",
   test_set: "Test units: overlap (coded by everyone), practice (with feedback) and gold (checked silently).",
@@ -49,15 +48,6 @@ export const TEST_LABELS: Record<TestSetType, string> = {
   practice: "Practice units",
   gold: "Gold units",
 };
-
-/** Whether every value of a role column is an email address: coders who sign in. */
-export function isEmailColumn(group: SetGroupResponse): boolean {
-  const values = group.sets.map((s) => s.name);
-  return group.name !== "test_set" && values.length > 0 && values.every((n) => isEmail(n));
-}
-
-export const EMAIL_COLUMN_INFO =
-  "Units assigned to email addresses: coders sign in and get the units of their address (authenticated coding).";
 
 /**
  * The units "Assign units without a value" gives a set column a value:

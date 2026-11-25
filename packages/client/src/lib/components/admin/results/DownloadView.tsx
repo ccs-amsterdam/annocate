@@ -3,7 +3,7 @@ import { zipSync } from "fflate";
 import { readRawExport } from "../../../admin/rawExport";
 import { AlertTriangle, Download, FileArchive } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
-import { useCodersQuery, useDeploymentQuery, useStudyQuery } from "../../../admin/queries";
+import { useDeploymentQuery, useSessionsQuery, useStudyQuery } from "../../../admin/queries";
 import { CSV_FORMULA_ADVICE, CSV_FORMULA_WARNING } from "../../../admin/exportReadme";
 import { downloadFile } from "../../../admin/download";
 import { buildDownload, downloadName } from "../../../admin/buildDownload";
@@ -18,7 +18,7 @@ import { HelpButton } from "../../../help/HelpButton";
  * researcher API.
  */
 export function DownloadView({ client }: { client: ResearcherApi }) {
-  const coders = useCodersQuery(client);
+  const coders = useSessionsQuery(client);
   const study = useStudyQuery(client).data;
   const deployment = useDeploymentQuery(client).data;
   const [withLabels, setWithLabels] = useState(true);
@@ -150,8 +150,12 @@ function ZipContents() {
           <strong>annotations.csv</strong>: a row per unit and coder, with a column per question (a scale: per item)
         </li>
         <li>
-          <strong>coders.csv</strong>: a row per coder: link, coder id, how their session ended, and their answers
-          outside unit loops
+          <strong>sessions.csv</strong>: a row per coder session: link, coder id, how it ended, and the answers outside
+          unit loops
+        </li>
+        <li>
+          <strong>coders.csv</strong>: the study&apos;s coders, also the ones who haven&apos;t started: coder id, expert
+          or crowd, and an expert coder&apos;s email address where coders sign in
         </li>
         <li>
           <strong>devices.csv</strong>: the devices coders used (phone, tablet or desktop, browser, operating system)

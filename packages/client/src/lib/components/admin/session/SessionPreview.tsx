@@ -100,7 +100,7 @@ function InvitePreview({ item, groups, base }: { item: SessionItem; groups: SetG
           ? "A link per coder, made when you deploy (the Links page)"
           : invite.link === "pick_name"
             ? "One link; coders pick their name from the list"
-            : "One link; coders sign in, and get the units of their email address"}
+            : "One link; coders sign in, and get the units of the coder with their email address"}
       </Row>
       {invite.link === "per_coder" &&
         names.slice(0, 8).map((n) => (

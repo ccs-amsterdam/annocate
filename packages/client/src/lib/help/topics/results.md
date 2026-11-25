@@ -14,7 +14,8 @@ label columns, reset answers, and the raw export.
 | File                  | A row per                        | Holds                                                   |
 | --------------------- | -------------------------------- | ------------------------------------------------------- |
 | `annotations.csv`     | unit and coder                   | answers to loop questions                               |
-| `coders.csv`          | coder session                    | who, how far, and answers outside loops                 |
+| `sessions.csv`        | coder session                    | who, how far, and answers outside loops                 |
+| `coders.csv`          | coder                            | the study's coders: id, expert or crowd, email          |
 | `units.csv`           | unit version                     | the units as coders saw them                            |
 | `variables.csv`       | design version, question, option | the codebook: values and labels                         |
 | `designs/v<n>.json`   | design version                   | the whole design, with the AnnoTinder release it ran on |
@@ -104,7 +105,7 @@ A row per unit a coder coded:
 
 See [Values and labels](design-values-and-labels.md).
 
-## coders.csv
+## sessions.csv
 
 A row per session (`session_id`; a coder who restarted on another device
 has two):
@@ -120,6 +121,20 @@ has two):
 | `finished_<loop id>`                                     | units finished per loop, e.g. `finished_loop_1` (see `variables.csv` for the loops' labels)                                  |
 | `overlap_finished`, `gold_finished`, `practice_finished` | test units finished (see [Overlap, gold and practice units](special-units.md))                                               |
 | one column per question                                  | answers outside loops and [experiments](random-condition.md)                                                                 |
+
+## coders.csv
+
+A row per **coder** of the study (see
+[The Coders page](coders-and-progress.md#the-coders-page)), also coders
+who haven't started; join `sessions.csv` and `annotations.csv` on `coder`.
+Sessions without a coder id have no row here.
+
+| Column    | Meaning                                                                               |
+| --------- | ------------------------------------------------------------------------------------- |
+| `coder`   | the coder id                                                                          |
+| `kind`    | `expert` (a coder you added) or `crowd` (made when they started with a coder id)      |
+| `email`   | an expert coder's email address, only where coders [sign in](links.md#login) with it  |
+| `created` | when the coder was added, or first started                                            |
 
 ## units.csv
 
@@ -194,7 +209,7 @@ library(dplyr)
 unzip("news_tone_2026-10-27.zip", exdir = "results")
 
 annotations <- read_csv("results/annotations.csv", col_types = cols(unit_id = "c"))
-coders      <- read_csv("results/coders.csv")
+coders      <- read_csv("results/sessions.csv")
 units       <- read_csv("results/units.csv", col_types = cols(unit_id = "c"))
 
 # Answers with the coder's background and the text they coded

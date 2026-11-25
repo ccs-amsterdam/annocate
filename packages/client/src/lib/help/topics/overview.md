@@ -21,7 +21,7 @@ New here? Follow [Your first study](first-study.md).
 | **Units**   | The material to code: rows with an id and fields such as `headline` and `text`     | Units            |
 | **Sets**    | Columns of the units that say which coder (or condition) gets which units          | Units            |
 | **Links**   | The links coders open to start, made when you deploy                               | Links            |
-| **Coders**  | Everyone who started, and how far they got                                         | Results › Coders |
+| **Coders**  | Your expert coders, or a crowd's: who has which units, and how far they got        | Coders           |
 | **Results** | All answers, as a zip of CSV files                                                 | Results          |
 
 ## How a design is built

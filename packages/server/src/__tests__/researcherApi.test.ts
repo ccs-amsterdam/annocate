@@ -243,7 +243,7 @@ describe("downloading annotations", () => {
     expect(rows[0]).not.toHaveProperty("retiredAt");
 
     // Coder-level values and progress come with the coders.
-    const coders = (await call(key, "listCoders", { studyId })).data.coders;
+    const coders = (await call(key, "listSessions", { studyId })).data.sessions;
     expect(coders.map((c) => c.finished)).toEqual([
       [{ loop: "loop_1", title: "loop", units: 2 }],
       [{ loop: "loop_1", title: "loop", units: 2 }],

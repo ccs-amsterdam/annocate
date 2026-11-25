@@ -9,7 +9,8 @@ import { UploadUnits } from "./upload/UploadUnits";
 import { SplitIntoSets, type SplitColumn } from "./SplitIntoSets";
 import { TestSetDialog } from "./TestSetDialog";
 import { CoderSetDialog } from "../session/CoderSetDialog";
-import { CodersDialog } from "./CodersDialog";
+import { CodersSummary } from "./CodersSummary";
+import { UnassignedNotice } from "../coders/UnassignedNotice";
 import { HelpButton } from "../../../help/HelpButton";
 import { clampOffset, existingSelection, roleCells } from "../../../admin/unitsTable";
 import { Pager } from "./Pager";
@@ -25,9 +26,11 @@ const PAGE_SIZE = 50;
  * per role column (coder set, condition set, part set, test set; its cell
  * as in a CSV). Pick a value to see its units in its order; select units to
  * put them in a set, or create a role column ("Create special set": the
- * coder set dialog, a split into a part or condition set, a test set).
+ * coder set dialog, a split into a part or condition set, a test set). The
+ * coders themselves are on the Coders page (`onOpenCoders`): here a line
+ * about them, and the units without a coder.
  */
-export function UnitsPage({ client }: { client: ResearcherApi }) {
+export function UnitsPage({ client, onOpenCoders }: { client: ResearcherApi; onOpenCoders: () => void }) {
   const fieldsQuery = useUnitFieldsQuery(client);
   const groupsQuery = useSetGroupsQuery(client);
   const unitsQuery = useUnitsQuery(client);
@@ -45,7 +48,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
         : everSelected,
     [everSelected, unitsQuery.data],
   );
-  const [panel, setPanel] = useState<"upload" | "coders" | RoleColumn | null>(null);
+  const [panel, setPanel] = useState<"upload" | RoleColumn | null>(null);
 
   const pageQuery = useUnitPageQuery(client, { offset, limit: PAGE_SIZE, column: shownSet?.group, set: shownSet?.set });
   const fields = fieldsQuery.data ?? [];
@@ -57,8 +60,6 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
   // The last page's units were deleted: show the page that is the last one now
   if (pageQuery.data && !pageQuery.isPlaceholderData && offset !== clampOffset(offset, total, PAGE_SIZE))
     setOffset(clampOffset(offset, total, PAGE_SIZE));
-  const coderGroup = groups.find((g) => g.name === CODER_SET);
-
   const cells = useMemo(() => roleCells(groups), [groups]);
 
   function selectSet(next: ShownSet | null) {
@@ -83,6 +84,7 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
               <FieldsPanel client={client} fields={fields} />
             )}
           </div>
+          <CodersSummary client={client} onOpenCoders={onOpenCoders} />
         </div>
         <Button
           data-guide="upload-units"
@@ -96,6 +98,12 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
 
       {panel === "upload" && <UploadUnits client={client} studyFields={fields} onDone={() => setPanel(null)} />}
 
+      <UnassignedNotice client={client}>
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setPanel(CODER_SET)}>
+          Make coder set…
+        </Button>
+      </UnassignedNotice>
+
       <SetsBar
         client={client}
         groups={groups}
@@ -103,11 +111,8 @@ export function UnitsPage({ client }: { client: ResearcherApi }) {
         current={shownSet}
         onSelect={selectSet}
         onCreate={setPanel}
-        onManageCoders={() => setPanel(panel === "coders" ? null : "coders")}
+        onOpenCoders={onOpenCoders}
       />
-      {panel === "coders" && coderGroup && (
-        <CodersDialog client={client} groups={groups} onClose={() => setPanel(null)} />
-      )}
 
       {(panel === CONDITION_SET || panel === PART_SET) && (
         <SplitIntoSets

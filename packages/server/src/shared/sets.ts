@@ -1,5 +1,6 @@
 import {
   ALL_UNITS_SET,
+  CODER_SET,
   RoleColumnSchema,
   designSetColumns,
   roleColumnProblem,
@@ -15,6 +16,7 @@ import { deployments, designVersions, unitSetMembers, unitSets, units } from "..
 import { designVersionItems } from "./designVersions.js";
 import { HttpError } from "./http.js";
 import { firstDuplicate } from "./lists.js";
+import { checkCoderSet } from "./studyCoders.js";
 import { getUnitFields, setUnitFields, unitIds } from "./units.js";
 import { lockUnits } from "../db/locks.js";
 
@@ -76,6 +78,8 @@ export async function groupSets(db: Db, studyId: number, group: string, live = f
  * order (positions for ordered sets). Units must be the draft's;
  * `test_set` takes only the test sets, one per unit. The column is a
  * unit field of its type in the draft design (`declare`, the default).
+ * `coder_set`'s values are expert coders of the study (400 naming the ones
+ * that aren't).
  */
 export async function putSetGroup(
   db: Db,
@@ -90,6 +94,12 @@ export async function putSetGroup(
     throw new HttpError(400, `'${group}' is not a column with a role (coder_set, condition_set, part_set, test_set)`);
   const problem = roleColumnProblem(column.data, sets);
   if (problem) throw new HttpError(400, `${group}: ${problem}`);
+  if (group === CODER_SET)
+    await checkCoderSet(
+      db,
+      studyId,
+      sets.map((s) => s.name),
+    );
   if (options.declare !== false) {
     const fields = await getUnitFields(db, studyId);
     const type = roleColumnType(group);

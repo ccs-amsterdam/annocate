@@ -3,6 +3,7 @@ import {
   ResultsExportManifestSchema,
   type AnnotationRow,
   type CoderDeletion,
+  type CoderKind,
   type CoderProgress,
   type DeploymentVersion,
   type DesignVersion,
@@ -16,12 +17,23 @@ import {
 // JSON lines in the researcher API's shapes. The data download builds its
 // tables from it (exportData.ts).
 
+/** A coder as the export lists them (the server's `coders.jsonl`). */
+export interface ExportedCoder {
+  coder: string;
+  kind: CoderKind;
+  email?: string;
+  created: string;
+}
+
 export interface RawExport {
   manifest: ResultsExportManifest;
   /** Also reset answers (with `retiredAt`). */
   answers: AnnotationRow[];
   units: UnitVersion[];
-  coders: CoderProgress[];
+  /** The coder sessions, with their progress. */
+  sessions: CoderProgress[];
+  /** The study's coders, also ones without a session; `email` only where coders sign in. */
+  coders: ExportedCoder[];
   /** Every design version, with its number as researchers see it. */
   designVersions: (DesignVersion & { number: number })[];
   deployments: DeploymentVersion[];
@@ -50,6 +62,7 @@ export function readRawExport(bytes: Uint8Array): RawExport {
     manifest,
     answers: lines("answers.jsonl"),
     units: lines("units.jsonl"),
+    sessions: lines("sessions.jsonl"),
     coders: lines("coders.jsonl"),
     designVersions: lines("design_versions.jsonl"),
     deployments: lines("deployments.jsonl"),

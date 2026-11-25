@@ -19,7 +19,7 @@ Two things decide which units a coder gets:
 | The design says                                           | A coder gets                                                                                                  |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Crowd (one link)**                                      | all units                                                                                                     |
-| **Expert coders** in Who codes                            | the units with their name in `coder_set` (see [Giving each coder their own units](own-units.md))              |
+| **Expert coders** in Who codes                            | the units with their coder id in `coder_set` (see [Giving each coder their own units](own-units.md))              |
 | an experiment where **each condition gets its own units** | the units with their condition in `condition_set` (see [Experimental conditions](experimental-conditions.md)) |
 
 Test units (`test_set`) are for everyone, besides these. The loop's form

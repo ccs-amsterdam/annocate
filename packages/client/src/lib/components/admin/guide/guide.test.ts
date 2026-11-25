@@ -9,7 +9,7 @@ import { closeGuide, endShowMe, goTo, guidePosition, openGuide, startShowMe } fr
 const sources = Object.values(
   import.meta.glob("../../**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>,
 ).join("\n");
-const TABS = ["Overview", "Design", "Units", "Deploy", "Links", "Results", "Settings", "Preview"];
+const TABS = ["Overview", "Design", "Units", "Coders", "Deploy", "Links", "Results", "Settings", "Preview"];
 const steps = GUIDE_FLOW.map((f) => f.step);
 
 describe("the guide's steps", () => {

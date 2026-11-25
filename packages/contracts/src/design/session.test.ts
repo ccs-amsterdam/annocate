@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  coderAccess,
   designItems,
   linkCombinations,
   linkMaxCoders,
@@ -34,13 +33,6 @@ describe("the design's Study entry (session and public info)", () => {
 describe("who codes and links", () => {
   const coders = ["anna", "bob"];
   const item = (extra: Partial<SessionItem>): SessionItem => ({ type: "session", ...extra });
-
-  it("tells email coders from named ones", () => {
-    expect(coderAccess(["anna", "bob"])).toBe("link");
-    expect(coderAccess(["a@x.org", "B@x.org"])).toBe("email");
-    expect(coderAccess(["anna", "b@x.org"])).toBe("mixed");
-    expect(coderAccess([])).toBe("none");
-  });
 
   it("make a link per coder, or one link (a login, or a crowd)", () => {
     expect(linkCombinations(null, coders)).toEqual([{}]);

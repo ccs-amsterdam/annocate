@@ -41,7 +41,7 @@ const ROLE_RANK: Record<Role, number> = { READ: 0, WRITE: 1, ADMIN: 2 };
 const SUSPENDED_ALLOWED: { method: string; path: RegExp }[] = [
   { method: "DELETE", path: /^\/api\/study\/\d+$/ },
   { method: "POST", path: /^\/api\/study\/\d+\/coders\/delete$/ },
-  { method: "POST", path: /^\/api\/study\/\d+\/coders\/\d+\/deletion-request\/postpone$/ },
+  { method: "POST", path: /^\/api\/study\/\d+\/sessions\/\d+\/deletion-request\/postpone$/ },
 ];
 
 const allowedWhileSuspended = (c: Context) =>

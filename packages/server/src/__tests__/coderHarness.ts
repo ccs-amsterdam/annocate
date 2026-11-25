@@ -261,8 +261,25 @@ export async function draftUnit(id: number): Promise<{ externalId: string; data:
   return row!;
 }
 
-/** Adds a set to a column with a role, replacing a set of that name. Returns its unit ids. */
+/** Makes expert coders of study 1 (those there already stay as they are); `email`: what they sign in with. */
+export async function addCoders(coders: (string | { coder: string; email?: string })[]): Promise<void> {
+  const known = new Set(((await listOf("coders")) as { coder: string }[]).map((c) => c.coder));
+  const fresh = coders.map((c) => (typeof c === "string" ? { coder: c } : c)).filter((c) => !known.has(c.coder));
+  if (fresh.length === 0) return;
+  const res = await server.request("/api/study/1/coders", {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ coders: fresh }),
+  });
+  expect(res.status, await res.clone().text()).toBe(201);
+}
+
+/**
+ * Adds a set to a column with a role, replacing a set of that name. Returns
+ * its unit ids. A set of `coder_set` is a coder's: made an expert coder first.
+ */
 export async function createSet(name: string, externalIds: string[], group: string) {
+  if (group === "coder_set") await addCoders([name]);
   const ids = await Promise.all(externalIds.map(async (e) => (await unitByExternalId(e)).id));
   const groups = (await (await server.request("/api/study/1/sets", { headers: adminHeaders })).json()) as {
     name: string;
@@ -279,7 +296,7 @@ export async function createSet(name: string, externalIds: string[], group: stri
 }
 
 /** A list of study 1 from the researcher API (`{ <items>: [...] }`): its items. */
-export async function listOf(path: "coders" | "links" | "devices" | "design"): Promise<unknown[]> {
+export async function listOf(path: "coders" | "sessions" | "links" | "devices" | "design"): Promise<unknown[]> {
   const page = (await (await server.request(`/api/study/1/${path}`, { headers: adminHeaders })).json()) as Record<
     string,
     unknown[]

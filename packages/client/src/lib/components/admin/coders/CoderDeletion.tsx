@@ -13,7 +13,7 @@ import {
 import { formatWhen } from "../../../admin/format";
 import { coderName } from "./coderName";
 
-// Deleting coders' data (docs/coder-identity.md §8), from Results › Coders:
+// Deleting coders' data (docs/coder-identity.md §8), from the Coders page:
 // finding coders by id or email, confirming, and the log of deleted coders.
 
 /**
@@ -128,7 +128,8 @@ export function ConfirmDeleteDialog({
   onClose,
   onConfirm,
 }: {
-  target: { select: DeleteCoders; names: string[] } | null;
+  /** `expert`: an expert coder is deleted, who leaves the coder set too. */
+  target: { select: DeleteCoders; names: string[]; expert?: boolean } | null;
   busy: boolean;
   error: string | null;
   onClose: () => void;
@@ -150,9 +151,17 @@ export function ConfirmDeleteDialog({
             before are not affected: delete those yourself. The deletion is logged (Deleted coders, below, and
             deleted_coders.csv in the download) with the session id and coder id, so you can.
           </p>
-          <p className="text-muted-foreground">
-            Units they coded can be handed out again where the distribution needs more codings.
-          </p>
+          {target?.expert ? (
+            <p className="text-muted-foreground">
+              The coder leaves the coder set, deployed and in the draft, and their link is revoked: their units have no
+              coder until you divide them again (Make coder set) and deploy the units. The coder id can be added again
+              afterwards.
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              Units they coded can be handed out again where the distribution needs more codings.
+            </p>
+          )}
           {error && <p className="text-destructive">{error}</p>}
         </div>
         <DialogFooter>

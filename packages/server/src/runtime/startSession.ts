@@ -5,7 +5,8 @@ import { type Db } from "../db/index.js";
 import { annotationValues, sessionDevices, coderSessions, links } from "../db/schema/index.js";
 import { type CoderRow } from "../shared/coders.js";
 import { HttpError } from "../shared/http.js";
-import { emailCoders, runtimeInvite, sessionValues } from "./sessionValues.js";
+import { emailCoders, runtimeInvite, sessionValues, type SessionLogin } from "./sessionValues.js";
+import { coderOfEmail, crowdCoder } from "../shared/studyCoders.js";
 import { nothingHere } from "./session.js";
 import { checkNewCoder } from "../shared/limits.js";
 import type { ResolveCoderRequest } from "./types.js";
@@ -81,7 +82,8 @@ export async function findOrCreateCoder(
 ): Promise<Started> {
   const { coderKey, device } = request;
   if (known && login) return linkLogin(db, studyId, request, known, login);
-  const mine = login ? await sessionOfLogin(db, studyId, request, login) : undefined;
+  const signedIn = login ? await sessionLogin(db, studyId, request, login) : null;
+  const mine = signedIn ? await sessionOfLogin(db, studyId, request, signedIn) : undefined;
   if (mine) return { row: mine, deviceId: await addDevice(db, studyId, mine.id, coderKey, device) };
   const link = await openLink(db, studyId, request);
   const invite = runtimeInvite(request.sessionRules?.item);
@@ -94,12 +96,14 @@ export async function findOrCreateCoder(
   }
   // A coder id is a label, never a credential: a new device for a
   // known coder gets a *new* session, and only when asked for.
-  const { coder, session } = sessionValues(
+  const values = sessionValues(
     request.sessionRules ?? { item: null, coders: [] },
     params,
     request.urlParams ?? {},
-    login?.email ?? null,
+    signedIn,
   );
+  const coder = values.coder === null ? null : await studyCoder(db, studyId, invite.mode, values.coder);
+  const session = coder === null ? values.session : { ...values.session, coder };
   const coderHasSession = coder !== null && (await coderHasSessions(db, studyId, request, coder));
   if (request.paused) throw new HttpError(409, "This study is paused", "study_paused");
   await checkNewCoder(db, studyId);
@@ -111,6 +115,44 @@ export async function findOrCreateCoder(
     .returning();
   // A new session on a device that had one (`newSession`): the device moves to the new one.
   return { row: created!, deviceId: await addDevice(db, studyId, created!.id, coderKey, device) };
+}
+
+/** A login for a new session: where expert coders sign in, with the coder whose email address it has. */
+async function sessionLogin(
+  db: Db,
+  studyId: number,
+  request: ResolveCoderRequest,
+  login: { email: string },
+): Promise<SessionLogin> {
+  const signIn = request.sessionRules && emailCoders(request.sessionRules);
+  return { email: login.email, coder: signIn ? await coderOfEmail(db, studyId, login.email) : null };
+}
+
+/**
+ * The study's coder a new session is of (`coders`, the session's `coder`).
+ * Expert coders exist (the researchers made them). A crowd's id is made a
+ * coder the first time it starts a session, one request at a time per id;
+ * an id that only differs in case from a coder's is that coder.
+ */
+async function studyCoder(db: Db, studyId: number, mode: "coders" | "crowd", coder: string): Promise<string> {
+  if (mode === "coders") return coder;
+  await lockCoder(db, studyId, coder);
+  return crowdCoder(db, studyId, coder);
+}
+
+/** One request at a time per coder id (whatever its case), until the transaction ends. */
+const lockCoder = (db: Db, studyId: number, coder: string) =>
+  advisoryLock(db, `coder:${studyId}:${coder.toLowerCase()}`);
+
+/** The latest session of a coder in this study. */
+async function sessionOfCoder(db: Db, studyId: number, coder: string): Promise<CoderRow | undefined> {
+  const [found] = await db
+    .select()
+    .from(coderSessions)
+    .where(and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)))
+    .orderBy(sql`${coderSessions.id} DESC`)
+    .limit(1);
+  return found;
 }
 
 /**
@@ -166,18 +208,21 @@ async function returnLinkUse(db: Db, studyId: number, removed: CoderRow): Promis
 }
 
 /**
- * The session a login has in this study, for a new device of it. Not when a
- * new session is asked for, except for email coders: they have one session
- * each (their units are their email's).
+ * The session a login has in this study, for a new device of it. Expert
+ * coders who sign in have one session each, their coder's: found by the
+ * coder whose email address the login has now (the session keeps the address
+ * it was started with), also when a new session is asked for. Anyone else:
+ * the session linked to the login's address, unless a new one is asked for.
  */
 async function sessionOfLogin(
   db: Db,
   studyId: number,
   request: ResolveCoderRequest,
-  login: { email: string },
+  login: SessionLogin,
 ): Promise<CoderRow | undefined> {
+  if (login.coder) return sessionOfCoder(db, studyId, login.coder);
   const oneEach = request.sessionRules && emailCoders(request.sessionRules);
-  return !request.newSession || oneEach ? sessionOfEmail(db, studyId, login.email) : undefined;
+  return !request.newSession && !oneEach ? sessionOfEmail(db, studyId, login.email) : undefined;
 }
 
 /**
@@ -207,7 +252,7 @@ async function coderHasSessions(
   coder: string,
 ): Promise<boolean> {
   // One at a time per coder id, so parallel requests can't pass the most sessions together
-  await advisoryLock(db, `coder:${studyId}:${coder}`);
+  await lockCoder(db, studyId, coder);
   const count = await db.$count(coderSessions, and(eq(coderSessions.studyId, studyId), eq(coderSessions.coder, coder)));
   if (count > 0 && !request.newSession) {
     throw new HttpError(409, "This coder already has a session on another device", "coder_has_session");

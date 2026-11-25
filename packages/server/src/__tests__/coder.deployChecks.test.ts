@@ -9,6 +9,8 @@ import {
   sentimentQuestion,
   draftUnit,
   createSet,
+  addCoders,
+  sessionItem,
   crowd,
   codersInvite,
 } from "./coderHarness.js";
@@ -83,6 +85,22 @@ describe("deploy checks of the columns with a role", () => {
     expect(await deploy([crowd(), listed, loop({})])).toEqual({
       error: "Experiment 'framing': condition_set has no units for 'b'.",
     });
+  });
+
+  it("what the invitation asks of the coders with units: an email address to sign in, no addresses as names to pick", async () => {
+    await addCoders(["anna", { coder: "bob@uni.nl", email: "bob@uni.nl" }, "carl"]);
+    await createSet("anna", ["unit-1", "unit-2"], "coder_set");
+    await createSet("bob@uni.nl", ["unit-3"], "coder_set");
+    const invite = (link: string) => sessionItem({ invite: { mode: "coders", link } });
+    // carl has no address either, but no units: he isn't asked for one
+    expect(await deploy([invite("login"), loop({})])).toEqual({
+      error:
+        "Coders sign in with their email address, but this coder has none: anna. Give them an email address (Coders), or give each coder a link.",
+    });
+    expect(await deploy([invite("pick_name"), loop({})])).toEqual([
+      "Coders pick their name from a list that anyone with the link sees, and this coder id looks like an email address: bob@uni.nl.",
+    ]);
+    expect(await deploy([invite("per_coder"), loop({})])).toEqual([]);
   });
 
   it("warn about checked test units without them or without right answers", async () => {

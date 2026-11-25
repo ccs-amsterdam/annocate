@@ -32,6 +32,39 @@ describe("lists of the researcher API", () => {
     expect(await api.listUnits()).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     expect(asked).toEqual(["/api/study/7/units", "/api/study/7/units?after=2", "/api/study/7/units?after=3"]);
   });
+
+  it("the coders come with the units no coder has: every page's coders, and that count once", async () => {
+    const unassigned = { live: 2, draft: 0 };
+    const asked = server({
+      "/api/study/7/coders": { coders: [{ id: 1, coder: "anna" }], next: 1, unassigned },
+      "/api/study/7/coders?after=1": { coders: [{ id: 2, coder: "bob" }], unassigned },
+    });
+    expect(await api.listCoders()).toEqual({
+      coders: [
+        { id: 1, coder: "anna" },
+        { id: 2, coder: "bob" },
+      ],
+      unassigned,
+    });
+    expect(asked).toEqual(["/api/study/7/coders", "/api/study/7/coders?after=1"]);
+  });
+
+  it("the coder sessions are a list of their own", async () => {
+    server({ "/api/study/7/sessions": { sessions: [{ id: 5 }] } });
+    expect(await api.listSessions()).toEqual([{ id: 5 }]);
+  });
+
+  it("a coder's email address is set by their coder id, whatever characters it has", async () => {
+    const requests: { url: string; method?: string; body?: unknown }[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+      requests.push({ url, method: init?.method, body: JSON.parse(String(init?.body)) });
+      return new Response(JSON.stringify({ coder: "Anna de Vries" }), { status: 200 });
+    });
+    await api.updateCoder("Anna de Vries", { email: null });
+    expect(requests).toEqual([
+      { url: "/api/study/7/coders/Anna%20de%20Vries", method: "PATCH", body: { email: null } },
+    ]);
+  });
 });
 
 describe("deleting for good", () => {

@@ -19,15 +19,17 @@ first; it can't be deployed without a choice):
 | **Expert coders**    | coders you know, each with their own units (content analysis, trained coders)    | a link per coder, or one link to pick a name or sign in |
 | **Crowd (one link)** | anyone with the link (a panel, a newsletter; annotation at scale, an experiment) | one link                                                |
 
-**Expert coders**: the units' **coder set** (`coder_set`) names the
-coder(s) of each unit; **Create coder set…** makes one. Then how they get
-in:
+**Expert coders**: you add your coders on **Coders**, and the units'
+**coder set** (`coder_set`) names the coder(s) of each unit; **Create
+coder set…** makes one. Then how they get in:
 
-- **A link per coder**: send each coder theirs;
-- **One link: coders pick their name from the coder set**: a name stays on
-  the first device that picks it, or (for a team sharing devices) any
-  device continues it. Everyone with the link sees the names;
-- **One link: coders sign in with the email address in the coder set**.
+- **A link per coder**: send each coder theirs (the **Links** page, or the
+  link icon in their row on **Coders**);
+- **One link: coders pick their coder id from the coder set**: a name stays
+  on the first device that picks it, or (for a team sharing devices) any
+  device continues it. Everyone with the link sees the coder ids;
+- **One link: coders sign in with their email address**: the address you
+  gave each coder on **Coders**.
 
 See [Giving each coder their own units](own-units.md).
 
@@ -52,7 +54,7 @@ coders without units is fine (e.g. a survey of experts, a link each).
 Deploying a different invitation makes the links it needs and **retires**
 the rest. A new coder in the coder set gets a link when the units are
 deployed; a removed coder's link is retired; a returning coder gets the
-same link again. Retired links show _"This link is no longer active"_;
+same link again. Deleting a coder (on **Coders**) **revokes** their link. Retired links show _"This link is no longer active"_;
 coders who started keep working. More than 500 links asks to confirm; at
 most 2000.
 
@@ -64,10 +66,13 @@ A **coder id** says who the coder is, in the **Coder** column and the
 
 | Invitation                            | Coder id                     |
 | ------------------------------------- | ---------------------------- |
-| Expert coders                         | their value in the coder set |
+| Expert coders                         | the coder id you gave them   |
 | One link                              | none (anonymous; a number)   |
 | One link, coder id from URL parameter | the parameter's value        |
 | One link with sign-in                 | their email address          |
+
+Expert coders keep their coder id however they get in: also when they sign
+in, they are `anna` in your results, not their address.
 
 **Coder id from a URL parameter**: name the **URL parameter**, optionally
 a **Pattern** (e.g. `[0-9]{6}`), and whether it is **Required** (default:
@@ -128,13 +133,15 @@ Coders sign in with the server's login. They can **always** sign in
 account and continue it on other devices. Whether they **must**, and
 whether you see their address, depends on the invitation:
 
-- **Expert coders, sign in**: their address must be in the coder set
-  (others see _"This email address has no access to this study"_);
+- **Expert coders, sign in**: their address must be the email address of
+  a coder with units (others see _"This email address has no access to
+  this study"_). You enter the addresses on **Coders**; deploying is
+  refused while a coder with units has none;
 - **One link with Coders sign in**: they sign in before starting;
 - **otherwise**: optional, and you don't see their address.
 
-Where sign-in is required, the address is stored (`email` in the
-results) and you can delete a coder's data by email.
+Where sign-in is required, the address a coder signed in with is stored
+(`email` in the results) and you can delete a coder's data by email.
 
 Being logged in on the server is not the same as signing in to your
 study. Where sign-in is optional, a coder's account is used only after

@@ -183,6 +183,7 @@ const answers: Partial<Record<keyof ResearcherApi, (...args: never[]) => unknown
   getUnit: (id: number) => units.find((u) => u.id === id) ?? null,
   listSetGroups: () => groups,
   listCoderUnits: () => ({ coders: [] }),
+  listCoders: () => ({ coders: [], unassigned: { live: null, draft: 0 } }),
   getPendingChanges: () => ({ units: { added: 0, changed: 0, removed: 0, sets: false }, designVersionId: null }),
   listDeploymentVersions: () => [],
 };

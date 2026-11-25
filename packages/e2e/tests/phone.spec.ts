@@ -1,7 +1,7 @@
 import { devices, type Browser, type Page } from "@playwright/test";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
 import { expect, test } from "./fixtures";
-import { answers, api, coders, fromExample, list, question } from "./helpers";
+import { addCoders, answers, api, coders, fromExample, list, question } from "./helpers";
 
 // The main coding flows on a phone: a touch screen, a narrow viewport.
 
@@ -195,6 +195,7 @@ test("on a phone, a coder picks their name from the list", async ({ request, bro
       { externalId: "b1", data: { text: "Bob's text" } },
     ],
   });
+  await addCoders(request, study.id, ["anna", "bob"]);
   await api(request, "PUT", `/study/${study.id}/sets/coder_set`, {
     sets: [
       { name: "anna", unitIds: [units[0].id] },

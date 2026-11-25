@@ -288,7 +288,7 @@ describe("URL parameters", () => {
       ((await (await send("u4", "/session", {}, { "x-url-params": "PROLIFIC_PID=ab12" })).json()) as SessionResponse)
         .session,
     ).toEqual(ok.session);
-    const coders = (await listOf("coders")) as CoderProgress[];
+    const coders = (await listOf("sessions")) as CoderProgress[];
     expect(coders.find((c) => c.coder === "ab12")?.session, JSON.stringify(coders)).toEqual({
       coder: "ab12",
       study: "s1",
@@ -307,7 +307,7 @@ describe("the coder's display", () => {
     await post({ keys: "numbers", width: "narrow" });
     await post({ keys: "numpad", width: "wide" });
     expect((await post({ keys: "" })).status).toBe(400);
-    const progress = async () => ((await listOf("coders")) as CoderProgress[])[0];
+    const progress = async () => ((await listOf("sessions")) as CoderProgress[])[0];
     expect((await progress()).display).toEqual([
       { keys: "numbers", width: "narrow", at: expect.any(String) },
       { keys: "numpad", width: "wide", at: expect.any(String) },
@@ -386,7 +386,7 @@ describe("coder-level answers", () => {
         .map((a) => a.variable)
         .sort(),
     ).toEqual(["age", "city", "group"]);
-    const coders = (await listOf("coders")) as CoderProgress[];
+    const coders = (await listOf("sessions")) as CoderProgress[];
     expect(coders[0].variables).toMatchObject({ age: value(31), city: value("Utrecht") });
     // A reload (a restart of the runtime) reads them back
     useServer(restart());

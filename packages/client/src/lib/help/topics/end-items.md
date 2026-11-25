@@ -42,7 +42,7 @@ Click **+** where the session should end and choose **End** (see
 
 ## Screened out or complete
 
-The outcome is in the `ended` column of `coders.csv` (time in
+The outcome is in the `ended` column of `sessions.csv` (time in
 `ended_at`). Coders who reach the end of the design normally have an
 empty `ended`; to mark completes, e.g. for payment, end with an end item
 **Complete**.

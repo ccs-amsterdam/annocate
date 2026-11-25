@@ -21,15 +21,6 @@ export function existingSelection(selected: ReadonlySet<number>, unitIds: Iterab
   return new Set([...selected].filter((id) => existing.has(id)));
 }
 
-/**
- * The "to code" number as typed, when the field is left: a whole number from
- * 0 to `most`; null when it isn't a number (an empty field: nothing changes).
- */
-export function parseToCode(text: string, most: number): number | null {
-  if (!/^\d+$/.test(text.trim())) return null;
-  return Math.min(Number(text.trim()), most);
-}
-
 /** Per role column, each unit's cell as in a CSV (its sets in the column, with its position in an ordered set). */
 export function roleCells(groups: SetGroupResponse[]): Map<string, Map<number, string>> {
   const cells = new Map<string, Map<number, string>>();

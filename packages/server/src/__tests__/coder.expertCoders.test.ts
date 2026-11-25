@@ -25,6 +25,7 @@ import {
   deployDrafts,
   draftUnit,
   createSet,
+  addCoders,
   listOf,
   links,
   reach,
@@ -93,9 +94,13 @@ describe("coders", () => {
     ).toBe(409);
   });
 
-  it("by email address: one link, coders sign in, only those addresses", async () => {
-    await createSet("a@example.org", ["unit-1"], "coder_set");
-    await createSet("b@example.org", ["unit-2"], "coder_set");
+  it("by email address: one link, coders sign in, only the coders' addresses; the coder is their id", async () => {
+    await addCoders([
+      { coder: "anna", email: "a@example.org" },
+      { coder: "bob", email: "b@example.org" },
+    ]);
+    await createSet("anna", ["unit-1"], "coder_set");
+    await createSet("bob", ["unit-2"], "coder_set");
     expect((await redeploy({}, [codersInvite("login")])).links).toBe(1);
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
     expect(await (await send("anon", "/session", {}, { "x-link-secret": secret })).json()).toMatchObject({
@@ -114,8 +119,12 @@ describe("coders", () => {
     });
     await login("b", "B@example.org");
     const b = coder("b", secret);
-    expect((await b.session()).session).toEqual({ coder: "b@example.org" });
+    expect((await b.session()).session).toEqual({ coder: "bob" });
     expect(await order(b)).toEqual(["unit-2"]);
+    // The session keeps the address it was started with, in lower case
+    expect(await query(db, "SELECT coder, email FROM coder_sessions WHERE coder IS NOT NULL")).toEqual([
+      { coder: "bob", email: "b@example.org" },
+    ]);
   });
 
   it("by name: one link, coders pick their name; a name is the first device's, or (any) shared by devices", async () => {
@@ -167,9 +176,10 @@ describe("coders", () => {
     expect(await revoked.json()).toMatchObject({ code: "link_revoked" });
   });
 
-  it("signing in needs email addresses; expert coders need coder_set", async () => {
+  it("signing in needs an email address for every coder with units; expert coders need coder_set", async () => {
+    await addCoders(["anna", { coder: "bob", email: "b@example.org" }, "carl"]);
     await createSet("anna", ["unit-1"], "coder_set");
-    await createSet("b@example.org", ["unit-2"], "coder_set");
+    await createSet("bob", ["unit-2"], "coder_set");
     const design = await server.request("/api/study/1/design", {
       method: "POST",
       headers: adminHeaders,
@@ -196,7 +206,7 @@ describe("coders", () => {
     expect(deploy.status).toBe(400);
     expect(await deploy.json()).toMatchObject({
       code: "assignment_invalid",
-      error: expect.stringContaining("aren't all email addresses"),
+      error: expect.stringContaining("this coder has none: anna."),
     });
     // A text field isn't a column with a role
     expect(
@@ -494,7 +504,8 @@ describe("assignment edge cases (review of the unit assignment)", () => {
   });
 
   it("an email coder asking for a new session continues their own", async () => {
-    await createSet("a@example.org", ["unit-1"], "coder_set");
+    await addCoders([{ coder: "anna", email: "a@example.org" }]);
+    await createSet("anna", ["unit-1"], "coder_set");
     await redeploy({}, [codersInvite("login")]);
     const [{ secret }] = (await links()).filter((l) => !l.retiredAt);
     await login("a", "a@example.org");

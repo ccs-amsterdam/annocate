@@ -108,13 +108,16 @@ describe("study routes", () => {
       ["/design", "versions"],
       ["/units", "units"],
       ["/links", "links"],
-      ["/coders", "coders"],
+      ["/sessions", "sessions"],
       ["/devices", "devices"],
     ]) {
       const res = await app.request(`/api/study/${study.id}${path}?limit=5`, { headers: adminHeaders });
       expect(res.status, path).toBe(200);
       expect(await json(res), path).toEqual({ [key]: [] });
     }
+    // The coders come with the units no expert coder has
+    const coders = await app.request(`/api/study/${study.id}/coders?limit=5`, { headers: adminHeaders });
+    expect(await json(coders)).toEqual({ coders: [], unassigned: { live: null, draft: 0 } });
     const users = await app.request("/api/admin/users?limit=1", { headers: adminHeaders });
     expect(Object.keys(await json(users))).toContain("users");
   });
@@ -544,8 +547,18 @@ describe("annotations: finished counts and resets", () => {
 describe("links, coder progress and overview", () => {
   const value = (code: string): VariableValue => ({ done: true, skip: false, values: [{ value: code }] });
 
-  /** Sets the coders of `coder_set` (one empty set each). */
+  /** Sets the coders of `coder_set` (one empty set each), made expert coders first. */
   const setCoders = async (studyId: number, names: string[]) => {
+    const { coders: known } = await json(await app.request(`/api/study/${studyId}/coders`, { headers: adminHeaders }));
+    const fresh = names.filter((name) => !known.some((c: { coder: string }) => c.coder === name));
+    if (fresh.length > 0) {
+      const made = await app.request(`/api/study/${studyId}/coders`, {
+        method: "POST",
+        headers: adminHeaders,
+        body: JSON.stringify({ coders: fresh.map((coder) => ({ coder })) }),
+      });
+      expect(made.status, await made.clone().text()).toBe(201);
+    }
     const res = await app.request(`/api/study/${studyId}/sets/coder_set`, {
       method: "PUT",
       headers: adminHeaders,
@@ -678,7 +691,7 @@ describe("links, coder progress and overview", () => {
     await put(coderA.sessionId, units[0].id, { q1: value("x"), q2: value("y") });
     await put(coderA.sessionId, units[1].id, { q1: value("x") });
 
-    const { coders } = await get("/coders");
+    const { sessions: coders } = await get("/sessions");
     expect(coders[0]).toMatchObject({
       linkLabel: "batch 1",
       answers: 3,

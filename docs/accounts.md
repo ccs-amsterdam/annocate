@@ -22,7 +22,14 @@ that. Follows the lab's Authentication standard. See also `security.md`
   year away).
 
 Coders need no account unless their link asks them to log in
-(`coder-identity.md` §5).
+(`coder-identity.md` §5). **A study's expert coders are not users**: they
+are rows of the study's `coders` (`coder-identity.md` §2), with a coder id
+and, where the researchers gave one, an email address to sign in with. That
+address is stored with the study before its owner ever logs in (the privacy
+statement says so, `legal/privacy-statement.md` §4), gives no role and no
+account, and goes when the coder or the study is deleted. A coder who signs
+in gets an account like anyone who logs in; which coder they are is decided
+by the study's `coders.email` at that moment, not by the account.
 
 ## 2. Roles
 

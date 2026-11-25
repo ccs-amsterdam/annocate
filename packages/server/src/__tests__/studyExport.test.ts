@@ -8,6 +8,7 @@ import {
   StudyResponseSchema,
   type AnnotationRow,
   type CoderProgress,
+  type CoderResponse,
   type DesignVersion,
   type DesignVersionMeta,
 } from "@annotinder/contracts";
@@ -105,7 +106,8 @@ async function contents(studyId: number) {
   const { links } = await json<{
     links: { label: string; params: unknown; maxUses?: number; uses: number; secret: string }[];
   }>(`/api/study/${studyId}/links`);
-  const { coders } = await json<{ coders: CoderProgress[] }>(`/api/study/${studyId}/coders`);
+  const { sessions: coders } = await json<{ sessions: CoderProgress[] }>(`/api/study/${studyId}/sessions`);
+  const coderList = (await json<{ coders: CoderResponse[] }>(`/api/study/${studyId}/coders`)).coders;
   const coderIndex = new Map(coders.map((c, i) => [c.id, i]));
   const answers = (await json<{ annotations: AnnotationRow[] }>(`/api/study/${studyId}/annotations?limit=10000`))
     .annotations;
@@ -128,6 +130,7 @@ async function contents(studyId: number) {
     },
     links: links.map((l) => ({ label: l.label, params: l.params, maxUses: l.maxUses, uses: l.uses })),
     coders: coders.map((c) => ({ ...c, id: undefined, link: undefined, linkId: undefined, lastActive: undefined })),
+    coderList: coderList.map((c) => ({ ...c, id: undefined, lastActive: undefined })),
     answers: answers.map((a) => ({
       coder: coderIndex.get(a.sessionId),
       unit: a.unitId === null ? null : unitIds.get(a.unitId),
@@ -180,6 +183,11 @@ describe("study exports", { timeout: 60_000 }, () => {
     const before = await contents(original);
     expect(copy.coders).toEqual([]);
     expect(copy.answers).toEqual([]);
+    // The expert coders come along (the units' coder_set names them), without what they did
+    expect(copy.coderList.map((c) => [c.coder, c.kind, c.assigned, c.done, c.sessions])).toEqual(
+      before.coderList.map((c) => [c.coder, c.kind, c.assigned, 0, 0]),
+    );
+    expect(copy.sets).toEqual(before.sets);
     expect(copy.units).toEqual(before.units);
     expect(copy.designs).toEqual(before.designs);
     expect(copy.links.map((l) => l.uses)).toEqual(before.links.map(() => 0));
@@ -329,10 +337,37 @@ describe("study exports", { timeout: 60_000 }, () => {
     expect(moved!.ids).not.toEqual([first.id, second.id]);
   });
 
+  it("without coders, a crowd's coders stay behind", async () => {
+    const original = await exampleStudy("simple-survey");
+    const before = await contents(original);
+    expect(before.coderList.map((c) => c.kind)).toContain("crowd");
+    const res = await imported(await exported(original), "?coders=false");
+    expect(res.status, await res.clone().text()).toBe(201);
+    expect((await contents(StudyResponseSchema.parse(await res.json()).id)).coderList).toEqual([]);
+  });
+
+  it("refuses an export whose session has a coder the export doesn't have", async () => {
+    const { manifest, rows } = unpacked(await exported(await exampleStudy()));
+    const without = rows.filter((r) => !(r.table === "coders" && r.row.coder === "Example coder 1"));
+    const tables = (manifest.tables as { name: string; rows: number }[]).map((t) =>
+      t.name === "coders" ? { ...t, rows: t.rows - 1 } : t,
+    );
+    const res = await imported(packed({ ...manifest, tables }, without));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      code: "export_invalid",
+      error: expect.stringContaining("rows of coder_sessions don't fit the table"),
+    });
+  });
+
   it("leaves coders' email addresses out, unless the deployed design has coders sign in", async () => {
     const study = await exampleStudy();
     await query(db, "UPDATE coder_sessions SET email = 'coder' || id || '@uni.nl' WHERE study_id = $1", [study]);
-    const emails = async () => rowsOf(unpacked(await exported(study)).rows, "coder_sessions").map((s) => s.email);
+    await query(db, "UPDATE coders SET email = 'coder' || id || '@uni.nl' WHERE study_id = $1", [study]);
+    const emails = async () => {
+      const { rows } = unpacked(await exported(study));
+      return [...rowsOf(rows, "coder_sessions"), ...rowsOf(rows, "coders")].map((s) => s.email);
+    };
     expect((await emails()).length).toBeGreaterThan(0);
     expect((await emails()).every((email) => email === null)).toBe(true);
     await query(

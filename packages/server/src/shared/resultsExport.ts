@@ -1,15 +1,16 @@
-import { RESULTS_EXPORT_FORMAT_VERSION } from "@annotinder/contracts";
+import { RESULTS_EXPORT_FORMAT_VERSION, loginRequired } from "@annotinder/contracts";
 import { sha256Hex } from "./crypto.js";
 import { Zip, ZipDeflate, strToU8 } from "fflate";
 import { asc, eq, sql, type SQL } from "drizzle-orm";
 import { RELEASE } from "@annotinder/contracts";
 import { rows, withoutTimeLimits, type Db } from "../db/index.js";
-import { designVersions, sessionDevices, studies } from "../db/schema/index.js";
+import { coders, designVersions, sessionDevices, studies } from "../db/schema/index.js";
 import { unitDataHash, unitVersionData } from "../db/sql.js";
 import { listCoderDeletions } from "./coderDeletion.js";
 import { deploymentVersions } from "./deployments.js";
 import { toDesignVersion } from "./designVersions.js";
 import type { FileStore } from "./files.js";
+import { deployedSession } from "./links.js";
 import { listCoderProgress } from "./progress.js";
 import { listSetGroups } from "./sets.js";
 
@@ -31,7 +32,8 @@ export interface ExportOptions {
 /**
  * What an export of the study holds, as a short hash: it changes when
  * answers, unit versions, design versions, deployments, sessions (their
- * ending, deletion requests, display), devices, deletions or sets change.
+ * ending, deletion requests, display), coders (their email addresses),
+ * devices, deletions or sets change.
  */
 export async function exportStamp(db: Db, studyId: number): Promise<string> {
   const [row] = await rows<Record<string, unknown>>(
@@ -43,6 +45,7 @@ export async function exportStamp(db: Db, studyId: number): Promise<string> {
       (SELECT max(version) FROM deployment_versions WHERE study_id = ${studyId}) AS deployments,
       (SELECT md5(string_agg(concat_ws('/', id, ended, deletion_request, display, coder), ',' ORDER BY id))
         FROM coder_sessions WHERE study_id = ${studyId}) AS sessions,
+      (SELECT md5(string_agg(concat_ws('/', id, email), ',' ORDER BY id)) FROM coders WHERE study_id = ${studyId}) AS coders,
       (SELECT max(id) FROM session_devices WHERE study_id = ${studyId}) AS devices,
       (SELECT max(id) FROM session_deletions WHERE study_id = ${studyId}) AS deletions,
       (SELECT md5(string_agg(concat_ws('/', m.set_id, m.unit_id, m.position), ',' ORDER BY m.set_id, m.unit_id))
@@ -72,6 +75,21 @@ const unitsQuery = (studyId: number): SQL => sql`
     FROM unit_versions v JOIN units u ON u.id = v.unit_id
     WHERE v.study_id = ${studyId}
   ) versions ORDER BY id`;
+
+/**
+ * The study's coders (expert and crowd), also ones who haven't started. An
+ * expert coder's email address only where the deployed design has coders
+ * sign in (as for sessions' addresses).
+ */
+async function coderRows(tx: Db, studyId: number) {
+  const withEmail = loginRequired(await deployedSession(tx, studyId));
+  const found = await tx
+    .select({ coder: coders.coder, kind: coders.kind, email: coders.email, created: coders.created })
+    .from(coders)
+    .where(eq(coders.studyId, studyId))
+    .orderBy(asc(coders.id));
+  return found.map(({ email, ...coder }) => ({ ...coder, ...(withEmail && email ? { email } : {}) }));
+}
 
 /** A query's rows in batches, through a cursor (in the caller's transaction). */
 async function* batches(tx: Db, name: string, query: SQL, batch: number): AsyncGenerator<unknown[]> {
@@ -118,7 +136,8 @@ async function* exportZip(tx: Db, studyId: number, studyName: string, batch: num
 
   yield* file("answers.jsonl", batches(tx, "export_answers", answersQuery(studyId), batch));
   yield* file("units.jsonl", batches(tx, "export_units", unitsQuery(studyId), batch));
-  yield* file("coders.jsonl", await listCoderProgress(tx, studyId));
+  yield* file("sessions.jsonl", await listCoderProgress(tx, studyId));
+  yield* file("coders.jsonl", await coderRows(tx, studyId));
   const versions = await tx
     .select()
     .from(designVersions)

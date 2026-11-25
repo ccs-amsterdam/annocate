@@ -10,26 +10,6 @@ export function columnValues(groups: readonly SetGroupResponse[], column: string
   return (groups.find((g) => g.name === column)?.sets ?? []).map((s) => s.name);
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** How coders get in: every value an email address (one link, sign in), none (a link per coder), or a mix (an error). */
-type CoderKind = "emails" | "names" | "mixed" | "none";
-
-export interface CoderSummary {
-  kind: CoderKind;
-  count: number;
-  /** For a mix: the values that aren't email addresses. */
-  notEmails: string[];
-}
-
-export function coderSummary(values: readonly string[]): CoderSummary {
-  const emails = values.filter((v) => EMAIL.test(v));
-  if (values.length === 0) return { kind: "none", count: 0, notEmails: [] };
-  if (emails.length === values.length) return { kind: "emails", count: values.length, notEmails: [] };
-  if (emails.length === 0) return { kind: "names", count: values.length, notEmails: [] };
-  return { kind: "mixed", count: values.length, notEmails: values.filter((v) => !EMAIL.test(v)) };
-}
-
 /** What selects a session's units: its coder, and the experiment that selects units. */
 export interface ShareSource {
   /** How the editor names it, e.g. "coder" or "framing". */

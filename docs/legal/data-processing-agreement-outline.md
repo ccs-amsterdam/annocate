@@ -54,7 +54,7 @@ column says what is already true of AnnoTinder, to help fill it in.
 | The agreement must say | For AnnoTinder |
 | --- | --- |
 | **Subject, duration, nature and purpose** of the processing | Hosting an annotation and survey tool: storing studies, distributing units to coders, collecting answers, offering the results for download. For as long as the researcher uses the service |
-| **The kinds of personal data** | Coders' and participants' answers and response times; rough device details and how their screen looked (shortcut style, width, theme); participant ids and link parameters the study keeps; email addresses of coders who log in; whatever personal data is in the uploaded units (decided by the researcher) |
+| **The kinds of personal data** | Coders' and participants' answers and response times; rough device details and how their screen looked (shortcut style, width, theme); participant ids and link parameters the study keeps; email addresses of coders who log in, and the addresses researchers enter for their expert coders (before those coders log in); whatever personal data is in the uploaded units (decided by the researcher) |
 | **The kinds of people** | Coders, survey and experiment participants, people mentioned in the material being coded, the researcher's team |
 | **Only on documented instructions** of the controller | The researcher's actions in the app and the terms are the instructions. The operator doesn't use study data for anything else and doesn't look into it except as the terms allow |
 | **Confidentiality** of everyone with access | Who at the operator has access to the server and the database: `[NAMES OR ROLES]`, bound by `[EMPLOYMENT TERMS / A SIGNED STATEMENT]` |

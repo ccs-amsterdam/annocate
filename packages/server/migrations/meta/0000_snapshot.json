@@ -1,5 +1,5 @@
 {
-  "id": "ce092fb0-d27a-419a-8f96-1032c73695eb",
+  "id": "eb6843b9-f44f-4280-a3d4-8e33807aef6c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2712,12 +2712,166 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "coder_sessions_coder_fkey": {
+          "name": "coder_sessions_coder_fkey",
+          "tableFrom": "coder_sessions",
+          "tableTo": "coders",
+          "columnsFrom": [
+            "study_id",
+            "coder"
+          ],
+          "columnsTo": [
+            "study_id",
+            "coder"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.coders": {
+      "name": "coders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "coders_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "study_id": {
+          "name": "study_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coder": {
+          "name": "coder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created": {
+          "name": "created",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "coders_coder_lower": {
+          "name": "coders_coder_lower",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"coder\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "coders_email_lower": {
+          "name": "coders_email_lower",
+          "columns": [
+            {
+              "expression": "study_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "coders_study_id_studies_id_fk": {
+          "name": "coders_study_id_studies_id_fk",
+          "tableFrom": "coders",
+          "tableTo": "studies",
+          "columnsFrom": [
+            "study_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "coders_pkey": {
+          "name": "coders_pkey",
+          "columns": [
+            "study_id",
+            "coder"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "coders_id_key": {
+          "name": "coders_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "coders_kind_check": {
+          "name": "coders_kind_check",
+          "value": "\"coders\".\"kind\" IN ('expert', 'crowd')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.session_deletions": {

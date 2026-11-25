@@ -73,7 +73,7 @@ export function GuideSample({ sample }: { sample: Sample }) {
                 onSaved={() => {}}
               />
             ) : (
-              <UnitsPage client={client} />
+              <UnitsPage client={client} onOpenCoders={() => {}} />
             )}
           </QueryClientProvider>
         </div>

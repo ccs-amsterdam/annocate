@@ -2,25 +2,25 @@ import { useState } from "react";
 import { RotateCcw, UserX } from "lucide-react";
 import type { CoderProgress, DeleteCoders } from "@annotinder/contracts";
 import { Button } from "@/components/ui/button";
-import type { ResearcherApi } from "../../api/httpResearcherApi";
-import { useCoderDeletionMutations, useCoderDeletionsQuery, useCodersQuery } from "../../admin/queries";
+import type { ResearcherApi } from "../../../api/httpResearcherApi";
+import { useCoderDeletionMutations, useCoderDeletionsQuery, useSessionsQuery } from "../../../admin/queries";
 import { InfoTip } from "@/components/ui/info-tip";
-import { HelpButton } from "../../help/HelpButton";
-import { ResetAnswersDialog, type ResetScope } from "./ResetAnswersDialog";
-import { ConfirmDeleteDialog, DeleteByIdDialog, DeletionLog } from "./coders/CoderDeletion";
-import { coderName } from "./coders/coderName";
-import { CodersTable } from "./coders/CodersTable";
-import { DeletionRequests } from "./coders/DeletionRequests";
+import { ResetAnswersDialog, type ResetScope } from "../ResetAnswersDialog";
+import { ConfirmDeleteDialog, DeleteByIdDialog, DeletionLog } from "./CoderDeletion";
+import { coderName } from "./coderName";
+import { SessionsTable } from "./SessionsTable";
+import { DeletionRequests } from "./DeletionRequests";
 
 /**
- * The Coders view on the Results page (docs/client.md §7): per coder session the link, when it
- * started and was last active, how it ended, and the units finished per
- * loop of the live design version. Requests to delete answers come first
- * (delete now, or later: then they stay marked on the row). Any coder's
- * data can be deleted, or their answers reset.
+ * The coder sessions, on the Coders page (docs/client.md §7): per session
+ * the link, when it started and was last active, how it ended, and the units
+ * finished per loop of the live design version; also sessions without a
+ * coder id. Requests to delete answers come first (delete now, or later:
+ * then they stay marked on the row). Any session's data can be deleted, or
+ * its answers reset.
  */
-export function CodersPanel({ client }: { client: ResearcherApi }) {
-  const codersQuery = useCodersQuery(client);
+export function SessionsPanel({ client }: { client: ResearcherApi }) {
+  const codersQuery = useSessionsQuery(client);
   const coders = sortByActivity(codersQuery.data ?? []);
   const deletions = useCoderDeletionsQuery(client).data ?? [];
   const { remove, postpone } = useCoderDeletionMutations(client);
@@ -33,12 +33,11 @@ export function CodersPanel({ client }: { client: ResearcherApi }) {
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-1.5 text-lg font-medium">
-          Coders
-          <InfoTip label="About the counts">
-            Finished units count, per loop of the live design, the units where a coder answered every question of the
-            loop.
+          Sessions
+          <InfoTip label="About sessions">
+            A session is one coder&apos;s run through the study on a device; a coder can have several. Finished units
+            count, per loop of the live design, the units where the session answered every question of the loop.
           </InfoTip>
-          <HelpButton topic="coders-and-progress" label="Help: following progress" />
         </h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setResetting({ label: "" })}>
@@ -100,14 +99,14 @@ function CoderSessions({
   onReset: (coder: CoderProgress) => void;
   onDelete: (coder: CoderProgress) => void;
 }) {
-  if (loading) return <p className="text-sm text-muted-foreground">Loading coders...</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading sessions...</p>;
   if (table.coders.length === 0)
     return (
       <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-        No coders yet. Coders appear here once they open a link.
+        No sessions yet. They appear here once coders open a link.
       </p>
     );
-  return <CodersTable {...table} />;
+  return <SessionsTable {...table} />;
 }
 
 /** Most recently active first; coders who never answered last, newest first. */

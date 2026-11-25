@@ -76,12 +76,13 @@ export type CoderParam = z.infer<typeof CoderParamSchema>;
 
 /**
  * Expert coders (docs/architecture.md §6.1): who codes which units is the
- * units' `coder_set` column; each of its values is a coder
- * (`$session.coder`, also when the design has no unit loop: e.g. a survey
- * of known experts). Overlap units (`test_set`) are everyone's.
+ * units' `coder_set` column; each of its values is one of the study's
+ * expert coders, by their coder id (`$session.coder`, also when the design
+ * has no unit loop: e.g. a survey of known experts). Overlap units
+ * (`test_set`) are everyone's.
  * `link`: `per_coder`, a link each; `login`, one link where coders sign in
- * and get the units of their address (the column's values are all email
- * addresses); `pick_name`, one link where coders pick their name from the
+ * and get the units of the coder with their email address (each coder with
+ * units has one); `pick_name`, one link where coders pick their id from the
  * column's values (shown to anyone with the link: names, not addresses).
  * `nameDevices` (with `pick_name`): `first`, a name is the first device's
  * that picks it (others can't pick it again; the default); `any`, any device
@@ -265,15 +266,8 @@ export function sessionNames(items: readonly unknown[]): string[] {
   return [...RESERVED_SESSION_NAMES, ...named.filter((n): n is string => typeof n === "string")];
 }
 
-/** A simple email address check (coder values: all or none are addresses). */
+/** A simple email address check. */
 export const isEmail = (value: string) => /^[^\s@;#]+@[^\s@;#]+\.[^\s@;#]+$/.test(value);
-
-/** Whether the coders' (`coder_set`) values are email addresses: `email` (all), `link` (none), `mixed`, or `none` (no values yet). */
-export function coderAccess(values: readonly string[]): "email" | "link" | "mixed" | "none" {
-  if (values.length === 0) return "none";
-  const emails = values.filter(isEmail).length;
-  return emails === values.length ? "email" : emails === 0 ? "link" : "mixed";
-}
 
 /** The most sessions a link takes: a crowd's limit. */
 export function linkMaxCoders(item: SessionItem | null | undefined): number | undefined {

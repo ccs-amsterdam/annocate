@@ -73,7 +73,7 @@ describe("bad input is a 400, never a 500", () => {
       ["POST", `/study/${studyId}/links/abc/revoke`],
       ["POST", `/study/${studyId}/links/99999999999999999999/reopen`],
       ["GET", "/study/99999999999"],
-      ["POST", `/study/${studyId}/coders/abc/deletion-request/postpone`],
+      ["POST", `/study/${studyId}/sessions/abc/deletion-request/postpone`],
       ["DELETE", "/admin/plans/abc"],
       ["DELETE", "/admin/users/0"],
       ["GET", "/study/abc"],

@@ -21,6 +21,7 @@ describe("the download's README", () => {
     const text = readme("Framing", at, false);
     for (const file of [
       "annotations.csv",
+      "sessions.csv",
       "coders.csv",
       "units.csv",
       "variables.csv",

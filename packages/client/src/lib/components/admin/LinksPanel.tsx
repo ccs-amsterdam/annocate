@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  CODER_SET,
   designItems,
   inviteOf,
   sessionItem,
@@ -9,19 +8,12 @@ import {
   type TopLevelItem,
 } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
-import {
-  useDesignVersionQuery,
-  useDeploymentQuery,
-  useLinksQuery,
-  useSetGroupsQuery,
-  useStudyQuery,
-} from "../../admin/queries";
+import { useDesignVersionQuery, useDeploymentQuery, useLinksQuery, useStudyQuery } from "../../admin/queries";
 import { HelpButton } from "../../help/HelpButton";
 import { InfoTip } from "@/components/ui/info-tip";
 import { codeLinkUrl } from "../../session/coderSession";
 import { LinkTable } from "./links/LinkTable";
 import { LinksPerValue } from "./links/LinksPerValue";
-import { columnValues } from "../../design/assignment";
 
 interface LinksPanelProps {
   client: ResearcherApi;
@@ -43,8 +35,6 @@ export function LinksPanel({ client }: LinksPanelProps) {
   const items = (version ? designItems(version) : []) as TopLevelItem[];
   const session = sessionItem(items);
   const invite = inviteOf(session);
-  // The deployed sets: links are the deployed design's
-  const groups = useSetGroupsQuery(client, true).data ?? [];
   const [showRetired, setShowRetired] = useState(false);
 
   // The URL parameters a link takes, with placeholders the panel (or the researcher) fills in.
@@ -58,9 +48,8 @@ export function LinksPanel({ client }: LinksPanelProps) {
     const url = codeLinkUrl(publicId, link.secret);
     return urlParams.length ? `${url}${url.includes("?") ? "&" : "?"}${urlParams.join("&")}` : url;
   };
-  // Coders signing in with their email address: only those addresses may code.
-  const coderValues = invite?.mode === "coders" && invite.link === "login" ? columnValues(groups, CODER_SET) : [];
-  const emailCoders = coderValues.length > 0;
+  // Expert coders who sign in: one link, and only the coders' addresses may code
+  const emailCoders = invite?.mode === "coders" && invite.link === "login";
 
   const links = linksQuery.data ?? [];
   const active = links.filter((l) => !l.retiredAt);
@@ -88,13 +77,9 @@ export function LinksPanel({ client }: LinksPanelProps) {
         )}
         {emailCoders && (
           <div className="rounded-md border border-amber-500 bg-amber-500/10 p-2.5 text-xs">
-            The coders (<span className="font-mono">coder_set</span>) are email addresses, so there is one link: coders
-            sign in and get their own units. Other email addresses get &quot;This email address has no access to this
+            Coders sign in, so there is one link: each gets the units of the coder with their email address (the Coders
+            page has the addresses). Other email addresses get &quot;This email address has no access to this
             study&quot;.
-            <details className="mt-1">
-              <summary className="cursor-pointer">The {coderValues.length} coders</summary>
-              <span className="font-mono">{coderValues.join(", ")}</span>
-            </details>
           </div>
         )}
         {linksQuery.isLoading ? (

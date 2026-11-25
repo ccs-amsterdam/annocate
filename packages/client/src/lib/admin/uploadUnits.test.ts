@@ -5,6 +5,8 @@ import {
   csvUpload,
   detectColumns,
   unitsLosingRole,
+  unknownCodersText,
+  unknownFileCoders,
   uploadFailureText,
   uploadUnits,
   type UnitsUpload,
@@ -174,5 +176,27 @@ describe("what a CSV makes", () => {
     const errors = csvUpload(csv, 1, mapping, { 2: "test_set" }, []).errors;
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/^Column coder_set: /);
+  });
+});
+
+describe("a file's coder_set column", () => {
+  const cells = (...values: string[]) => [
+    { group: "coder_set" as const, cells: values.map((cell, i) => ({ externalId: `u${i}`, cell })) },
+  ];
+
+  it("names expert coders of the study only: the others are found, each once, as written", () => {
+    expect(unknownFileCoders(cells("anna", "anna;bob", "carl#2;Anna", ""), ["anna", "carl"])).toEqual(["bob", "Anna"]);
+    expect(unknownFileCoders(cells("anna", "anna;carl"), ["anna", "carl"])).toEqual([]);
+  });
+
+  it("other role columns name no coders; a cell that can't be read has its own error", () => {
+    const parts = [{ group: "part_set" as const, cells: [{ externalId: "u1", cell: "pre" }] }];
+    expect(unknownFileCoders(parts, [])).toEqual([]);
+    expect(unknownFileCoders(cells("anna#x"), [])).toEqual([]);
+  });
+
+  it("says who to add first", () => {
+    expect(unknownCodersText(["bob"])).toContain("names a coder who isn't an expert coder of this study: bob.");
+    expect(unknownCodersText(["bob", "dora"])).toContain("coders who aren't an expert coder of this study: bob, dora.");
   });
 });

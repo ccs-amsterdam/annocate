@@ -1,8 +1,10 @@
 # Recipes and example studies
 
 A **recipe** (contracts `recipe.ts`) is everything a new study starts
-with, in one document: units, role columns (`sets`: `coder_set`,
-`condition_set`, `part_set`, `test_set`, by the units' ids), the first
+with, in one document: units, its expert coders (`coders`: ids, each with
+an email address or without), role columns (`sets`: `coder_set`,
+`condition_set`, `part_set`, `test_set`, by the units' ids; a `coder_set`
+names the recipe's coders only), the first
 design version (a draft, or deployed with `deploy`, with its declared unit
 fields). `POST /study/from-recipe` makes a study from one in a
 single transaction (`server/src/shared/recipes.ts`), with the same role,
@@ -39,7 +41,8 @@ dismisses it.
 | Crowd coding | Practice and gold units | one link; headlines divided so each is coded by two coders; practice units (`test_set`, right answers and feedback in `answer_<q>` / `feedback_<q>`) with feedback first, gold units spread among them, a screen-out when too many gold answers are wrong |
 
 **Example answers** are written when the study is made: a few coders
-("Example coder 1..n") with fixed answers, so results look the same every
+("Example coder 1..n": coders of their own, not the example's expert
+coders with units) with fixed answers, so results look the same every
 time. A researcher who adopts the study for real use removes them with a
 reset or by deleting those coders.
 

@@ -57,12 +57,12 @@ describe("quitting and deleting a coder's data", () => {
     expect(session.deletionRequest).toMatchObject({ at: expect.any(String) });
     expect((await send("quitter", "/loop/loop_1/next", {}, link)).status).toBe(409);
 
-    const listed = async () => ((await listOf("coders")) as CoderProgress[]).find((c) => c.coder === "P77");
+    const listed = async () => ((await listOf("sessions")) as CoderProgress[]).find((c) => c.coder === "P77");
     const before = (await listed())!;
     expect(before.deletionRequest).toMatchObject({ at: expect.any(String) });
     expect(
       (
-        await server.request(`/api/study/1/coders/${before.id}/deletion-request/postpone`, {
+        await server.request(`/api/study/1/sessions/${before.id}/deletion-request/postpone`, {
           method: "POST",
           headers: adminHeaders,
         })
@@ -75,7 +75,7 @@ describe("quitting and deleting a coder's data", () => {
       headers: adminHeaders,
       body: JSON.stringify({ coders: ["P77"] }),
     });
-    expect(await del.json()).toEqual({ sessionIds: [before.id], answers: 1 });
+    expect(await del.json()).toEqual({ sessionIds: [before.id], answers: 1, coders: ["P77"] });
     expect(await listed()).toBeUndefined();
     const log = await (await server.request("/api/study/1/coders/deletions", { headers: adminHeaders })).json();
     expect(log).toEqual([
@@ -94,7 +94,7 @@ describe("quitting and deleting a coder's data", () => {
       headers: adminHeaders,
       body: JSON.stringify({ emails: ["x@y.z"] }),
     });
-    expect(await none.json()).toEqual({ sessionIds: [], answers: 0 });
+    expect(await none.json()).toEqual({ sessionIds: [], answers: 0, coders: [] });
   });
 });
 
@@ -143,7 +143,7 @@ describe("coder login", () => {
     await loggedIn("stranger", "b@example.org");
     expect(await session("stranger", null)).toMatchObject({ status: 404, body: { code: "link_not_found" } });
 
-    const coders = (await listOf("coders")) as CoderProgress[];
+    const coders = (await listOf("sessions")) as CoderProgress[];
     expect(coders.find((c) => c.id === phone.body.sessionId)?.email).toBe("a@example.org");
   });
 
@@ -173,7 +173,7 @@ describe("coder login", () => {
     expect(await query(db, "SELECT uses FROM links WHERE secret = $1", [secret])).toEqual([{ uses: 1 }]);
 
     // The researcher sees no email where the invitation doesn't require sign-in
-    const coders = (await listOf("coders")) as CoderProgress[];
+    const coders = (await listOf("sessions")) as CoderProgress[];
     expect(coders.find((c) => c.id === before.body.sessionId)).toMatchObject({ id: before.body.sessionId });
     expect(coders.find((c) => c.id === before.body.sessionId)!.email).toBeUndefined();
   });

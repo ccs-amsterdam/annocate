@@ -161,14 +161,16 @@ export const CoderErrorCodeSchema = z.enum([
   "coder_has_session",
   /** The coder id has as many sessions in the study as one coder can have (5): no new one, also with `x-new-session` (403). */
   "coder_session_limit",
+  /** A crowd's coder id is one of the study's expert coders (the study had expert coders before): no session (409). */
+  "coder_is_expert",
   /** A link where coders pick their name: pick one (`GET /names`), and send it as `x-coder-name` (409). */
   "name_required",
   /** The picked name is another device's (a name is the first device's that picks it): pick another (409). */
   "name_taken",
-  /** The study requires sign-in (or its coders are email addresses). */
+  /** The study requires sign-in (a crowd's, or expert coders who sign in). */
   "auth_required",
   /**
-   * The coder's login isn't one of the coders (coders by email address):
+   * The login's address isn't the email address of an expert coder with units (expert coders who sign in):
    * "This email address has no access to this study".
    */
   "email_not_allowed",

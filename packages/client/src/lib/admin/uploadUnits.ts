@@ -1,10 +1,13 @@
 import { ResearcherApiError } from "../api/httpResearcherApi";
 import {
+  CODER_SET,
   addToSets,
   isRoleColumn,
+  listedCoders,
   parseSetCell,
   roleColumnProblem,
   setsFromCells,
+  unknownCoders,
   type RoleColumn,
   type SetGroupResponse,
   type SetGroupWrite,
@@ -87,6 +90,25 @@ export const UPLOAD_BATCH = 200;
 interface CsvSetGroup {
   group: RoleColumn;
   cells: { externalId: string; cell: string }[];
+}
+
+/**
+ * The coders a file's `coder_set` column names that aren't expert coders of
+ * the study (as written): the server refuses such a coder set, so the upload
+ * doesn't start. Cells that can't be read are left to their own error.
+ */
+export function unknownFileCoders(setGroups: readonly CsvSetGroup[], experts: readonly string[]): string[] {
+  const cells = setGroups.find((g) => g.group === CODER_SET)?.cells ?? [];
+  const named = cells.flatMap(({ cell }) => {
+    const entries = parseSetCell(cell);
+    return "error" in entries ? [] : entries.map((e) => e.set);
+  });
+  return unknownCoders(named, experts);
+}
+
+/** What to tell the researcher about coders a file names that the study doesn't have. */
+export function unknownCodersText(unknown: readonly string[]): string {
+  return `The coder_set column names ${unknown.length === 1 ? "a coder who isn't" : "coders who aren't"} an expert coder of this study: ${listedCoders(unknown)}. Add them on the Coders page first (with the same spelling), or take them out of the file.`;
 }
 
 /** What a CSV makes: the units, and its columns with a role. */

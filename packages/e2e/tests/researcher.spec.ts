@@ -36,6 +36,7 @@ test("a study from an example: the dialog, the overview note, and its results in
   for (const name of [
     "README.txt",
     "annotations.csv",
+    "sessions.csv",
     "coders.csv",
     "units.csv",
     "variables.csv",
@@ -47,7 +48,9 @@ test("a study from an example: the dialog, the overview note, and its results in
   }
   // 3 example coders, 10 units each
   expect(csvRows(files["annotations.csv"])).toHaveLength(1 + 30);
-  expect(csvRows(files["coders.csv"])).toHaveLength(1 + 3);
+  expect(csvRows(files["sessions.csv"])).toHaveLength(1 + 3);
+  // The study's coders: anna, bob and carla (who haven't started), and the three example coders
+  expect(csvRows(files["coders.csv"])).toHaveLength(1 + 6);
 
   // For spreadsheets: one workbook, a sheet per table
   const workbook = await downloadZip(page, "Excel (.xlsx)");

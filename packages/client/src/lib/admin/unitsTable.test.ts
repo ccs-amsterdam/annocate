@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampOffset, existingSelection, parseToCode, unitFieldText } from "./unitsTable";
+import { clampOffset, existingSelection, unitFieldText } from "./unitsTable";
 
 describe("a unit's field as text", () => {
   it("writes a list as its labels", () => {
@@ -27,19 +27,5 @@ describe("the page of units shown", () => {
 describe("the selected units", () => {
   it("leave out units that were deleted", () => {
     expect([...existingSelection(new Set([1, 2, 3]), [1, 3, 4])]).toEqual([1, 3]);
-  });
-});
-
-describe("the to code number", () => {
-  it("is applied as typed, at most what there is", () => {
-    expect(parseToCode("25", 100)).toBe(25);
-    expect(parseToCode(" 250 ", 100)).toBe(100);
-    expect(parseToCode("0", 100)).toBe(0);
-  });
-
-  it("an empty field (while retyping) changes nothing", () => {
-    expect(parseToCode("", 100)).toBeNull();
-    expect(parseToCode("abc", 100)).toBeNull();
-    expect(parseToCode("-3", 100)).toBeNull();
   });
 });

@@ -58,8 +58,8 @@ To have units coded again (a question changed meaning, a coder
 misunderstood), **reset** answers. They are kept for analysis but no
 longer count: the units are unfinished again, also for the same coders.
 
-- **Results › Coders** → **Reset answers…**: all coders;
-- the reset icon in a coder's row: that coder;
+- **Coders** → **Sessions** → **Reset answers…**: all coders;
+- the reset icon in a session's row: that session;
 - **Units**: select units → **Reset answers…**.
 
 Then choose the questions (a whole loop, or some). Only loop answers can

@@ -4,6 +4,8 @@ import {
   DesignItemsSchema,
   RecipeSchema,
   designItems,
+  inviteOf,
+  sessionItem,
   VariableValueSchema,
   validateAnswer,
   validateDesignItems,
@@ -14,7 +16,14 @@ import {
 } from "@annotinder/contracts";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Db } from "./db/index.js";
-import { annotationValues, coderSessions, links as linksTable, units, unitVersions } from "./db/schema/index.js";
+import {
+  annotationValues,
+  coderSessions,
+  coders,
+  links as linksTable,
+  units,
+  unitVersions,
+} from "./db/schema/index.js";
 import { collectCoderVariables, collectLoops } from "./runtime/designItems.js";
 import { putCoderValues } from "./shared/coders.js";
 import { HttpError } from "./shared/http.js";
@@ -172,11 +181,15 @@ export async function createStudyFromExample(db: Db, id: string, options: FromEx
         throw new Error(`examples/${id}.json: no link for example coder ${i + 1}'s session`);
       const linkId = link?.id ?? firstLink;
       if (linkId === null) throw new Error(`examples/${id}.json: example coders need a deployed study (deploy)`);
+      // A coder of the study's kind (not one of its expert coders with units: those are for real coders)
+      const exampleCoder = `Example coder ${i + 1}`;
+      const kind = inviteOf(sessionItem(withSession))?.mode === "coders" ? "expert" : "crowd";
+      await tx.insert(coders).values({ studyId: study.id, coder: exampleCoder, kind });
       const [made] = await tx
         .insert(coderSessions)
         .values({
           studyId: study.id,
-          coder: `Example coder ${i + 1}`,
+          coder: exampleCoder,
           linkId,
           session: coder.session,
           created: at(0),

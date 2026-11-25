@@ -22,7 +22,7 @@ Questions asked once per coder go before or after the loop.
 
 Every loop has an id (`loop_1`, `loop_2`, …), shown small in its form. It
 is how results and exports refer to the loop (`finished_loop_1` in
-`coders.csv`, the `loop` column of `variables.csv`), and it stays the same
+`sessions.csv`, the `loop` column of `variables.csv`), and it stays the same
 when you move or relabel the loop. You can't change it. A new loop gets the
 next number never used in the design, so the number says nothing about the
 order of the loops, and a deleted loop's id isn't used again.

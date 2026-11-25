@@ -63,7 +63,8 @@ curl -H "Authorization: Bearer $ANNOTINDER_KEY" https://annotinder.example.org/a
 | What deploying would change; versions | `GET /study/<id>/deployment/pending`, `.../deployment/versions`               |
 | List links, change one                | `GET /study/<id>/links`; `PUT /study/<id>/links/<link id>`                    |
 | A coder's address                     | `<server>/code/<publicId>?link=<secret>`: the study's `publicId`, not `<id>`  |
-| Coders, with answers outside loops    | `GET /study/<id>/coders`                                                      |
+| Coders: list, add, set an address     | `GET`, `POST /study/<id>/coders`; `PATCH /study/<id>/coders/<coder id>`       |
+| Sessions, with answers outside loops  | `GET /study/<id>/sessions`                                                    |
 | Answers, a page at a time             | `GET /study/<id>/annotations`                                                 |
 | Units as coders saw them              | `GET /study/<id>/unit-versions`                                               |
 
@@ -117,7 +118,11 @@ for (batch in split(units, ceiling(seq_along(units) / 200))) {
 `PUT /study/<id>/sets/<column>` replaces a whole [role column](sets.md)
 (`coder_set`, `condition_set`, `part_set` or `test_set`): each value is a
 name with AnnoTinder's unit ids (`id` from
-`GET /study/<id>/units`); `"ordered": true` keeps that order.
+`GET /study/<id>/units`); `"ordered": true` keeps that order. A
+`coder_set`'s names are the coder ids of your expert coders: add them first
+with `POST /study/<id>/coders` and
+`{ "coders": [{ "coder": "anna", "email": "anna@uni.nl" }, { "coder": "bob" }] }`
+(the address is optional); a coder set that names anyone else is refused.
 
 ```r
 # A list is an object with its items (and `next` if there are more than 10,000: see docs/api/README.md)

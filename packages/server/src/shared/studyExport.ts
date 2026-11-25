@@ -27,6 +27,7 @@ import {
   sessionDeletions,
   sessionDevices,
   coderSessions,
+  coders,
   deploymentVersions,
   deployments,
   designVersions,
@@ -66,7 +67,11 @@ import type { StudyRow } from "./studies.js";
 // references between rows renumbered. So an export from an older release
 // opens on a newer one, without code that reads old formats.
 
-/** The study's tables, parents first. `coders`: coders' data, left out of an import without coders. */
+/**
+ * The study's tables, parents first. `coders`: coders' data, left out of an
+ * import without coders (of the `coders` table only the crowd's: the expert
+ * coders are the researchers', and the units' `coder_set` names them).
+ */
 const EXPORTED: { table: PgTable; coders?: true }[] = [
   { table: studies },
   { table: designVersions },
@@ -81,6 +86,7 @@ const EXPORTED: { table: PgTable; coders?: true }[] = [
   { table: unitVersionFields },
   { table: unitSets },
   { table: unitSetMembers },
+  { table: coders },
   { table: coderSessions, coders: true },
   { table: sessionDevices, coders: true },
   { table: sessionDeletions, coders: true },
@@ -112,17 +118,24 @@ const nameOf = (table: PgTable) => getTableConfig(table).name;
 const column = (c: { name: string; keyAsName?: boolean }) => (c.keyAsName === false ? c.name : toSnakeCase(c.name));
 const hasColumn = (table: PgTable, name: string) => getTableConfig(table).columns.some((c) => column(c) === name);
 
-/** A table's references to other tables: its column, the table it refers to (by `id`). */
+/**
+ * A table's references to other tables by their `id`: its column, the table
+ * it refers to. A session's coder is a reference by the coder's own id
+ * (study and coder id), which an import doesn't renumber.
+ */
 function references(table: PgTable): { column: string; to: string }[] {
-  return getTableConfig(table).foreignKeys.map((fk) => {
+  return getTableConfig(table).foreignKeys.flatMap((fk) => {
     const ref = fk.reference();
-    return { column: column(ref.columns[0]!), to: nameOf(ref.foreignTable) };
+    const byId = ref.foreignColumns.length === 1 && column(ref.foreignColumns[0]!) === "id";
+    return byId ? [{ column: column(ref.columns[0]!), to: nameOf(ref.foreignTable) }] : [];
   });
 }
 
 /** The columns of a table's primary key. */
 function keyColumns(table: PgTable): string[] {
   const config = getTableConfig(table);
+  // A table's own id orders its rows as they were made (`coders`: its key is the study and the coder id)
+  if (hasColumn(table, "id")) return ["id"];
   const own = config.columns.filter((c) => c.primary).map(column);
   return own.length > 0 ? own : (config.primaryKeys[0]?.columns ?? []).map(column);
 }
@@ -249,7 +262,7 @@ export async function exportStudy(
           for (const row of page) {
             // The owner is this server's user: the importer becomes the owner
             if (table === studies) row.owner_id = null;
-            if (table === coderSessions && !withEmail) row.email = null;
+            if ((table === coderSessions || table === coders) && !withEmail) row.email = null;
             await file.write(JSON.stringify({ table: nameOf(table), row }));
           }
         }
@@ -437,7 +450,7 @@ export async function importStudy(tx: Db, bytes: Buffer, options: ImportOptions)
   const imported = EXPORTED.filter((e) => withCoders || !e.coders).map(({ table }) => ({
     table,
     name: nameOf(table),
-    found: migrated.get(nameOf(table)) ?? [],
+    found: (migrated.get(nameOf(table)) ?? []).filter((r) => withCoders || table !== coders || r.kind === "expert"),
   }));
   const current: Rows = new Map(imported.map(({ name, found }) => [name, found]));
   const name = options.name?.trim() || undefined;
@@ -549,7 +562,11 @@ function checkDesigns(current: Rows): void {
   }
 }
 
-/** Every reference to a row of another exported table finds that row in the export. */
+/**
+ * Every reference to a row of another exported table finds that row in the
+ * export. (A session's coder is checked before: `migrateRows` loads the rows
+ * into a database, which refuses a session whose coder isn't there.)
+ */
 function checkReferences(current: Rows): void {
   const known = new Map<string, Set<number>>();
   for (const { table } of EXPORTED) {

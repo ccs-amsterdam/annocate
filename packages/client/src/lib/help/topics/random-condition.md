@@ -86,4 +86,4 @@ $unit.text
   drawn balanced). See
   [Experimental conditions](experimental-conditions.md).
 
-The conditions are in `coders.csv` (see [Downloading results](results.md)).
+The conditions are in `sessions.csv` (see [Downloading results](results.md)).

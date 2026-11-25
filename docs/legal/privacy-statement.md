@@ -64,7 +64,8 @@ You don't need an account. Per study, the server stores:
 | How your screen looked | The style of keyboard shortcuts, whether the screen was narrow or wide, light or dark theme, and when these changed |
 | A participant id | If the researcher's link carries one (for example the id a panel company gave you), or a name you picked from the study's list |
 | Other link details | Only the ones the study is set up to keep (for example a condition, or a panel's session id) |
-| Your email address | Only if you log in for the study. Some studies require that; in others it is your own choice (to continue on another device). Being logged in on this server for something else doesn't count: your address is stored with a study only when the study requires login or you chose "Log in" there. The researcher sees it in the results only where the study requires login `[SEE REVIEWER NOTE 8]` |
+| Your email address, entered by the researcher | In a study with named coders (people the researcher asked to code), the researcher can enter your email address next to your coder id, so that you can log in for the study. It is then stored before you ever log in; the researcher can change or remove it, and it is deleted when the researcher deletes you from the study. The researcher should have told you so `[SEE REVIEWER NOTE 9]` |
+| Your email address, from logging in | Only if you log in for the study. Some studies require that; in others it is your own choice (to continue on another device). Being logged in on this server for something else doesn't count: your address is stored with a study only when the study requires login or you chose "Log in" there. The researcher sees it in the results only where the study requires login `[SEE REVIEWER NOTE 8]` |
 | A request to delete | If you quit and ask for your answers to be deleted (§8) |
 
 If you log in, you also get an account like a researcher's (below), without
@@ -309,3 +310,15 @@ email.
    the results download is kept as a file on the server until the next
    download of that study is made, and is removed when a coder's data or
    the study is deleted and when answers are reset.
+9. **Email addresses of named coders, entered by the researcher**
+   (`docs/coder-identity.md` §2). Where a study has expert coders, the
+   researcher keeps a list of them (the Coders page): a coder id each, and
+   optionally an email address, which the coder signs in with if the study
+   asks for that. So an address is stored before its owner has logged in or
+   opened the study, on the researcher's word. §4 above says so. Check:
+   who informs these coders (the researcher, as controller: the terms of
+   use should say they must), and the legal basis. The address is in the
+   study's database, on the Coders page for everyone with a role in the
+   study, and in exports only where the deployed study has coders sign in;
+   deleting the coder deletes it, and the deletion record keeps no address
+   (a coder id that looks like one is kept as a hash).

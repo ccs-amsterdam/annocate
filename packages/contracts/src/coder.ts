@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { IdSchema } from "./common.js";
+import { isEmail, type Invite } from "./design/session.js";
+import { ListQuerySchema, listResponse } from "./paging.js";
 import { DeletionRequestSchema, DisplayChangeSchema, SessionEndSchema } from "./session.js";
 import { VariableValueSchema } from "./variableValue.js";
 
 /**
- * A coder's session with a progress summary, for `GET /coders`. A coder
+ * A coder's session with a progress summary, for `GET /sessions`. A coder
  * annotates through a link; distinct from a "study user" (see study.ts).
  */
 export const CoderProgressSchema = z.object({
@@ -53,10 +55,170 @@ export const CoderProgressSchema = z.object({
 });
 export type CoderProgress = z.infer<typeof CoderProgressSchema>;
 
+// The study's coders (docs/coder-identity.md §2): expert coders, made by the
+// researchers, and a crowd's coders, made when a session with a new coder id
+// starts. A coder id is per study and never changes; ids that differ only in
+// case are the same coder.
+
+/** Who a coder is: one of the researchers' expert coders, or a coder of a crowd. */
+export const CoderKindSchema = z.enum(["expert", "crowd"]);
+export type CoderKind = z.infer<typeof CoderKindSchema>;
+
+/** The longest id of an expert coder. */
+export const MAX_CODER_ID = 64;
+
 /**
- * Body for `POST /study/:studyId/coders/delete`: which coders' data to delete,
- * by session id, coder id or email (any combination; at least one). Deletes
- * the coders and all their answers, also reset ones, for good.
+ * Why a text can't be an expert coder's id, or null if it can: 1 to 64
+ * characters, no spaces at its ends, no control characters, and no `;` or
+ * `#` (the id is a value of the units' `coder_set` column, whose cells use
+ * them). A name, a number or an email address all fit.
+ */
+export function coderIdProblem(id: string): string | null {
+  if (id.length === 0) return "A coder id can't be empty";
+  if (id.length > MAX_CODER_ID) return `A coder id has at most ${MAX_CODER_ID} characters`;
+  if (id.trim() !== id) return "A coder id has no spaces at its ends";
+  if (/\p{Cc}/u.test(id)) return "A coder id has no control characters (tabs, line breaks)";
+  if (/[;#]/.test(id)) return "A coder id has no ; or #";
+  return null;
+}
+
+/** An expert coder's id (`coderIdProblem`). */
+export const CoderIdSchema = z.string().superRefine((id, ctx) => {
+  const problem = coderIdProblem(id);
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
+});
+
+/** A coder's email address, to sign in with. */
+export const CoderEmailSchema = z.string().max(254).refine(isEmail, "Not an email address");
+
+/**
+ * The ids given more than once, ignoring case (each once, as first
+ * repeated): among `ids` themselves, or against the ids `existing` has.
+ */
+export function duplicateCoders(ids: readonly string[], existing: readonly string[] = []): string[] {
+  const seen = new Set(existing.map((id) => id.toLowerCase()));
+  const twice = new Map<string, string>();
+  for (const id of ids) {
+    const key = id.toLowerCase();
+    if (seen.has(key) && !twice.has(key)) twice.set(key, id);
+    seen.add(key);
+  }
+  return [...twice.values()];
+}
+
+/** The names that aren't one of the expert coders (an id is matched as written), each once. */
+export function unknownCoders(names: readonly string[], experts: readonly string[]): string[] {
+  const known = new Set(experts);
+  return [...new Set(names)].filter((name) => !known.has(name));
+}
+
+/** Coders in a message: at most ten by id, then how many more. */
+export function listedCoders(ids: readonly string[]): string {
+  const shown = ids.slice(0, 10).join(", ");
+  return ids.length > 10 ? `${shown} and ${ids.length - 10} more` : shown;
+}
+
+/**
+ * What the invitation asks of the expert coders who have units (the
+ * `coder_set` about to be deployed). Where coders sign in (`link:
+ * "login"`), each needs an email address: an error naming those without.
+ * Where coders pick their name (`pick_name`), the ids are shown to anyone
+ * with the link: a warning if they look like email addresses.
+ */
+export function coderInviteChecks(
+  invite: Invite | null,
+  assigned: readonly { coder: string; email: string | null }[],
+): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (invite?.mode !== "coders") return { errors, warnings };
+  const noEmail = assigned.filter((c) => !c.email).map((c) => c.coder);
+  if (invite.link === "login" && noEmail.length > 0)
+    errors.push(
+      `Coders sign in with their email address, but ${noEmail.length === 1 ? "this coder has" : "these coders have"} none: ${listedCoders(noEmail)}. Give them an email address (Coders), or give each coder a link.`,
+    );
+  const addresses = assigned.filter((c) => isEmail(c.coder)).map((c) => c.coder);
+  if (invite.link === "pick_name" && addresses.length > 0)
+    warnings.push(
+      `Coders pick their name from a list that anyone with the link sees, and ${addresses.length === 1 ? "this coder id looks" : "these coder ids look"} like an email address: ${listedCoders(addresses)}.`,
+    );
+  return { errors, warnings };
+}
+
+/**
+ * A coder of the study (`GET /study/:studyId/coders`), with their units.
+ * Expert coders: `assigned`, the units of their set in the deployed
+ * `coder_set`, and `assignedDraft`, in the draft's (`draftDiffers`: not the
+ * same units; deploying the units applies the draft); `remaining`: the
+ * deployed ones they haven't answered. A crowd's coders have no units of
+ * their own: null. `done`: the units their sessions answered.
+ */
+export const CoderResponseSchema = z.object({
+  /** A number for the list's pages (`after`); the coder is known by `coder`. */
+  id: IdSchema,
+  coder: z.string(),
+  kind: CoderKindSchema,
+  /** The address an expert coder signs in with, if the researchers gave one. */
+  email: z.string().nullable(),
+  created: z.coerce.date(),
+  assigned: z.number().int().nonnegative().nullable(),
+  assignedDraft: z.number().int().nonnegative().nullable(),
+  draftDiffers: z.boolean(),
+  done: z.number().int().nonnegative(),
+  remaining: z.number().int().nonnegative().nullable(),
+  /** How many sessions they started. */
+  sessions: z.number().int().nonnegative(),
+  /** Their latest answer; null if they haven't answered anything yet. */
+  lastActive: z.coerce.date().nullable(),
+});
+export type CoderResponse = z.infer<typeof CoderResponseSchema>;
+
+/**
+ * Units no expert coder has (test units aside): of the deployed units
+ * (`live`; null before the first deploy), e.g. after a coder was deleted,
+ * and of the draft.
+ */
+export const UnassignedUnitsSchema = z.object({
+  live: z.number().int().nonnegative().nullable(),
+  draft: z.number().int().nonnegative(),
+});
+export type UnassignedUnits = z.infer<typeof UnassignedUnitsSchema>;
+
+/** `GET /study/:studyId/coders`: a page of the coders, and the units no expert coder has. */
+export const CoderListSchema = listResponse("coders", CoderResponseSchema).extend({
+  unassigned: UnassignedUnitsSchema,
+});
+export type CoderList = z.infer<typeof CoderListSchema>;
+
+/** The query of `GET /study/:studyId/coders`: a list's, and optionally one kind of coder. */
+export const CodersQuerySchema = ListQuerySchema.extend({ kind: CoderKindSchema.optional() });
+
+/** The most expert coders one request creates. */
+export const MAX_CODERS_PER_REQUEST = 5000;
+
+/** Body of `POST /study/:studyId/coders`: expert coders to create, each with an email address or without. */
+export const CodersCreateSchema = z.object({
+  coders: z
+    .array(z.object({ coder: CoderIdSchema, email: CoderEmailSchema.optional() }))
+    .min(1)
+    .max(MAX_CODERS_PER_REQUEST),
+});
+export type CodersCreate = z.infer<typeof CodersCreateSchema>;
+
+/** Response of `POST /study/:studyId/coders`: the coders created. */
+export const CodersCreatedSchema = z.object({ coders: z.array(CoderResponseSchema) });
+export type CodersCreated = z.infer<typeof CodersCreatedSchema>;
+
+/** Body of `PATCH /study/:studyId/coders/:coder`: the coder's email address (null: none). */
+export const CoderPatchSchema = z.object({ email: CoderEmailSchema.nullable() });
+export type CoderPatch = z.infer<typeof CoderPatchSchema>;
+
+/**
+ * Body for `POST /study/:studyId/coders/delete`: which coders to delete, by
+ * session id, coder id or email (any combination; at least one). Deletes the
+ * sessions and all their answers, also reset ones, for good. By coder id (or
+ * a coder's email address) the coder goes too: their row, every session, and
+ * their units in the draft and the deployed `coder_set`.
  */
 export const DeleteCodersSchema = z
   .object({
@@ -69,10 +231,11 @@ export const DeleteCodersSchema = z
   });
 export type DeleteCoders = z.infer<typeof DeleteCodersSchema>;
 
-/** Response of `POST /study/:studyId/coders/delete`: the coders deleted, and how many answers they had. */
+/** Response of `POST /study/:studyId/coders/delete`: the sessions deleted, how many answers they had, and the coders that are gone. */
 export const DeleteCodersResponseSchema = z.object({
   sessionIds: z.array(z.number().int().positive()),
   answers: z.number().int().nonnegative(),
+  coders: z.array(z.string()),
 });
 export type DeleteCodersResponse = z.infer<typeof DeleteCodersResponseSchema>;
 

@@ -9,7 +9,7 @@ A **URL parameter** is a value added to a study's link: `?wave=2`,
 `?school=north`, or ids a panel fills in. The design uses it as
 `$session.<name>` in conditions, texts and return links. Values are stored
 when the session starts (coders can come back without them) and are in
-`coders.csv` as `session.<name>`.
+`sessions.csv` as `session.<name>`.
 
 ## Adding a parameter
 

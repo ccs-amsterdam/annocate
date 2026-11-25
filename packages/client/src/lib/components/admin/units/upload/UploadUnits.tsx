@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { TEST_SET, type UnitField } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../../api/httpResearcherApi";
 import {
+  useCodersQuery,
   useCreateUnitsMutation,
   usePutSetGroupMutation,
   useSetGroupsQuery,
@@ -9,6 +10,8 @@ import {
 } from "../../../../admin/queries";
 import {
   unitsLosingRole,
+  unknownCodersText,
+  unknownFileCoders,
   uploadFailureText,
   uploadUnits,
   type CsvUpload,
@@ -16,6 +19,7 @@ import {
 } from "../../../../admin/uploadUnits";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "../../../../help/HelpButton";
+import { codersOfKind } from "../../../../admin/codersTable";
 import { CsvUnitsForm } from "./CsvUnitsForm";
 import { JoinSets, LosingRoles, ReplaceExisting } from "./UploadChoices";
 
@@ -24,7 +28,9 @@ import { JoinSets, LosingRoles, ReplaceExisting } from "./UploadChoices";
  * then per column whether and as which field it is uploaded, and its type.
  * Columns named like a field of the study are linked to it (and keep its
  * type); "Use column names" gives every other column its own (valid) name.
- * Values are checked against the types before anything is uploaded.
+ * Values are checked against the types before anything is uploaded, and a
+ * coder_set column against the study's expert coders: a file that names
+ * another coder isn't uploaded.
  */
 export function UploadUnits({
   client,
@@ -39,6 +45,7 @@ export function UploadUnits({
   const putGroup = usePutSetGroupMutation(client);
   const existingUnits = useUnitsQuery(client).data ?? [];
   const groups = useSetGroupsQuery(client).data ?? [];
+  const coders = useCodersQuery(client).data?.coders;
   // Per group (not in the file as a sets column): what to do with the new units
   const [addTo, setAddTo] = useState<Record<string, "" | JoinMode>>({});
   const [seed] = useState(() => Math.floor(Math.random() * 1_000_000));
@@ -59,6 +66,9 @@ export function UploadUnits({
   );
 
   const losing = result ? unitsLosingRole(result.setGroups, groups, existingUnits) : [];
+  // Coders the file's coder_set names that the study doesn't have (unknown until the coders are read)
+  const experts = codersOfKind(coders ?? [], "expert").map((c) => c.coder);
+  const unknown = result && coders ? unknownFileCoders(result.setGroups, experts) : [];
 
   async function upload() {
     if (!result) return;
@@ -107,12 +117,14 @@ export function UploadUnits({
           <LosingRoles losing={losing} />
         </>
       )}
+      {unknown.length > 0 && <p className="text-sm text-destructive">{unknownCodersText(unknown)}</p>}
       {result && (
         <div className="flex items-center gap-3">
           <Button
             onClick={() => void upload()}
             disabled={
               result.errors.length > 0 ||
+              unknown.length > 0 ||
               progress !== null ||
               (replaced.length > 0 && !overwrite) ||
               (overwrite && coded.length > 0 && !overwriteCoded)

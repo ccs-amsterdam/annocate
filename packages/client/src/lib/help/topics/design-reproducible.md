@@ -35,7 +35,8 @@ include new units once deployed.
 
 ## Links hold who may take part
 
-Who the coders are (the coder set) and the links with their secrets
+Who the coders are (your coders with their email addresses, and the
+coder set) and the links with their secrets
 stay on the server, outside the design (see [Links](links.md)).
 
 ## Sharing a design

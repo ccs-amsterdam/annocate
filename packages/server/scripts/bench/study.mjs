@@ -4,6 +4,7 @@ import {
   asList,
   coderStudyId,
   codersColumnBody,
+  expertCodersBody,
   designBody,
   expertName,
   linkCoder,
@@ -56,7 +57,10 @@ async function coderSecrets(api, studyId, mode, coders) {
 export async function createStudy(api, { name, mode, units, coders }) {
   const study = await api("POST", paths.studies, { name });
   const unitIds = await uploadUnits(api, study.id, units);
-  if (mode === "experts") await api("PUT", paths.codersColumn(study.id), codersColumnBody(unitIds, coders));
+  if (mode === "experts") {
+    await api("POST", paths.coders(study.id), expertCodersBody(coders));
+    await api("PUT", paths.codersColumn(study.id), codersColumnBody(unitIds, coders));
+  }
   const designVersionId = await saveDesign(api, study.id, mode);
   await api("PUT", paths.deployment(study.id), { designVersionId });
   const secrets = await coderSecrets(api, study.id, mode, coders);

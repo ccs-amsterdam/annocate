@@ -87,6 +87,9 @@ for you to:
    to keep (§8).
 7. **Pay and treat participants fairly**, where that applies. Agreements
    with panels, crowd platforms and coders are yours.
+8. **Tell your coders before you enter their email address.** For a study
+   where named coders log in, you enter their addresses yourself; they are
+   stored before those coders log in. Informing them is yours.
 
 The data processing terms in `[LINK OR ANNEX]` are part of these terms.
 If your institution needs a signed agreement, contact us.

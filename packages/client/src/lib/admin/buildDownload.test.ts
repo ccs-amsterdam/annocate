@@ -33,7 +33,8 @@ const raw: RawExport = {
   manifest: {} as RawExport["manifest"],
   answers: [],
   units: [],
-  coders: [],
+  sessions: [],
+  coders: [{ coder: "anna", kind: "expert", created: "2026-01-05T10:00:00.000Z" }],
   designVersions: [design(11, 1), design(12, 2), design(13, 3), design(14, 4)],
   deployments: [
     { designVersionId: 12, client: { release: "0.1.0", commit: "abc" } } as unknown as RawExport["deployments"][number],
@@ -58,6 +59,7 @@ describe("the data download", () => {
     expect(Object.keys(files)).toEqual([
       "README.txt",
       "annotations.csv",
+      "sessions.csv",
       "coders.csv",
       "units.csv",
       "variables.csv",

@@ -1,8 +1,8 @@
 # Coder sessions, identity and login
 
-Coder sessions without login (§4), coder login (§5), researcher login (§7),
-quitting and deleting data (§8), closing sessions (§9) and response times
-(§10). Complements `architecture.md`.
+The study's coders (§2), coder sessions without login (§4), coder login
+(§5), researcher login (§7), quitting and deleting data (§8), closing
+sessions (§9) and response times (§10). Complements `architecture.md`.
 
 ## 1. Principles
 
@@ -22,12 +22,52 @@ quitting and deleting data (§8), closing sessions (§9) and response times
 | **Coder session** (`sessionId`) | One coder's run through a study: answers, progress. Everything is keyed by it | `coder_sessions` |
 | **Device id** | A random secret the server gives a browser once, for all studies, in the httpOnly cookie `annotinder_device`. Never stored by the server | the browser |
 | **Device key** | SHA-256 of device id, deployment and the crowd's coder id from the URL (if any): the device's key to its session in one study. Only this is stored, so a device's sessions in different studies can't be linked. One per device of a session | `session_devices` |
-| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Expert coders: their value in the units' `coder_set`. A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coder_sessions.coder` |
+| **Coder** | Someone who codes in a study, known by their coder id: an **expert coder** (made by the researchers, with their own units) or a **crowd's** coder (made when they start) | `coders` |
+| **Coder id** (`coder`) | Who the coder is: `$session.coder`, the results' `coder` column. Per study, never changed, and one coder whatever its case. Expert coders: the id the researchers gave them (the values of the units' `coder_set`). A crowd: the `coderParam` URL value (e.g. `PROLIFIC_PID`), else the login's email where sign-in is required. A label, never a credential | `coders.coder`, `coder_sessions.coder` |
+| **Coder's email address** | The address an expert coder signs in with, where the study has them sign in. Given by the researchers, who can change it; not the coder id | `coders.email` |
 | **Linked email** | A verified address from a login (§5), linked to the session once, to continue on other devices | `coder_sessions.email` |
 | **Transfer link** | A one-time link (15 minutes) that adds another device to the session | `transfers` (token hash only) |
 
 The system never merges sessions. Researchers who want to merge sessions of
 one person group them by coder id or email in analysis.
+
+### The study's coders
+
+A study's coders are rows of `coders`: the coder id (key: study and coder
+id; unique ignoring case), `kind` (`expert` or `crowd`), `email` (an expert
+coder's, unique per study ignoring case, or none) and `created`. A session's
+coder is one of them (`coder_sessions` refers to the row, and goes when it
+is deleted); a session without a coder id (an anonymous link) has none.
+Code: `shared/studyCoders.ts`; the researcher API is in
+`api/researcher.md` (listCoders, createCoders, updateCoder, deleteCoders),
+the researcher UI on the Coders page (`client.md` §7).
+
+- **Expert coders are made by the researchers** (the Coders page's "Add
+  coders", `POST /study/:studyId/coders`), before or after there are units.
+  The id is 1 to 64 characters: a name, a number, an email address; no `;`
+  or `#` (a `coder_set` cell's separators), no control characters, no spaces
+  at its ends. An id or email address that another coder of the study has is
+  refused (ignoring case), with the list.
+- **The units' `coder_set` names expert coders only.** A coder set (made in
+  the dialog, uploaded with units, or in a recipe) that names anyone else is
+  refused, listing the unknown ids (400 `unknown_coders`): add the coders
+  first. Nothing makes them on the way.
+- **A crowd's coders are made when they start**: a session with a coder id
+  that isn't a coder yet (`coderParam`, or the login's email where a crowd
+  signs in) makes one, kind `crowd`. An id that differs only in case from a
+  coder's is that coder (the session's `coder` is the id as first written).
+  A crowd's id that is one of the study's expert coders is refused: 409
+  `coder_is_expert` (possible only when a study had expert coders before);
+  ids are never prefixed or changed to tell the kinds apart.
+- **The id never changes; the email address can.** `PATCH
+  /study/:studyId/coders/:coder { email }` sets or clears it. Signing in
+  uses the address as it is now (§5); a session keeps the address it was
+  started with.
+- **Researchers see coders' email addresses** on the Coders page (any role
+  in the study): they entered them. They are stored before a coder ever
+  signs in, which the privacy statement says
+  (`legal/privacy-statement.md`). Exports hold them only where the deployed
+  design has coders sign in (as for sessions' addresses).
 
 ## 3. Links
 
@@ -41,7 +81,7 @@ revoked link (403 `link_revoked`) can be reopened. The who codes
 | --- | --- | --- |
 | expert coders, `per_coder` | optional | the link's coder |
 | expert coders, `pick_name` | optional | the picked name (`nameDevices: "first"`: the first device's; `"any"`: picking it continues its session) |
-| expert coders, `login` | required; only the coder set's addresses (403 `email_not_allowed`) | the login's address |
+| expert coders, `login` | required; only the email addresses of coders in the coder set (403 `email_not_allowed`) | the coder with the login's address (`coders.email`) |
 | one link (crowd) | optional | none, or `coderParam` (`?<param>=…`, required unless `optional: true`) |
 | one link with `login: true` | required (401 `auth_required`) | the login's email, unless the URL gives one |
 
@@ -150,7 +190,16 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
 
 - **The invitation decides.** Coders can always log in. Sign-in is required
   for expert coders with `link: "login"` and a crowd with `login`; only
-  there do researchers see coders' emails (Results › Coders, export).
+  there do researchers see the email a session signed in with (Coders ›
+  Sessions, export).
+- **Expert coders who sign in** are the coder whose email address
+  (`coders.email`) the login has, ignoring case; `$session.coder` is that
+  coder's id, never the address. The coder must be in the deployed coder
+  set; any other login gets 403 `email_not_allowed`. They have one session
+  each, found by the coder (not by the address): after the researchers
+  change a coder's address, the new address continues that coder's session
+  and the old one has no access. Deploying checks that every coder with
+  units has an address (`architecture.md` §8.4).
 - **When a login counts**: only where the deployed design requires sign-in,
   or the coder chose to code with their account (the request has
   `x-use-login: 1`). A login that is just there in the browser is left out:
@@ -175,8 +224,8 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   session in this study. Never while coding, never in previews. Another
   study's link doesn't link a session here.
 - **Required**: without a login 401 `auth_required`; the client offers the
-  login and comes back to the same page. Addresses not in the coder set get 403
-  `email_not_allowed`.
+  login and comes back to the same page. Where expert coders sign in, an
+  address that isn't a coder's in the coder set gets 403 `email_not_allowed`.
 - **Optional**: `GET /session` says `canLogIn` (the server has a login, the
   request has this study's link, and the session has no email); logging in
   from there links the email.
@@ -271,8 +320,8 @@ holds the data elsewhere, and immediate deletion would let a paid coder
 withdraw the work after payment. It needs no proof of identity: it comes from
 the session itself.
 
-**Researcher side** (Results › Coders): open requests come first, with *Delete now*
-or *Delete later* (`POST /study/:studyId/coders/:id/deletion-request/postpone`
+**Researcher side** (Coders › Sessions): open requests come first, with *Delete now*
+or *Delete later* (`POST /study/:studyId/sessions/:id/deletion-request/postpone`
 sets `postponedAt`; the request stays until the data is deleted). Declining
 isn't a button: that is for the researcher's protocol. Any coder's data can be
 deleted (`POST /study/:studyId/coders/delete { sessionIds?, coders?, emails? }`,
@@ -282,16 +331,35 @@ made before holds the answers; a download link for it stops working). Unit
 versions stay. It is a sensitive action (`security.md` §1). A deleted
 coder's browser later starts a new session from its link.
 
+**Deleting a coder** (the Coders page's row action; the same request by
+coder id, or by the email address the researchers gave) removes more than
+the sessions (`removeCoders`, `shared/coderDeletion.ts`):
+
+- the coder's row, with their email address;
+- every session of theirs and its answers, as above;
+- their set in the units' `coder_set`, in the draft **and** as deployed: the
+  units have no coder from that moment (the runtimes read the sets again).
+  The Coders, Units and Deploy pages say how many units have none; the
+  researcher divides them again (Make coder set) and deploys the units;
+- their own link (expert coders with a link each), which is revoked: 403
+  `link_revoked` for anyone who has it.
+
+The coder id can be made again afterwards: a new coder, without the earlier
+one's units, sessions or address (their link, if the deployed design makes
+it again, is the revoked one: reopen it under Links). By session id an
+expert coder stays, with their units. A crowd's coder goes with their last
+session, so nothing of them is left.
+
 Every deletion is logged (`session_deletions`: session id, coder id,
 requested, deleted, by whom, answer count), so the researcher can
 also delete the coder from earlier downloads (`GET /study/:studyId/coders/deletions`,
-Results › Coders, `deleted_coders.csv`). The log holds no email address of
-the coder:
+Coders › Sessions, `deleted_coders.csv`). It lists no units. The log holds no
+email address of the coder:
 
-- the session's email (`coder_sessions.email`, from signing in) is not
-  copied to it;
-- a coder id that is an email address (where coders sign in, the coder id
-  is their address) is kept as `sha256:<hash>`: the SHA-256 of the address
+- the session's email (`coder_sessions.email`, from signing in) and the
+  coder's (`coders.email`) are not copied to it;
+- a coder id that looks like an email address (a crowd that signs in, or an
+  id the researchers chose) is kept as `sha256:<hash>`: the SHA-256 of the address
   in lower case, in hex (`loggedCoder`, `shared/coderDeletion.ts`). It names
   nobody, and still finds the coder in results downloaded earlier: hash the
   coder ids there the same way and compare. In R:
@@ -299,7 +367,7 @@ the coder:
 - any other coder id (a panel id, a name the researcher gave) is kept as it
   is.
 
-`deletedBy` is the researcher's address. The export also has `ended` = `quit`
+`deletedBy` is the researcher's address. The export's `sessions.csv` also has `ended` = `quit`
 and a `deletion_requested` column.
 
 ## 9. Closing finished sessions

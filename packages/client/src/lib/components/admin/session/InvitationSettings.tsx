@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { cn } from "cn";
 import { HelpButton } from "../../../help/HelpButton";
-import { coderSummary, columnValues } from "../../../design/assignment";
+import { columnValues } from "../../../design/assignment";
+import { InviteChecks } from "../coders/InviteChecks";
 import { withOptional, withOptionals } from "../../../design/itemSettings";
 import { IssueList } from "../IssueList";
 import { issuesAt } from "../issues";
@@ -85,7 +86,7 @@ function CodersForm({
   const [making, setMaking] = useState(false);
   // The coders: the units' coder set
   const known = groups.some((g) => g.name === CODER_SET);
-  const coders = coderSummary(columnValues(groups, CODER_SET));
+  const coders = columnValues(groups, CODER_SET).length;
   return (
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -93,9 +94,9 @@ function CodersForm({
           Coder set
           <InfoTip label="About the coder set">
             The units&apos; column <span className="font-mono">coder_set</span> says who codes each unit (
-            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both). Test units (
-            <span className="font-mono">test_set</span>: overlap, practice, gold) go to everyone. Make it here, or on
-            the Units page.
+            <span className="font-mono">anna</span>, <span className="font-mono">anna;bob</span> for both), by the ids
+            of your expert coders. Test units (<span className="font-mono">test_set</span>: overlap, practice, gold) go
+            to everyone. Add coders and make it here, or on the Coders page.
           </InfoTip>
         </span>
         {client && (
@@ -107,14 +108,13 @@ function CodersForm({
       </div>
       {!known ? (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">
-          A coder set is required: it says who codes which units. Create one here, or on the Units page.
+          A coder set is required: it says who codes which units. Create one here, or on the Coders page.
         </p>
-      ) : coders.kind === "none" ? (
+      ) : coders === 0 ? (
         <p className="text-[11px] text-amber-700 dark:text-amber-400">The coder set has no coders yet.</p>
       ) : (
         <p className="text-[11px] text-muted-foreground">
-          {coders.count} coder{coders.count === 1 ? "" : "s"}
-          {coders.kind === "emails" ? " (email addresses)" : coders.kind === "mixed" ? " (names and emails)" : ""}.
+          {coders} coder{coders === 1 ? "" : "s"} in the coder set.
         </p>
       )}
       {/* Disabled until there is a coder set: the links and names come from it */}
@@ -134,7 +134,7 @@ function CodersForm({
             checked={invite.link === "pick_name"}
             onChange={() => onChange({ ...invite, link: "pick_name" })}
           />
-          One link: coders pick their name from the coder set
+          One link: coders pick their coder id from the coder set
         </label>
         {invite.link === "pick_name" && (
           <div className="flex flex-col gap-1 pl-6">
@@ -162,29 +162,15 @@ function CodersForm({
             checked={invite.link === "login"}
             onChange={() => onChange(withOptionals(invite, { link: "login", nameDevices: undefined }))}
           />
-          One link: coders sign in with the email address in the coder set
+          One link: coders sign in with their email address (each coder&apos;s, on the Coders page)
         </label>
-        {invite.link === "login" && known && coders.kind !== "emails" && coders.kind !== "none" && (
-          <p className="pl-6 text-[11px] text-destructive">
-            Signing in needs email addresses: the coder set has {coders.notEmails.slice(0, 3).join(", ")}
-            {coders.notEmails.length > 3 ? ", …" : ""}.
-          </p>
-        )}
       </fieldset>
+      {client && <InviteChecks client={client} invite={invite} />}
       <p className="text-[11px] text-muted-foreground">
         Coders can always sign in to keep their work across devices; with a link each you don&apos;t see their email
         address.
       </p>
-      {making && client && (
-        <CoderSetDialog
-          client={client}
-          groups={groups}
-          onDone={(result) => {
-            setMaking(false);
-            if (result) onChange({ ...invite, link: result.emails ? "login" : invite.link });
-          }}
-        />
-      )}
+      {making && client && <CoderSetDialog client={client} groups={groups} onDone={() => setMaking(false)} />}
     </section>
   );
 }

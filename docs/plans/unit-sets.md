@@ -10,7 +10,7 @@ compatibility; examples, tests and docs move to the new format.
 
 | Column          | Values                                         | Per unit | Used by                                   |
 | --------------- | ---------------------------------------------- | -------- | ----------------------------------------- |
-| `coder_set`     | coder names or email addresses (`anna;bob`)    | several  | expert coders only                      |
+| `coder_set`     | the ids of the study's expert coders (`anna;bob`; only coders there are: `coder-identity.md` §2) | several  | expert coders only                      |
 | `condition_set` | an experiment's conditions                     | several  | the experiment that selects units         |
 | `part_set`      | parts of the study, e.g. `pre`, `post`         | several  | a unit loop shows one part                |
 | `test_set`     | `overlap`, `practice` or `gold` (empty: a coding unit) | one | the loops' placement and checks of test units |
@@ -95,6 +95,8 @@ compatibility; examples, tests and docs move to the new format.
 - The Units page shows the role columns with their meaning (labels:
   "Coder set", "Condition set", "Part set", "Test set").
 - The coder set dialog (making or updating `coder_set`):
+  - takes its coders from a checklist of the study's expert coders ("Select
+    coders"), who are added under "Manage coders" or on the Coders page;
   - keeps an existing `test_set` column by default;
   - no percentages for generating test units any more;
   - shows the current test units (counts per type) disabled, editable only

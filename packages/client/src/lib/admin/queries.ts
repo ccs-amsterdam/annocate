@@ -21,6 +21,11 @@ import type {
   DesignWrite,
   LinkResponse,
   CoderProgress,
+  CoderList,
+  CoderPatch,
+  CoderResponse,
+  CodersCreate,
+  CodersCreated,
   DeleteCoders,
   StudyUser,
   StudyUserResponse,
@@ -61,6 +66,7 @@ const keys = {
   unitPages: (studyId?: number) => ["admin", "study", studyId ?? "current", "units", "page"] as const,
   sets: (studyId?: number) => ["admin", "study", studyId ?? "current", "sets"] as const,
   coders: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders"] as const,
+  sessions: (studyId?: number) => ["admin", "study", studyId ?? "current", "sessions"] as const,
   coderDeletions: (studyId?: number) => ["admin", "study", studyId ?? "current", "coders", "deletions"] as const,
   deployment: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment"] as const,
   pending: (studyId?: number) => ["admin", "study", studyId ?? "current", "deployment", "pending"] as const,
@@ -239,6 +245,7 @@ export function useCreateUnitsMutation(client: ResearcherApi) {
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.studyId) }),
+        queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.designVersions(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
       ]),
@@ -253,6 +260,7 @@ export function useDeleteUnitMutation(client: ResearcherApi): UseMutationResult<
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.units(client.studyId) }),
+        queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
@@ -276,6 +284,8 @@ function useSetGroupMutation<T, V>(client: ResearcherApi, mutationFn: (vars: V) 
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) }),
+        // The coders' units in the draft
+        queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) }),
         // A new column with a role is also a unit field (declared on the latest design version)
         queryClient.invalidateQueries({ queryKey: keys.unitFields(client.studyId) }),
         queryClient.invalidateQueries({ queryKey: keys.pending(client.studyId) }),
@@ -296,17 +306,45 @@ export function useDeleteSetGroupMutation(client: ResearcherApi): UseMutationRes
   return useSetGroupMutation(client, (group: string) => client.deleteSetGroup(group));
 }
 
-/** The study's coders with their progress; kept up to date (every 10 seconds) unless `poll` is false. */
-export function useCodersQuery(
+/** The coder sessions with their progress; kept up to date (every 10 seconds) unless `poll` is false. */
+export function useSessionsQuery(
   client: ResearcherApi,
   { enabled = true, poll = true }: { enabled?: boolean; poll?: boolean } = {},
 ): UseQueryResult<CoderProgress[]> {
   return useQuery({
-    queryKey: keys.coders(client.studyId),
-    queryFn: () => client.listCoders(),
+    queryKey: keys.sessions(client.studyId),
+    queryFn: () => client.listSessions(),
     refetchInterval: poll ? 10_000 : false,
     enabled,
   });
+}
+
+/** The study's coders with their units, and the units no expert coder has; `poll`: kept up to date (every 10 seconds). */
+export function useCodersQuery(
+  client: ResearcherApi,
+  { poll = false }: { poll?: boolean } = {},
+): UseQueryResult<CoderList> {
+  return useQuery({
+    queryKey: keys.coders(client.studyId),
+    queryFn: () => client.listCoders(),
+    refetchInterval: poll ? 10_000 : false,
+  });
+}
+
+/** Making expert coders and changing a coder's email address; both refresh the coders. */
+export function useCoderMutations(client: ResearcherApi): {
+  create: UseMutationResult<CodersCreated, Error, CodersCreate>;
+  update: UseMutationResult<CoderResponse, Error, { coder: string; body: CoderPatch }>;
+} {
+  const queryClient = useQueryClient();
+  const onSuccess = () => queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) });
+  return {
+    create: useMutation({ mutationFn: (body: CodersCreate) => client.createCoders(body), onSuccess }),
+    update: useMutation({
+      mutationFn: ({ coder, body }: { coder: string; body: CoderPatch }) => client.updateCoder(coder, body),
+      onSuccess,
+    }),
+  };
 }
 
 /** The study's deletion log: coders whose data was deleted. */
@@ -478,6 +516,8 @@ function useDeployMutation(client: ResearcherApi): UseMutationResult<DeploymentR
       void queryClient.invalidateQueries({ queryKey: keys.overview(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.links(client.studyId) });
       void queryClient.invalidateQueries({ queryKey: keys.sets(client.studyId) });
+      // The coders' deployed units
+      void queryClient.invalidateQueries({ queryKey: keys.coders(client.studyId) });
       void queryClient.invalidateQueries({
         queryKey: ["admin", "study", client.studyId ?? "current", "designVersion"],
       });

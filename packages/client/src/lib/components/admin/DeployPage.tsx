@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, CircleDot, Loader2 } from "lucide-react";
-import { NO_INVITE, deployErrors, designItems, undeclaredFields, type TopLevelItem } from "@annotinder/contracts";
+import {
+  NO_INVITE,
+  deployErrors,
+  designItems,
+  inviteOf,
+  sessionItem,
+  undeclaredFields,
+  type TopLevelItem,
+} from "@annotinder/contracts";
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import {
   useConfirmedDeploy,
@@ -19,13 +27,25 @@ import { Button } from "@/components/ui/button";
 import { DeployPanel } from "./DeployPanel";
 import { DeployHistory } from "./DeployHistory";
 import { LiveControls } from "./LiveControls";
+import { InviteChecks } from "./coders/InviteChecks";
+import { UnassignedNotice } from "./coders/UnassignedNotice";
 
 /**
  * Deploy › Deploy (docs/client.md §7, "Versions and deploying"): what is
  * saved but not deployed yet (the design's draft, draft units and sets), and
- * deploying it. The editor only saves; deploying happens here.
+ * deploying it. The editor only saves; deploying happens here. With expert
+ * coders, also what deploying asks of them (an email address where they
+ * sign in) and the units no coder has, with the way to the Coders page.
  */
-export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; onOpenDesign: () => void }) {
+export function DeployPage({
+  client,
+  onOpenDesign,
+  onOpenCoders,
+}: {
+  client: ResearcherApi;
+  onOpenDesign: () => void;
+  onOpenCoders: () => void;
+}) {
   const deploymentQuery = useDeploymentQuery(client);
   const deployment = deploymentQuery.data ?? null;
   const designVersionsQuery = useDesignVersionsQuery(client);
@@ -61,6 +81,14 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
   // Who codes isn't chosen: said as it is, not as "problems"
   const noInvite = candidateErrors.length === 1 && candidateErrors[0].message === NO_INVITE;
   const unitsChanged = !!pending && hasUnitChanges(pending.units);
+  // Who codes in what would be deployed: the candidate's choice, else the live design's
+  const toDeploy = candidate ?? live;
+  const invite = toDeploy ? inviteOf(sessionItem(designItems(toDeploy))) : null;
+  const openCoders = (
+    <Button variant="link" className="h-auto p-0" onClick={onOpenCoders}>
+      Open Coders
+    </Button>
+  );
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
@@ -88,6 +116,9 @@ export function DeployPage({ client, onOpenDesign }: { client: ResearcherApi; on
           ))}
         </section>
       )}
+      {/* Also when everything is deployed: deleting a coder leaves deployed units without one */}
+      <InviteChecks client={client} invite={invite} />
+      <UnassignedNotice client={client}>{openCoders}</UnassignedNotice>
       {candidate === null && !unitsChanged && deployment ? (
         <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-5 text-sm">
           <CircleDot className="h-4 w-4 text-ember" />

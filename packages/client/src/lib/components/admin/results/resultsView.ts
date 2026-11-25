@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 export const RESULTS_VIEWS = ["Questions", "Agreement", "Units", "Coders", "Download"] as const;
 export type ResultsView = (typeof RESULTS_VIEWS)[number];
 
-// The open view, shared so other pages (the overview's coder counts) can open Results on one
+// The open view, kept while the researcher is on other pages
 let current: ResultsView = "Questions";
 const listeners = new Set<() => void>();
 

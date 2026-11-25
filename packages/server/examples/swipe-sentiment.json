@@ -131,6 +131,7 @@
       }
     }
   ],
+  "coders": [{ "coder": "anna" }, { "coder": "bob" }, { "coder": "carla" }],
   "sets": [
     {
       "column": "coder_set",

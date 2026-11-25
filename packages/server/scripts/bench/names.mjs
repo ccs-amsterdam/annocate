@@ -33,6 +33,7 @@ export const paths = {
   units: (id) => `/study/${id}/units`,
   design: (id) => `/study/${id}/design`,
   designVersion: (id, version) => `/study/${id}/design/${version}`,
+  coders: (id) => `/study/${id}/coders`,
   codersColumn: (id) => `/study/${id}/sets/coder_set`,
   deployment: (id) => `/study/${id}/deployment`,
   links: (id) => `/study/${id}/links`,
@@ -54,6 +55,7 @@ export const readPaths = {
   overview: ["GET", (id) => `/study/${id}/overview`],
   "deployment status": ["GET", (id) => `/study/${id}/deployment/status`],
   coders: ["GET", (id) => `/study/${id}/coders`],
+  sessions: ["GET", (id) => `/study/${id}/sessions`],
   "results answers": ["GET", (id) => `/study/${id}/results/answers`],
   "results agreement": ["GET", (id) => `/study/${id}/results/agreement`],
   "results units": ["GET", (id) => `/study/${id}/results/units`],
@@ -137,6 +139,11 @@ export function unitBody(n) {
 
 /** The name of the n-th expert coder (a value of the coders' column). */
 export const expertName = (n) => `coder${n + 1}`;
+
+/** The body of `POST /coders`: `coders` expert coders. */
+export const expertCodersBody = (coders) => ({
+  coders: Array.from({ length: coders }, (_, c) => ({ coder: expertName(c) })),
+});
 
 /** The body of `PUT /sets/coder_set`: the units dealt round-robin to `coders` expert coders. */
 export function codersColumnBody(unitIds, coders) {

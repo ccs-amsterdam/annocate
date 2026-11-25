@@ -1,10 +1,9 @@
 import type { UnitSet } from "@annotinder/contracts";
 
-// Changing who codes which units in the coder set (the Units page's coders
-// dialog). A coder keeps the units they coded; of the rest, the units they
-// were never sent go first (a unit they were sent may be on their screen),
-// from the end of their list. Units no coder has (and that aren't test
-// units) are unassigned: coders take theirs from those.
+// Moving a coder's units to the other coders of the coder set (a row action
+// on the Coders page). A coder keeps the units they coded; of the rest, the
+// units they were never sent go first (a unit they were sent may be on their
+// screen), from the end of their list.
 
 /** Per coder: the units they coded, and the ones they were sent but didn't code (contracts `CoderUnits`). */
 export type CoderWork = Map<string, { coded: Set<number>; served: Set<number> }>;
@@ -33,43 +32,6 @@ function movable(set: UnitSet, work: CoderWork): number[] {
 
 /** Whether `coder` can take the unit: they don't have it yet (several coders can share a unit). */
 const canTake = (set: UnitSet, id: number) => !set.unitIds.includes(id);
-
-/** The units no coder has: every unit but the test units and the coders' (in the order given). */
-export function unassignedUnits(all: readonly number[], sets: readonly UnitSet[], tests: readonly number[]): number[] {
-  const taken = new Set([...tests, ...sets.flatMap((s) => s.unitIds)]);
-  return all.filter((id) => !taken.has(id));
-}
-
-/**
- * Gives a coder `target` units to code: fewer drops units they haven't
- * coded (they become unassigned, unless another coder has them too); more
- * takes units from `unassigned`, as many as there are. Returns the sets.
- */
-export function setToCode(
-  sets: readonly UnitSet[],
-  coder: string,
-  target: number,
-  work: CoderWork,
-  unassigned: readonly number[],
-): UnitSet[] {
-  const set = sets.find((s) => s.name === coder);
-  if (!set) return [...sets];
-  const current = coderCounts([set], work)[0].toCode;
-  const goal = Math.max(0, Math.round(target));
-  let unitIds = set.unitIds;
-  if (goal < current) {
-    const dropping = new Set(movable(set, work).slice(0, current - goal));
-    unitIds = unitIds.filter((id) => !dropping.has(id));
-  } else if (goal > current) {
-    unitIds = [...unitIds, ...unassigned.filter((id) => canTake(set, id)).slice(0, goal - current)];
-  }
-  return sets.map((s) => (s.name === coder ? { ...s, unitIds } : s));
-}
-
-/** Renames a coder in the coder set. */
-export function renameCoder(sets: readonly UnitSet[], from: string, to: string): UnitSet[] {
-  return sets.map((s) => (s.name === from ? { ...s, name: to } : s));
-}
 
 /**
  * Hands out all of `from`'s units they haven't coded to the other coders,

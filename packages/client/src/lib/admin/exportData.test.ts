@@ -3,6 +3,7 @@ import type { AnnotationRow, CoderProgress, TopLevelItem } from "@annotinder/con
 import { Labels, answerJson, answerText } from "./exportAnswers";
 import {
   annotationsTable,
+  coderListTable,
   codersTable,
   resetAnswersTable,
   timingsTable,
@@ -529,6 +530,20 @@ describe("the coders table's finished columns", () => {
       ["4", "0"],
       ["2", "9"],
       ["0", "0"],
+    ]);
+  });
+});
+
+describe("the coders table of the download", () => {
+  it("is a row per coder of the study: id, kind, and an email address where the export has one", () => {
+    const table = coderListTable([
+      { coder: "anna", kind: "expert", email: "anna@uni.nl", created: "2026-11-01T10:00:00.000Z" },
+      { coder: "P77", kind: "crowd", created: "2026-11-02T10:00:00.000Z" },
+    ]);
+    expect(table.headers).toEqual(["coder", "kind", "email", "created"]);
+    expect(table.rows).toEqual([
+      ["anna", "expert", "anna@uni.nl", "2026-11-01T10:00:00.000Z"],
+      ["P77", "crowd", "", "2026-11-02T10:00:00.000Z"],
     ]);
   });
 });

@@ -24,6 +24,7 @@ import { checkUnitUpload } from "./limits.js";
 import { checkLinkCount, syncLinks } from "./links.js";
 import { assignmentChecks } from "./deployChecks.js";
 import { putSetGroup } from "./sets.js";
+import { createCoders } from "./studyCoders.js";
 import { saveUnits } from "./units.js";
 import { firstDuplicate } from "./lists.js";
 
@@ -165,6 +166,7 @@ export async function createStudyFromRecipe(tx: Db, recipe: Recipe, options: Rec
   const declaredTwice = firstDuplicate(names);
   if (declaredTwice !== undefined) throw invalid(`Unit field '${declaredTwice}' is declared twice`);
   const { dataFields, unitIds } = await saveRecipeUnits(tx, study.id, recipe, declared);
+  if (recipe.coders.length > 0) await createCoders(tx, study.id, { coders: recipe.coders });
   const setFields = await saveRecipeSets(tx, study.id, recipe, declared, dataFields, unitIds);
   // Declared fields in their order, the others after them (a stable sort)
   const place = (name: string) => (names.includes(name) ? names.indexOf(name) : names.length);

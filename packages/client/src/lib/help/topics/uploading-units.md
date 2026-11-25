@@ -91,6 +91,13 @@ test units (`overlap`, `practice`, `gold`). Their **Type** is **column with
 a role**; any column can be made one. See
 [Role columns in your CSV](sets.md#role-columns-in-your-csv).
 
+> **A `coder_set` column names your expert coders, by their coder id.**
+> Add the coders first (**Coders** → **Add coders**). A file that names
+> anyone else isn't uploaded: _The coder_set column names a coder who
+> isn't an expert coder of this study: carl. Add them on the Coders page
+> first (with the same spelling), or take them out of the file._ Capitals
+> count: `Anna` is not `anna`.
+
 > **Uploading a role column replaces it.** Units that are not in the file
 > lose their value: the upload says how many (_12 units not in this file
 > lose their … : uploading the column replaces it_). To add units to a

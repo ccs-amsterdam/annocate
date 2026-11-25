@@ -92,8 +92,8 @@ describe("practice and gold units", () => {
     const g2 = (await c.next())!;
     expect(await submit(g2.id, "positive")).toEqual({ end: "low_quality" }); // wrong again: health 0
     expect((await c.session()).ended).toMatchObject({ item: "low_quality", outcome: "screenout" });
-    // Results › Coders counts the test units each coder finished
-    const coders = (await listOf("coders")) as {
+    // The Coders page (Sessions) counts the test units each coder finished
+    const coders = (await listOf("sessions")) as {
       ended: unknown;
       testUnits: object;
     }[];
@@ -144,7 +144,7 @@ describe("test units per coder", () => {
     expect(seen).toEqual(["unit-1", "unit-2", "g1"]);
     // A coder who never asked for units: not routed, so no test units yet
     await send("idle", "/session", {}, { "x-link-secret": secret, "x-new-session": "1" });
-    const coders = (await listOf("coders")) as CoderProgress[];
+    const coders = (await listOf("sessions")) as CoderProgress[];
     const routed = coders.find((x) => x.finished.some((f) => f.title === "main_loop" && f.units === 3))!;
     expect(routed.testUnits).toEqual({ overlap: { done: 1, total: 1 }, gold: { done: 1, total: 1 } });
     expect(coders.filter((x) => x.id !== routed.id).map((x) => x.testUnits)).toEqual([{}]);

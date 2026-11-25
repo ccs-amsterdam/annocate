@@ -88,9 +88,9 @@ tree). It can't be deployed until you choose:
   every coder codes all units. Optionally take a coder id from the URL
   (for a panel), ask coders to sign in, or set a maximum number of
   coders. Whether coders divide the units is set on each unit loop.
-- **Expert coders**: coders you know, each with their own units, named
-  in the units' coder set (`coder_set`). They get a link each, pick their
-  name from one link, or sign in.
+- **Expert coders**: coders you know, each with their own units. You add
+  them on **Coders**, and the units' coder set (`coder_set`) names them.
+  They get a link each, pick their coder id from one link, or sign in.
 
 For this study, choose **Crowd (one link)**. More: [Links](links.md#who-codes),
 [Giving each coder their own units](own-units.md).
@@ -119,7 +119,7 @@ More: [Links](links.md), [What coders see](coder-experience.md).
 ## 8. Follow progress and download results
 
 - **Overview** shows coders started, answers per day and progress per
-  loop; **Results › Coders** has a row per coder. See
+  loop; **Coders** has a row per coder and per session. See
   [Following progress](coders-and-progress.md).
 - **Results › Download** → **Download**: CSV files (or one Excel workbook), with a row per unit and coder
   in `annotations.csv`. See [Downloading results](results.md).

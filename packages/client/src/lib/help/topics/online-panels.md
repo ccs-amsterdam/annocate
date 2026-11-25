@@ -78,7 +78,7 @@ https://app.prolific.com/submissions/complete?cc=C1A2B3C4
 > Give **At the end** the completion link, or finishing coders see
 > AnnoTinder's own closing screen and aren't sent back.
 
-The outcome is in the `ended` column of `coders.csv`, to check against the
+The outcome is in the `ended` column of `sessions.csv`, to check against the
 panel.
 
 ## Screening and attention checks

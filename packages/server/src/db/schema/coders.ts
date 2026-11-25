@@ -1,6 +1,25 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
-import type { AnswerTiming, DeletionRequest, DisplayChange, SessionEnd, VariableValue } from "@annotinder/contracts";
+import {
+  bigint,
+  boolean,
+  check,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import type {
+  AnswerTiming,
+  CoderKind,
+  DeletionRequest,
+  DisplayChange,
+  SessionEnd,
+  VariableValue,
+} from "@annotinder/contracts";
 import type { CoderAssignments } from "../../runtime/types.js";
 import { bigId, timestamptz } from "./columns.js";
 import { designVersions, links, studies } from "./studies.js";
@@ -9,9 +28,38 @@ import { units, unitVersions } from "./units.js";
 // Coders and their answers.
 
 /**
+ * The study's coders (docs/coder-identity.md §2), by their coder id: per
+ * study, never changed, and one coder whatever its case. kind: `expert`
+ * (made by the researchers; the values of the units' `coder_set`) or
+ * `crowd` (made when a session with a new coder id starts). email: the
+ * address an expert coder signs in with, one coder's per study. id: a
+ * number for lists' pages.
+ */
+export const coders = pgTable(
+  "coders",
+  {
+    id: bigId().notNull().generatedAlwaysAsIdentity().unique("coders_id_key"),
+    studyId: integer()
+      .notNull()
+      .references(() => studies.id, { onDelete: "cascade" }),
+    coder: text().notNull(),
+    kind: text().$type<CoderKind>().notNull(),
+    email: text(),
+    created: timestamptz().notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ name: "coders_pkey", columns: [t.studyId, t.coder] }),
+    uniqueIndex("coders_coder_lower").on(t.studyId, sql`lower(${t.coder})`),
+    uniqueIndex("coders_email_lower").on(t.studyId, sql`lower(${t.email})`),
+    check("coders_kind_check", sql`${t.kind} IN ('expert', 'crowd')`),
+  ],
+);
+
+/**
  * Coder sessions: one coder's run through a study (docs/coder-identity.md).
  * link_id: the link they came with; coder: the coder id
- * (`$session.coder`); session: its `$session` values (URL parameters,
+ * (`$session.coder`), one of the study's coders (none: an anonymous
+ * session); session: its `$session` values (URL parameters,
  * linked random conditions); assignments: the loops they reached; ended:
  * how the session ended; deletion_request: they asked for their answers to
  * be deleted.
@@ -42,6 +90,12 @@ export const coderSessions = pgTable(
     index("coder_sessions_email").on(t.studyId, sql`lower(${t.email})`),
     index("coder_sessions_coder").on(t.studyId, t.coder),
     index("coder_sessions_link").on(t.linkId),
+    // A session's coder is one of the study's; deleting the coder deletes their sessions
+    foreignKey({
+      name: "coder_sessions_coder_fkey",
+      columns: [t.studyId, t.coder],
+      foreignColumns: [coders.studyId, coders.coder],
+    }).onDelete("cascade"),
   ],
 );
 

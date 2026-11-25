@@ -1,10 +1,10 @@
 import { CODER_SET, TEST_SET, type RoleColumn, type SetGroupResponse, type TestSetType } from "@annotinder/contracts";
-import { Mail, Sparkles, Trash2, Users } from "lucide-react";
+import { Sparkles, Trash2, Users } from "lucide-react";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { useDeleteSetGroupMutation } from "../../../admin/queries";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
-import { EMAIL_COLUMN_INFO, ROLE_INFO, ROLE_LABELS, TEST_SET_INFO, isEmailColumn } from "../../../admin/setKinds";
+import { ROLE_INFO, ROLE_LABELS, TEST_SET_INFO } from "../../../admin/setKinds";
 import { HelpButton } from "../../../help/HelpButton";
 import { CreateSetMenu } from "./CreateSetMenu";
 
@@ -24,7 +24,7 @@ export function SetsBar({
   current,
   onSelect,
   onCreate,
-  onManageCoders,
+  onOpenCoders,
 }: {
   client: ResearcherApi;
   groups: SetGroupResponse[];
@@ -32,8 +32,8 @@ export function SetsBar({
   current: ShownSet | null;
   onSelect: (set: ShownSet | null) => void;
   onCreate: (column: RoleColumn) => void;
-  /** Opens the coders panel (coded and left per coder, moving units). */
-  onManageCoders: () => void;
+  /** Opens the Coders page (the coders, their units and progress). */
+  onOpenCoders: () => void;
 }) {
   const deleteGroup = useDeleteSetGroupMutation(client);
   const chip = (active: boolean) =>
@@ -54,16 +54,12 @@ export function SetsBar({
       </div>
       {groups.map((g) => (
         <div key={g.name} className="flex items-center gap-1.5">
-          <span
-            className="flex w-28 items-center gap-1 truncate text-xs font-semibold"
-            title={`${g.name}: ${isEmailColumn(g) ? EMAIL_COLUMN_INFO : ROLE_INFO[g.name]}`}
-          >
-            {isEmailColumn(g) && <Mail className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Email addresses" />}
-            <span className="truncate">{ROLE_LABELS[g.name]}</span>
+          <span className="w-28 truncate text-xs font-semibold" title={`${g.name}: ${ROLE_INFO[g.name]}`}>
+            {ROLE_LABELS[g.name]}
           </span>
           {g.name === CODER_SET && (
-            <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 text-xs" onClick={onManageCoders}>
-              <Users className="h-3.5 w-3.5" /> Coders…
+            <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 text-xs" onClick={onOpenCoders}>
+              <Users className="h-3.5 w-3.5" /> Coders
             </Button>
           )}
           {/* Many values: the row scrolls */}

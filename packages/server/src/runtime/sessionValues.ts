@@ -20,8 +20,9 @@ export const runtimeInvite = (item: SessionItem | null | undefined): Invite => i
 // A new session's `$session` values (docs/architecture.md §6-7): the URL
 // parameters the design declares, `source`, and who the coder is (`coder`):
 // per the coder unit assignment, their value in the units' `coder_set` (by
-// their link, the name they picked, or their login's email), or a crowd's id
-// from a URL parameter (or the login's email). Fixed when the session starts.
+// their link, the name they picked, or the expert coder whose email address
+// their login has), or a crowd's id from a URL parameter (or the login's
+// email). Fixed when the session starts.
 
 /** What the design asks of a new session, and the coders (`coder_set`'s values). */
 export interface SessionRules {
@@ -29,7 +30,13 @@ export interface SessionRules {
   coders: readonly string[];
 }
 
-/** Expert coders who sign in: their units are their address's. */
+/** A login as a new session reads it: its verified address, and the expert coder who signs in with it (`coderOfEmail`), if any. */
+export interface SessionLogin {
+  email: string;
+  coder?: string | null;
+}
+
+/** Expert coders who sign in: their units are those of the coder with their address. */
 export const emailCoders = (rules: SessionRules) => {
   const invite = runtimeInvite(rules.item);
   return invite.mode === "coders" && invite.link === "login";
@@ -43,8 +50,8 @@ const fits = (value: string, pattern?: string) => !pattern || matchesUrlPattern(
  * required URL parameter or one with a value the design doesn't accept is
  * refused (400 `url_param_missing` / `url_param_invalid`), so such a link
  * doesn't start. Where sign-in is required only logins (401
- * `auth_required`), and with email coders only their addresses (403
- * `email_not_allowed`). A link's coder that is no longer one: 403
+ * `auth_required`), and where expert coders sign in only the address of a
+ * coder with units (403 `email_not_allowed`). A link's coder that is no longer one: 403
  * `link_inactive`. The coder (also `$session.coder`): expert coders' value
  * in `coder_set`; a crowd's URL parameter, or with a required login the email.
  */
@@ -52,8 +59,9 @@ export function sessionValues(
   rules: SessionRules,
   params: Record<string, string>,
   urlParams: Record<string, string>,
-  email: string | null,
+  login: SessionLogin | null,
 ): { coder: string | null; session: Record<string, string> } {
+  const email = login?.email ?? null;
   const read = (key: string) => {
     const value = own(urlParams, key)?.trim();
     if (value && value.length > MAX_SESSION_VALUE)
@@ -81,12 +89,11 @@ export function sessionValues(
   let coderId: string | null = null;
   const invite = runtimeInvite(rules.item);
   if (invite.mode === "coders") {
-    // The coder: the login's email, or the link's
+    // The coder: the one who signs in with the login's address, or the link's
     const values = rules.coders;
     let coder: string | undefined;
     if (invite.link === "login") {
-      const lower = email!.toLowerCase();
-      coder = values.find((v) => v.toLowerCase() === lower);
+      coder = values.find((v) => v === login?.coder);
       if (coder === undefined)
         throw new HttpError(403, "This email address has no access to this study", "email_not_allowed");
     } else if (params.coder !== undefined) {

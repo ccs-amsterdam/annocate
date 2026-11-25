@@ -1203,8 +1203,10 @@ coders' data.
 
 - **Format** (`StudyExportManifestSchema`): gzipped JSON lines, a manifest
   (release, last migration), then each row as stored.
-- **Coders' email addresses** are in the file only if the deployed design
-  asks coders to sign in; otherwise the export leaves them out.
+- **Coders' email addresses** (the ones sessions signed in with, and the
+  ones researchers gave their expert coders) are in the file only if the
+  deployed design asks coders to sign in; otherwise the export leaves them
+  out.
 - **Import** loads the rows into an empty in-memory database at that
   migration, applies newer migrations, and copies the result in one
   transaction. Exports from older releases open on newer ones; from a newer

@@ -180,7 +180,7 @@ columns have a fixed name and meaning; any other column is data:
 
 | Column | Values | Used by |
 | --- | --- | --- |
-| `coder_set` | coder names or email addresses (`anna;bob`: several) | expert coders: who codes the unit |
+| `coder_set` | the ids of the study's expert coders (`anna;bob`: several; `coder-identity.md` §2) | expert coders: who codes the unit |
 | `condition_set` | an experiment's conditions (several per unit) | the experiment that selects units |
 | `part_set` | parts of the study, e.g. `pre`, `post` (several per unit) | a loop shows one part |
 | `test_set` | one of `overlap`, `practice`, `gold`, or empty (a coding unit) | where loops place test units, and their checks |
@@ -216,22 +216,25 @@ session:
     maxCoders: 200                                # optional: the link's sample size
 ```
 
-**Expert coders** (`mode: "coders"`): the values of the units'
-`coder_set` are the coders; a session gets its coder's units plus the test
-units. Until the units have a `coder_set` there are no coders: the draft
+**Expert coders** (`mode: "coders"`): the study's expert coders (the
+`coders` table, made by the researchers: `coder-identity.md` §2) with a set
+in the units' `coder_set` code; a session gets its coder's units plus the
+test units. Until the units have a `coder_set` nobody has units: the draft
 saves, deploying can't.
 
 | `link` | How coders get in |
 | --- | --- |
 | `per_coder` | a link per coder; the link's coder (`links.params.coder`) is the session's. A link whose coder left `coder_set`: 403 `link_inactive` |
-| `login` | one link, sign-in required; the coder is the login's address (all coders must be email addresses; others get 403 `email_not_allowed`) |
-| `pick_name` | one link; coders pick their name (`GET /names`, then `x-coder-name`; 409 `name_required` until they do). `nameDevices: "first"` (default): a name belongs to the first device that picks it (others: 409 `name_taken`); `"any"`: picking a name continues its session. Names are visible to anyone with the link |
+| `login` | one link, sign-in required; the coder is the one whose email address (`coders.email`) the login has, their id is the session's coder (every coder with units needs an address; other logins get 403 `email_not_allowed`) |
+| `pick_name` | one link; coders pick their coder id (`GET /names`, then `x-coder-name`; 409 `name_required` until they do). `nameDevices: "first"` (default): a name belongs to the first device that picks it (others: 409 `name_taken`); `"any"`: picking a name continues its session. The ids are visible to anyone with the link (deploying warns about ids that look like email addresses) |
 
 **Crowd (one link)** (`mode: "crowd"`, also for surveys and survey experiments): one
 link for everyone.
 
 - `coderParam`: the coder id from a URL parameter, required (400
-  `url_param_missing` / `url_param_invalid`) unless `optional: true`.
+  `url_param_missing` / `url_param_invalid`) unless `optional: true`. A new
+  id becomes a coder of the study (kind `crowd`); an id of one of the
+  study's expert coders is refused (409 `coder_is_expert`).
 - `login`: coders must sign in (401 `auth_required`); without a `coderParam`
   value the email is the coder id.
 - `maxCoders`: the link starts at most this many sessions (contracts
@@ -239,8 +242,9 @@ link for everyone.
 - Whether units are divided among the coders is each loop's (`divide`,
   §6.2). Without it every coder codes all their units.
 
-**Who the coder is** (`$session.coder`): the expert coder's value, the
-`coderParam` value, else the login's email where sign-in is required. A new
+**Who the coder is** (`$session.coder`): the expert coder's id, the
+`coderParam` value, else the login's email where a crowd must sign in. A
+session with a coder id is of one of the study's coders (`coders`). A new
 device for a coder who already has a session is asked first (409
 `coder_has_session`, `coder-identity.md` §4).
 
@@ -379,19 +383,26 @@ new unit version. Only the role columns can be written
 `condition_set`, `part_set`, `test_set`); an upload can't give them as
 data.
 
+`coder_set` names expert coders of the study only: a coder set naming
+anyone else is refused, listing them (400 `unknown_coders`,
+`checkCoderSet`); the researcher UI checks an uploaded file before it
+uploads anything.
+
 The coder set dialog makes `coder_set` (`distributeUnits`, contracts
-`sets.ts`): it shuffles the units with a seed, keeps the existing test
-units (or draws a number of each type anew), and divides the rest over the
-coders. The Units page's split tooling makes `condition_set` or `part_set`
+`sets.ts`) for the expert coders selected in it: it shuffles the units with
+a seed, keeps the existing test units (or draws a number of each type
+anew), and divides the rest over the coders. The Units page's split tooling makes `condition_set` or `part_set`
 (`splitIntoSets`).
 
 **Deploy checks** (server `shared/deployChecks.ts`, `assignmentChecks`):
 
-- errors: expert coders without `coder_set` values; sign-in coders
-  (`link: "login"`) whose values aren't all email addresses; an experiment
+- errors: expert coders without `coder_set` values; where coders sign in
+  (`link: "login"`), coders of `coder_set` without an email address, named
+  (contracts `coderInviteChecks`); an experiment
   that selects units without `condition_set`, or with listed conditions it
   has no units for;
-- warnings: conditions of `condition_set` the experiment doesn't list; a
+- warnings: where coders pick their name (`pick_name`), coder ids that look
+  like email addresses; conditions of `condition_set` the experiment doesn't list; a
   loop's part `part_set` doesn't have; a part no loop shows (when every loop
   has a part); units no coder gets (not test units, and without a coder, a
   condition, or a part a loop shows); loops that check practice or gold
@@ -469,7 +480,7 @@ session values.
 (contracts `linkCombinations`): one, or for `link: "per_coder"` one per
 coder of `coder_set` (`params: { coder }`; above 500 deploying needs
 `confirmLinks`, at most 2000), keyed by their values so a link keeps its
-secret across versions. Changes to `coder_set` sync them. A link no longer made is **retired** (403
+secret across versions. Changes to `coder_set` sync them. Deleting a coder revokes their link (`coder-identity.md` §8). A link no longer made is **retired** (403
 `link_inactive` for new coders; started coders go on), never deleted. A
 revoked link stays revoked through a redeploy until reopened. A link has no
 settings of its own: its label is its values (or "Open link"), its
@@ -584,7 +595,7 @@ transaction.
 
 - **Schema**: TypeScript, one file per area in `server/src/db/schema/`
   (accounts and settings; studies, design versions, deployments, links;
-  units; coder sessions, devices, answers; distribution; logs and rate
+  units; coders, their sessions, devices and answers; distribution; logs and rate
   limits). camelCase in code, snake_case in the database.
 - **Migrations** are generated from the schema
   (`pnpm --filter @annotinder/server db:generate`) into `server/migrations/`
@@ -615,6 +626,7 @@ transaction.
 | `server/src/researcher/` | researcher API, one file per path; `auth.ts`, `login.ts`; the admin API in `admin.ts` with a file per section (`admin.*.ts`) |
 | `server/src/oidc.ts`, `shared/accounts.ts`, `shared/sessions.ts` | researcher login, users and API keys, sessions |
 | `server/src/shared/` | queries shared by the APIs; `results/` (the results summaries), `deployChecks.ts` (a design against the role columns) |
+| `server/src/shared/studyCoders.ts`, `coderDeletion.ts` | the study's coders (`coders`): making expert coders, a crowd's coder for a new session, the list with their units, the units without a coder; deleting coders and sessions |
 | `server/src/shared/request.ts`, `http.ts` | reading a request (`parseJson`, `parseQuery`, `idParam`) and the one error shape |
 | `server/src/shared/bodyLimit.ts`, `rateLimit.ts`, `clientAddress.ts`, `requestLog.ts` | body sizes per route, rate limits, whose address a request is from, the request log and request ids |
 | `server/src/db/` | `schema/`, `index.ts` (open and migrate), `sql.ts`, `locks.ts` (every lock: `advisoryLock`, `lockUnits`, `inTurn`, the migration lock) |

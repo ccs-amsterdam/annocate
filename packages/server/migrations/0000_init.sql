@@ -254,6 +254,18 @@ CREATE TABLE "coder_sessions" (
 	"known_units" integer
 );
 --> statement-breakpoint
+CREATE TABLE "coders" (
+	"id" bigint GENERATED ALWAYS AS IDENTITY (sequence name "coders_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
+	"study_id" integer NOT NULL,
+	"coder" text NOT NULL,
+	"kind" text NOT NULL,
+	"email" text,
+	"created" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "coders_pkey" PRIMARY KEY("study_id","coder"),
+	CONSTRAINT "coders_id_key" UNIQUE("id"),
+	CONSTRAINT "coders_kind_check" CHECK ("coders"."kind" IN ('expert', 'crowd'))
+);
+--> statement-breakpoint
 CREATE TABLE "session_deletions" (
 	"id" bigint PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "session_deletions_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1),
 	"study_id" integer NOT NULL,
@@ -377,6 +389,8 @@ ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_design_version
 ALTER TABLE "annotation_values" ADD CONSTRAINT "annotation_values_device_id_session_devices_id_fk" FOREIGN KEY ("device_id") REFERENCES "public"."session_devices"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "coder_sessions" ADD CONSTRAINT "coder_sessions_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "coder_sessions" ADD CONSTRAINT "coder_sessions_link_id_links_id_fk" FOREIGN KEY ("link_id") REFERENCES "public"."links"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coder_sessions" ADD CONSTRAINT "coder_sessions_coder_fkey" FOREIGN KEY ("study_id","coder") REFERENCES "public"."coders"("study_id","coder") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "coders" ADD CONSTRAINT "coders_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session_deletions" ADD CONSTRAINT "session_deletions_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session_devices" ADD CONSTRAINT "session_devices_study_id_studies_id_fk" FOREIGN KEY ("study_id") REFERENCES "public"."studies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session_devices" ADD CONSTRAINT "session_devices_session_id_coder_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."coder_sessions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -423,6 +437,8 @@ CREATE INDEX "annotation_values_device" ON "annotation_values" USING btree ("dev
 CREATE INDEX "coder_sessions_email" ON "coder_sessions" USING btree ("study_id",lower("email"));--> statement-breakpoint
 CREATE INDEX "coder_sessions_coder" ON "coder_sessions" USING btree ("study_id","coder");--> statement-breakpoint
 CREATE INDEX "coder_sessions_link" ON "coder_sessions" USING btree ("link_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "coders_coder_lower" ON "coders" USING btree ("study_id",lower("coder"));--> statement-breakpoint
+CREATE UNIQUE INDEX "coders_email_lower" ON "coders" USING btree ("study_id",lower("email"));--> statement-breakpoint
 CREATE INDEX "session_deletions_study" ON "session_deletions" USING btree ("study_id","deleted_at");--> statement-breakpoint
 CREATE INDEX "session_devices_session" ON "session_devices" USING btree ("session_id");--> statement-breakpoint
 CREATE INDEX "unit_codings_coder" ON "unit_codings" USING btree ("session_id","loop_key","created");--> statement-breakpoint

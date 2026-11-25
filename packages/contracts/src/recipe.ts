@@ -6,6 +6,7 @@ import { UnitDataSchema } from "./common.js";
 import { StudyNameSchema } from "./study.js";
 import { RoleColumnSchema, SetNameSchema } from "./sets.js";
 import { UnitsSpecSchema } from "./unitFields.js";
+import { CoderEmailSchema, CoderIdSchema } from "./coder.js";
 
 /**
  * A recipe: everything a new study starts with, in one document
@@ -20,6 +21,8 @@ export const RecipeSchema = z.object({
   name: StudyNameSchema,
   /** Units: your id, and the fields (the first unit's fields are the study's, as with an upload). */
   units: z.array(z.object({ id: z.string().min(1), data: UnitDataSchema })).default([]),
+  /** The expert coders, each with an email address or without: `coder_set` names only these. */
+  coders: z.array(z.object({ coder: CoderIdSchema, email: CoderEmailSchema.optional() })).default([]),
   /** The columns with a role (`coder_set`, `test_set`, ...: stored as sets), by the units' ids (a set's units in order; `ordered`: that order was given). */
   sets: z
     .array(

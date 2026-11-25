@@ -27,7 +27,8 @@ A zip of JSON-lines files, one per table, rows in the API's shapes:
 | --- | --- | --- |
 | `answers.jsonl` | answer, also reset ones (`retiredAt`) | `AnnotationRow` |
 | `units.jsonl` | unit version coders saw | `UnitVersion` |
-| `coders.jsonl` | coder session | `CoderProgress` |
+| `sessions.jsonl` | coder session | `CoderProgress` |
+| `coders.jsonl` | coder of the study | `coder`, `kind`, `created`, `email` (where coders sign in) |
 | `design_versions.jsonl` | design version answers were given under, and the live one | `DesignVersion` |
 | `deployments.jsonl` | deployed version | `DeploymentVersion` |
 | `sets.jsonl` | set column | `SetGroupResponse` |

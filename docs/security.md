@@ -67,7 +67,7 @@ logged at start and shown as hardening warnings.
   sensitive actions.
 - `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION=true`: users log in although the
   provider doesn't confirm their address. They can still claim invitations to
-  that address and code as it in a study with email coders, so with a provider
+  that address and code as the expert coder with that address in a study where coders sign in, so with a provider
   where people choose their own address, someone could take another's roles.
   Domain roles and roles for everyone still need a verified address. Only for
   a provider that verifies but doesn't send the claim.
@@ -252,6 +252,11 @@ coders' answers; who can get them, and when they are removed:
 - **Sessions** are a device cookie (`coder-identity.md` §4): httpOnly, only a
   hash stored. A coder id is a label: a link with a known coder id on a new
   device doesn't continue that session.
+- **Expert coders' email addresses** (`coders.email`, entered by the
+  researchers; `coder-identity.md` §2) say who may sign in as which coder.
+  Everyone with a role in the study sees them (the Coders page); changing
+  them needs WRITE. They are in exports only where the deployed design has
+  coders sign in, and never in the deletion log.
 - **Logging in** on a link links the login's email to the session, but
   only where the study requires sign-in or the coder chose it
   (`x-use-login`, `coder-identity.md` §5): a login that is just there in the

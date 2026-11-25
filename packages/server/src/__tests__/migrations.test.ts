@@ -10,7 +10,7 @@ describe("migrations", () => {
       "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
     );
     expect(tables.map((t) => t.name)).toContain("annotation_values");
-    expect(tables.length).toBe(33);
+    expect(tables.length).toBe(34);
     expect(await query(db, "SELECT relpersistence FROM pg_class WHERE relname = 'rate_limits'")).toEqual([
       { relpersistence: "u" },
     ]);

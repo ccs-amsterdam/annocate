@@ -1,4 +1,4 @@
-import type { RoleColumn, SetGroupResponse } from "@annotinder/contracts";
+import { CODER_SET, type RoleColumn, type SetGroupResponse } from "@annotinder/contracts";
 import { AlertCircle } from "lucide-react";
 import type { JoinMode } from "../../../../admin/uploadUnits";
 import { ROLE_LABELS } from "../../../../admin/setKinds";
@@ -82,7 +82,7 @@ export function JoinSets({
       ))}
       <p className="text-[11px] text-muted-foreground">
         Shuffled first. Distributing fills the smallest sets first; new sets are named on (e.g. s5 after s4). Test units
-        stay as they are. New coders get their own link if the design makes a link per coder.
+        stay as they are. The coder set only takes the study&apos;s expert coders: add coders on the Coders page.
       </p>
     </div>
   );
@@ -115,9 +115,12 @@ function JoinGroup({
       >
         <option value="">Not in it</option>
         <option value="distribute">Distribute over its {sets.length} sets</option>
-        <option value="new">
-          New sets of about {average} units ({newSets} new set{plural(newSets)})
-        </option>
+        {/* A coder set's sets are the study's expert coders: new ones are made on the Coders page */}
+        {group.name !== CODER_SET && (
+          <option value="new">
+            New sets of about {average} units ({newSets} new set{plural(newSets)})
+          </option>
+        )}
       </select>
     </label>
   );

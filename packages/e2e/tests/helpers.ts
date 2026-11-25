@@ -65,8 +65,14 @@ export async function answers(request: APIRequestContext, studyId: number): Prom
     .annotations;
 }
 
+/** The study's coder sessions, with their progress. */
 export async function coders(request: APIRequestContext, studyId: number): Promise<CoderProgress[]> {
-  return list<CoderProgress>(request, `/study/${studyId}/coders`);
+  return list<CoderProgress>(request, `/study/${studyId}/sessions`);
+}
+
+/** Makes expert coders of a study, by their ids: what a coder set (`coder_set`) may name. */
+export async function addCoders(request: APIRequestContext, studyId: number, ids: string[]): Promise<void> {
+  await api(request, "POST", `/study/${studyId}/coders`, { coders: ids.map((coder) => ({ coder })) });
 }
 
 /** Waits until the coding screen shows this question. */

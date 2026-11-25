@@ -101,7 +101,7 @@ the question show (`unit.headline`, or a named block, see
 
 | Where               | Asked                         | Results                                     |
 | ------------------- | ----------------------------- | ------------------------------------------- |
-| Outside a unit loop | once per coder                | `coders.csv`: a row per coder               |
+| Outside a unit loop | once per coder                | `sessions.csv`: a row per coder session     |
 | A unit loop         | once per unit                 | `annotations.csv`: a row per unit and coder |
 | In a branch         | only when the condition holds | as above; empty when skipped                |
 

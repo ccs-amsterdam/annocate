@@ -47,9 +47,9 @@ To do on the server (the guide's steps):
 6. **The smoke test with an API key**, and one full study (steps 8 and 9).
 7. **Backups:** add the VM to the nightly backup of `/opt` or copy the dumps
    off the machine, and run the restore test once (`hosting.md`, "Backups").
-8. **Email coders, by hand.** Use a design whose coder set (`coder_set`) holds email
-   addresses, with one link and sign-in required. Each coder gets the units
-   of their own address; any other address gets 403 `email_not_allowed`.
+8. **Coders who sign in, by hand.** Use a design with expert coders who sign in
+   (one link), each coder with an email address (the Coders page). Each coder gets
+   their own units, under their coder id; any other address gets 403 `email_not_allowed`.
    The e2e tests don't cover this.
 9. **Move a study.** The tests export and import on PGlite and on
    Postgres 16 (`TEST_DATABASE_URL`). On the pilot server (Postgres 18),

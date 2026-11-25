@@ -5,7 +5,7 @@ import {
   TEST_SET,
   answerColumn,
   answerKeyProblems,
-  coderAccess,
+  coderInviteChecks,
   collectQuestions,
   forEachItem,
   inviteOf,
@@ -21,6 +21,7 @@ import {
 } from "@annotinder/contracts";
 import type { Db } from "../db/index.js";
 import { listSetGroups } from "./sets.js";
+import { expertCoders } from "./studyCoders.js";
 import { servedUnits, unitIds } from "./units.js";
 
 // Checks of a design about to be deployed against the units' columns with a
@@ -55,10 +56,11 @@ function columnsOf(groups: SetGroupResponse[]) {
 
 /**
  * Checks of a design about to be deployed against the units' columns with a
- * role. Errors: expert coders without `coder_set`, or (signing in) with
- * values that aren't all email addresses; an experiment that selects units
+ * role. Errors: expert coders without `coder_set`, or (signing in) coders
+ * of it without an email address; an experiment that selects units
  * without `condition_set`, or with conditions it has no units for.
- * Warnings: conditions no experiment lists, parts no loop shows and loop
+ * Warnings: coder ids that look like email addresses where coders pick
+ * their name, conditions no experiment lists, parts no loop shows and loop
  * parts no unit has, units no coder gets, and test units a loop checks
  * without them or without right answers that fit.
  */
@@ -73,7 +75,7 @@ export async function assignmentChecks(db: Db, studyId: number, items: DesignIte
   const loops = unitLoops(items).map(({ loop }) => ({ title: loopTitle(loop), units: loopUnits(loop) }));
 
   const found = [
-    coderChecks(invite, coders),
+    coderChecks(invite, coders, await expertCoders(db, studyId)),
     experimentChecks(experiments, session, conditions),
     partChecks(loops, parts),
   ];
@@ -100,20 +102,22 @@ export async function assignmentChecks(db: Db, studyId: number, items: DesignIte
   return { errors, warnings };
 }
 
-/** Expert coders need a `coder_set` column; signing in, its values are their email addresses. */
-function coderChecks(invite: Invite, coders: string[]): Checks {
-  const errors: string[] = [];
-  if (invite?.mode === "coders") {
-    if (coders.length === 0)
-      errors.push(
-        `Expert coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`,
-      );
-    else if (invite.link === "login" && coderAccess(coders) !== "email")
-      errors.push(
-        `Coders sign in with their email address, but the coders (${CODER_SET}) aren't all email addresses: make them email addresses, or give each coder a link.`,
-      );
-  }
-  return { errors, warnings: [] };
+/**
+ * Expert coders need a `coder_set` column; what the invitation asks of its
+ * coders (contracts `coderInviteChecks`): an email address each where they
+ * sign in, and a warning for ids like email addresses where they pick their name.
+ */
+function coderChecks(invite: Invite, coders: string[], experts: { coder: string; email: string | null }[]): Checks {
+  if (invite?.mode === "coders" && coders.length === 0)
+    return {
+      errors: [`Expert coders: the units have no ${CODER_SET} column yet, which says who codes which units: make one.`],
+      warnings: [],
+    };
+  const emails = new Map(experts.map((c) => [c.coder, c.email]));
+  return coderInviteChecks(
+    invite,
+    coders.map((coder) => ({ coder, email: emails.get(coder) ?? null })),
+  );
 }
 
 /** The experiments that select units (by `condition_set`). */

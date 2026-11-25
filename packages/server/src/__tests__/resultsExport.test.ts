@@ -83,6 +83,7 @@ describe("results export", () => {
         "design_versions.jsonl",
         "devices.jsonl",
         "manifest.json",
+        "sessions.jsonl",
         "sets.jsonl",
         "units.jsonl",
       ].sort(),
@@ -93,7 +94,15 @@ describe("results export", () => {
     expect(manifest).toMatchObject({ format: "annotinder-results-export", formatVersion: 1 });
     for (const row of lines("answers.jsonl")) AnnotationRowSchema.parse(row);
     for (const row of lines("units.jsonl")) UnitVersionSchema.parse(row);
-    for (const row of lines("coders.jsonl")) CoderProgressSchema.parse(row);
+    for (const row of lines("sessions.jsonl")) CoderProgressSchema.parse(row);
+    // The study's coders, also the ones who haven't started (anna, bob and carla)
+    expect(lines("coders.jsonl")).toEqual(
+      ["anna", "bob", "carla", "Example coder 1", "Example coder 2", "Example coder 3"].map((coder) => ({
+        coder,
+        kind: "expert",
+        created: expect.any(String),
+      })),
+    );
     expect(lines("design_versions.jsonl")[0]).toMatchObject({ number: 1, items: expect.any(Array) });
     // The same as the paged answers API
     const api = (await (await app.request(`/api/study/${study}/annotations?limit=10000`, { headers })).json()) as {
@@ -158,6 +167,20 @@ describe("results export", () => {
     expect(await readdir(join(files.root, "exports"))).toEqual([]);
   });
 
+  it("the coders' email addresses are in it only where the deployed design has coders sign in", async () => {
+    const study = await example("swipe-sentiment");
+    await db.execute(sql`UPDATE coders SET email = 'anna@uni.nl' WHERE study_id = ${study} AND coder = 'anna'`);
+    const emails = async () =>
+      (await download((await exportOf(study)).url)).lines("coders.jsonl").map((c) => (c as { email?: string }).email);
+    expect((await emails()).every((email) => email === undefined)).toBe(true);
+    await db.execute(
+      sql`UPDATE design_versions SET updated = now(), session = jsonb_set(session, '{invite,link}', '"login"')
+          WHERE id = (SELECT design_version_id FROM deployments WHERE study_id = ${study})`,
+    );
+    // The address changed what the export holds: a new file, with it
+    expect((await emails()).filter(Boolean)).toEqual(["anna@uni.nl"]);
+  });
+
   it("the deletion log keeps a hash where the coder id is an email address", async () => {
     const study = await example("swipe-sentiment");
     const sessions = await rows<{ id: number }>(
@@ -165,6 +188,9 @@ describe("results export", () => {
       sql`SELECT id FROM coder_sessions WHERE study_id = ${study} ORDER BY id LIMIT 2`,
     );
     const [withAddress, withName] = sessions.map((s) => Number(s.id));
+    await db.execute(
+      sql`INSERT INTO coders (study_id, coder, kind) VALUES (${study}, 'Ann@Uni.nl', 'crowd'), (${study}, 'coder-7', 'crowd')`,
+    );
     await db.execute(sql`UPDATE coder_sessions SET coder = 'Ann@Uni.nl' WHERE id = ${withAddress}`);
     await db.execute(sql`UPDATE coder_sessions SET coder = 'coder-7' WHERE id = ${withName}`);
     const res = await app.request(`/api/study/${study}/coders/delete`, {

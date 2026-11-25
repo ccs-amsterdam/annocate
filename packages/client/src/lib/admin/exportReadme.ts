@@ -33,10 +33,10 @@ annotations.csv  A row per unit and coder: the unit's id (unit_id), the unit
                  answer was given under.`
                      : ""
                  }
-coders.csv       A row per coder session (session_id): the coder (their name
-                 or id: a coders' column value, a panel's id from the URL, or
-                 the email they signed in with), email (where signing in was
-                 required), link, started, last
+sessions.csv     A row per coder session (session_id): the coder (their coder
+                 id: an expert coder's, a panel's id from the URL, or
+                 for a crowd that signs in the email they signed in with),
+                 email (where signing in was required), link, started, last
                  active, how their session ended (complete, screenout or
                  quit), when they asked for their answers to be deleted
                  (deletion_requested; not done yet), their session values
@@ -44,6 +44,11 @@ coders.csv       A row per coder session (session_id): the coder (their name
                  units finished per loop (finished_<loop id>, e.g.
                  finished_loop_1), and their answers outside unit
                  loops (random conditions included).
+coders.csv       A row per coder of the study, also the ones who haven't
+                 started: coder (their coder id), kind (expert: made by the
+                 researchers, with their own units; crowd: made when they
+                 started), email (an expert coder's address, where coders
+                 sign in with it) and created. Join sessions on coder.
 units.csv        The units as deployed, a row per version: a unit replaced
                  after it was coded has a row per version (deployed: when).
                  Coders saw only the fields the design shows; the others
@@ -67,7 +72,7 @@ display_changes.csv  How each coder's screen looked, a row per change: their
                  keys for answers (numbers, numpad, letters, filter), in
                  responsive studies the width (narrow or wide), and where
                  coders choose it the theme; at: when it changed. Join
-                 answers on session_id and time. coders.csv's display
+                 answers on session_id and time. sessions.csv's display
                  column lists each session's displays.
 devices.csv      The devices coders used: device type (phone, tablet,
                  desktop), browser and operating system, and when each
@@ -104,7 +109,7 @@ question.comment. Questions with spans, relations or several answers also
 have a .json column (question.json) with the full answer: spans with their field and, per fragment, the
 offset and length in that field of the unit version (units.csv), relations
 with the ids of their spans.
-Join annotations and coders on session_id. Times are UTC (ISO 8601).
+Join annotations and sessions on session_id. Times are UTC (ISO 8601).
 `;
 }
 

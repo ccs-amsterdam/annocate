@@ -17,12 +17,11 @@ import { CodersView } from "./CodersView";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDesignLabels, type DesignLabels } from "./designLabels";
 import { RESULTS_VIEWS, useResultsView, type ResultsView } from "./resultsView";
-import { CodersPanel } from "../CodersPanel";
 
 /**
  * The Results page (docs/client.md §7, "Results"): the answers so far (per
- * question, agreement, units by disagreement), the coders (their sessions,
- * time and agreement), and the download. Summaries load once, and again on
+ * question, agreement, units by disagreement), the coders (their time and
+ * agreement; the coders themselves are on the Coders page), and the download. Summaries load once, and again on
  * Refresh.
  */
 export function ResultsPanel({ client }: { client: ResearcherApi }) {
@@ -84,16 +83,10 @@ const VIEWS: Record<
     needs: ["units"],
     show: ({ units }, client, labels) => <UnitsView client={client} units={units.data!.units} labels={labels} />,
   },
-  // The sessions, with deleting and resetting; then their time and agreement
+  // Per coder session: time and agreement
   Coders: {
     needs: ["coders", "agreement"],
-    show: ({ coders, agreement }, client) => (
-      <>
-        <CodersPanel client={client} />
-        <h3 className="mt-2 text-sm font-semibold">Time and agreement</h3>
-        <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />
-      </>
-    ),
+    show: ({ coders, agreement }) => <CodersView coders={coders.data!.coders} agreement={agreement.data!.questions} />,
   },
 };
 

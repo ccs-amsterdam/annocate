@@ -571,22 +571,26 @@ the open part in `session/sessionTab.ts`); its JSON is that part only
 (`SessionPreview.tsx`: the links, what a link must carry, the screen). Two modes:
 **Expert coders** and **Crowd (one link)** (`session/InvitationSettings.tsx`). The
 expert coders form shows the units' coder set (`coder_set`: how many
-coders, or that one is required) and how coders get in (disabled until
-there is a coder set). "Create coder set…" / "Update coder set…"
-(`session/CoderSetDialog.tsx`) makes or replaces `coder_set`, after asking
-(names, email addresses or a number of coders; coders per unit or everyone
-codes everything), or gives the units without a coder (not test units) to
-its coders and keeps the rest. Its test units: the current ones (counts per type from
-`test_set`) are kept and shown disabled; with "Redistribute test units"
-that many overlap, practice and gold units are drawn anew. It keeps the
-units coders already coded with them by default (`GET /coders/units`,
-contracts `distributeUnits`). On **Units**, **Coders…** at the start of the
-coder set's row (`units/CodersDialog.tsx`) shows per coder what they coded
-and have to code, and the unassigned units: a coder's "to code" is set
-(fewer: uncoded units become unassigned, never-sent ones first; more:
-taken from the unassigned ones), a coder's uncoded units handed to the
-others, coders renamed (until they start) or added, with whether all are
-email addresses; "Confirm unit assignments" saves it (`admin/moveUnits.ts`). The One link form has
+coders, or that one is required), how coders get in (disabled until
+there is a coder set), and what that asks of the coders
+(`coders/InviteChecks.tsx`, contracts `coderInviteChecks`: an email address
+each where they sign in, no ids like addresses where they pick a name).
+"Create coder set…" / "Update coder set…" opens the coder set dialog
+(`session/CoderSetDialog.tsx`, also on the Units and Coders pages), in two
+tabs. **Select coders** (`session/coderSet/SelectCoders.tsx`, its plan as
+plain functions in `admin/coderSet.ts`): a checklist of the study's expert
+coders, those of the draft's coder set checked (all without one), then how
+the units are divided: coders per unit or everyone codes everything; an
+existing coder set is replaced after asking, or its units without a coder
+(not test units) go to the selected coders and the rest stays. Its test
+units: the current ones (counts per type from `test_set`) are kept and
+shown disabled; with "Redistribute test units" that many overlap, practice
+and gold units are drawn anew. It keeps the units coders already coded with
+them by default (`GET /coders/units`, contracts `distributeUnits`).
+**Manage coders** (`session/coderSet/ManageCoders.tsx`): the add-coders form
+and the expert coders there are; the dialog opens on it while the study has
+none. No names are typed into the coder set: it names expert coders only.
+The One link form has
 the coder id URL parameter, "Coders sign in" and "Max. nr of coders". **At the end**, a button below the tree, edits the normal end
 (`session.end`).
 
@@ -684,7 +688,7 @@ scope)` re-runs QuickJS only when the script or one of those values
 ## 7. Admin UI
 
 `components/admin/AdminApp.tsx` is a shell with the study's pages: Overview, Design, Units,
-Deploy (with the deploy history), Links, Results, Settings. It uses a `ResearcherApi`
+Coders, Deploy (with the deploy history), Links, Results, Settings. It uses a `ResearcherApi`
 (`api/httpResearcherApi.ts`).
 
 **Where things are.** A component per file; a page's parts are in a folder
@@ -868,7 +872,11 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   `DeployPanel.tsx`; `PUT /deployment`) deploys the saved draft and the draft
   units and sets: it lists changes against the live version (`design/diff.ts`), takes a version note, and shows
   the server's errors and warnings (reopened units, removed option values,
-  changed types). Below, it lists every deploy with its design version's note
+  changed types). With expert coders it also says, before deploying, which
+  coders lack an email address where coders sign in and which ids look like
+  addresses where they pick a name (`coders/InviteChecks.tsx`), and how many
+  units have no coder (`coders/UnassignedNotice.tsx`), with the way to the
+  Coders page. Below, it lists every deploy with its design version's note
   (`DeployHistory.tsx`). Coders switch to the new version on their next
   request (§2).
 - **Question forms** (`VariableTypeForm.tsx` picks the form per type in
@@ -896,7 +904,12 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   it: the form says how many units not in the file lose their value. When
   the server refuses the upload (a column `answer_<x>` or `feedback_<x>`
   where `<x>` is no question of the design: the prefixes are reserved), its
-  message is shown as it is.
+  message is shown as it is. A `coder_set` column that names a coder who
+  isn't an expert coder of the study isn't uploaded: the form says who
+  (`unknownFileCoders`), before anything is sent.
+  A line says how many expert coders the study has, with the way to the
+  Coders page (`units/CodersSummary.tsx`), and a notice how many units have
+  no coder.
   The role columns with their labels (Coder set, Condition set, Part set,
   Test set); a paged table of units, the role columns tinted and headed by
   their label; pick a value to see its units in order; "Create special
@@ -929,8 +942,30 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   reopen, new secret; no settings of their own.
   Retired links are listed apart. There is no "create": the Study entry
   declares the invitation.
-- **Coders** (Results › Coders; `CodersPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,
-  finished units per loop, and how it ended. Deletion requests come first.
+- **Coders** (`coders/CodersPage.tsx`; `coder-identity.md` §2): the coders
+  of the kind the design's invitation asks for (expert coders, or a crowd's:
+  `admin/studyInvite.ts`, the draft's choice), in a table
+  (`coders/CodersTable.tsx`, its columns and order in
+  `admin/codersTable.ts`) that sorts on every column, most left to do
+  first: coder, and for expert coders their email address and their units
+  as deployed and in the draft, with a marker where those differ (a click
+  says: "The draft assigns different units; deploy to apply."), done,
+  remaining, last active. A row's actions (`coders/CoderActions.tsx`): their
+  email address (`EditEmailDialog.tsx`), their own link (expert coders with
+  a link each: copy or open), moving the units they haven't coded to the
+  other coders of the draft (`useHandOver.ts`, `admin/moveUnits.ts`), and
+  deleting the coder (`coder-identity.md` §8). **Add coders**
+  (`AddCodersForm.tsx`, parsed by `admin/parseCoders.ts`): one text box, a
+  coder per line: an id, or an id and an email address with a comma,
+  semicolon or tab between them, an optional header line; with "The coder
+  id is the email address" each line is an address that is both. What was
+  read shows as a table, with what is wrong per line, before saving.
+  **Make coder set** opens the coder set dialog (§4). A notice says how many
+  units no coder has, deployed and in the draft (`UnassignedNotice.tsx`,
+  also on Units and Deploy).
+  Below, **Sessions** (`coders/SessionsPanel.tsx`, deletion in `coders/`): per coder session the link, started, last active, answers,
+  finished units per loop, and how it ended; also sessions without a coder
+  id. Deletion requests come first.
   Reset or delete data per session, or by coder ids or emails
   (`coder-identity.md` §8).
 - **Results** (`results/`, opens on Questions; the open view in
@@ -938,7 +973,7 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   alpha and the share agreeing; per coder their mean kappa, or a matrix of
   kappa per pair), **Units** (by
   disagreement; one unit through the loop's first layout with every coder's
-  answers) and **Coders** (the sessions above, then time per unit, practice
+  answers) and **Coders** (per session: time per unit, practice
   tries, mean kappa) show the
   answers so far from the server's summaries (`getResultsAnswers`,
   `getResultsAgreement`, `listResultUnits`, `getResultUnit`,
@@ -952,7 +987,9 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   export as is:
   - `annotations.csv`: a row per unit and coder session (unit version, design
     version), a column per question (scales a column per item);
-  - `coders.csv`: coder-level answers, how the session ended, units finished;
+  - `sessions.csv`: per coder session the coder-level answers, how it ended, units finished;
+  - `coders.csv`: the study's coders, also ones who haven't started (coder id,
+    kind, and an expert coder's email address where coders sign in);
   - `units.csv`: the unit versions answered (`architecture.md` §8.4);
   - `variables.csv`: labels per design version, question and option;
   - `devices.csv`, `timings.csv`, `deleted_coders.csv` (`coder-identity.md`

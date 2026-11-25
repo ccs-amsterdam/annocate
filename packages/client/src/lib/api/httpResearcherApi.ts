@@ -30,6 +30,11 @@ import {
   type ResultsUnit,
   type ResultsUnits,
   type CoderProgress,
+  type CoderList,
+  type CoderPatch,
+  type CoderResponse,
+  type CodersCreate,
+  type CodersCreated,
   type LinkResponse,
   type PreviewSession,
   type DeploymentResponse,
@@ -166,8 +171,15 @@ export interface ResearcherApi {
   /** Refused (409) while the design uses the column. */
   deleteSetGroup(group: string): Promise<void>;
 
-  listCoders(): Promise<CoderProgress[]>;
-  /** Deletes coders and all their answers for good, by id, coder id or email (ADMIN). */
+  /** The study's coders (expert and crowd) with their units, and the units no expert coder has. */
+  listCoders(): Promise<CoderList>;
+  /** Makes expert coders; refused as a whole when an id or address is taken. */
+  createCoders(body: CodersCreate): Promise<CodersCreated>;
+  /** Sets or clears an expert coder's email address. */
+  updateCoder(coder: string, body: CoderPatch): Promise<CoderResponse>;
+  /** The coder sessions with their progress. */
+  listSessions(): Promise<CoderProgress[]>;
+  /** Deletes sessions and all their answers for good, by session id, coder id or email; by coder id the coder too (ADMIN). */
   deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse>;
   /** Deletes later: the coder's deletion request stays, but is no longer brought up (ADMIN). */
   postponeDeletion(sessionId: number): Promise<void>;
@@ -608,9 +620,35 @@ export class HttpResearcherApi implements ResearcherApi {
     );
   }
 
-  async listCoders(): Promise<CoderProgress[]> {
-    const studyId = this.requireStudyId();
-    return this.listAll(researcherEndpoints.listCoders.path.replace(":studyId", String(studyId)), "coders");
+  /** Every page of the coders; the units without a coder are the same on each, so the first page's. */
+  async listCoders(): Promise<CoderList> {
+    const path = this.studyPath(researcherEndpoints.listCoders.path);
+    const first = await this.request<CoderList>(path);
+    const coders = [...first.coders];
+    for (let next = first.next; next !== undefined;) {
+      const page = await this.request<CoderList>(`${path}?after=${next}`);
+      coders.push(...page.coders);
+      next = page.next;
+    }
+    return { coders, unassigned: first.unassigned };
+  }
+
+  async createCoders(body: CodersCreate): Promise<CodersCreated> {
+    return this.request(this.studyPath(researcherEndpoints.createCoders.path), {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async updateCoder(coder: string, body: CoderPatch): Promise<CoderResponse> {
+    return this.request(
+      this.studyPath(researcherEndpoints.updateCoder.path).replace(":coder", encodeURIComponent(coder)),
+      { method: "PATCH", body: JSON.stringify(body) },
+    );
+  }
+
+  async listSessions(): Promise<CoderProgress[]> {
+    return this.listAll(this.studyPath(researcherEndpoints.listSessions.path), "sessions");
   }
 
   async deleteCoders(select: DeleteCoders): Promise<DeleteCodersResponse> {

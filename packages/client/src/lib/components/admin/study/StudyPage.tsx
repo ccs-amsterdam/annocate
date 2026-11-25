@@ -8,9 +8,9 @@ import { DeployPage } from "../DeployPage";
 import { LinksPanel } from "../LinksPanel";
 import { StudyOverview, StudySettingsPage } from "../overview/StudyOverview";
 import { ResultsPanel } from "../results/ResultsPanel";
-import { setResultsView } from "../results/resultsView";
 import { StudyPreview } from "../StudyPreview";
 import { UnitsPage } from "../units/UnitsPage";
+import { CodersPage } from "../coders/CodersPage";
 
 /** What a study's pages get. */
 export interface StudyPageProps {
@@ -37,17 +37,7 @@ export interface StudyPageProps {
 
 const PAGES: Record<TabId, (props: StudyPageProps) => ReactNode> = {
   Overview: ({ client, goTo, design }) => (
-    <StudyOverview
-      client={client}
-      onNavigate={(target) => {
-        // The coders are in Results
-        if (target === "Coders") {
-          setResultsView("Coders");
-          goTo("Results");
-        } else goTo(target);
-      }}
-      onOpenDesign={design.open}
-    />
+    <StudyOverview client={client} onNavigate={goTo} onOpenDesign={design.open} />
   ),
   Settings: ({ client, onBackToStudies }) => <StudySettingsPage client={client} onDeleted={onBackToStudies} />,
   Design: ({ client, goTo, design }) => (
@@ -63,8 +53,11 @@ const PAGES: Record<TabId, (props: StudyPageProps) => ReactNode> = {
       onOpenDeploy={() => goTo("Deploy")}
     />
   ),
-  Deploy: ({ client, goTo }) => <DeployPage client={client} onOpenDesign={() => goTo("Design")} />,
-  Units: ({ client }) => <UnitsPage client={client} />,
+  Deploy: ({ client, goTo }) => (
+    <DeployPage client={client} onOpenDesign={() => goTo("Design")} onOpenCoders={() => goTo("Coders")} />
+  ),
+  Units: ({ client, goTo }) => <UnitsPage client={client} onOpenCoders={() => goTo("Coders")} />,
+  Coders: ({ client }) => <CodersPage client={client} />,
   Links: ({ client }) => <LinksPanel client={client} />,
   Results: ({ client }) => <ResultsPanel client={client} />,
   Preview: ({ client, coderApiUrl }) => <StudyPreview client={client} coderApiUrl={coderApiUrl} />,

@@ -1,10 +1,11 @@
 import { expect, test } from "./fixtures";
 import type { StudyResponse, UnitResponse } from "@annotinder/contracts";
-import { api, list, question } from "./helpers";
+import { addCoders, api, list, question } from "./helpers";
 
 // Who gets which units (docs/architecture.md §6, docs/plans/unit-sets.md):
 // the who codes show the coders of the units' coder_set, and a
-// dialog makes it; an experiment that selects units gives each session the
+// dialog makes it from the study's expert coders (the Coders page has them);
+// an experiment that selects units gives each session the
 // units of its condition (condition_set); a loop shows one part (part_set).
 
 const loop = (overlap?: unknown) => ({
@@ -21,7 +22,11 @@ const loop = (overlap?: unknown) => ({
   ],
 });
 
-/** A study with a unit per text, and role columns: per column, per text its value (texts without one: none). */
+/**
+ * A study with a unit per text, and role columns: per column, per text its
+ * value (texts without one: none). A coder set's values are made expert
+ * coders first.
+ */
 async function studyWithSets(
   request: Parameters<typeof api>[0],
   name: string,
@@ -38,6 +43,7 @@ async function studyWithSets(
       const value = cells[String(unit.data.text)];
       if (value) bySet.set(value, [...(bySet.get(value) ?? []), unit.id]);
     }
+    if (column === "coder_set") await addCoders(request, study.id, [...bySet.keys()]);
     await api(request, "PUT", `/study/${study.id}/sets/${column}`, {
       sets: [...bySet].map(([name, unitIds]) => ({ name, unitIds })),
     });
@@ -72,18 +78,31 @@ test("the who codes show the coders; a dialog makes or updates the coder set, ke
 
   await page.goto(`/research/studies/${study.id}/design`);
   await page.getByRole("button", { name: /^Who codes/ }).click();
-  await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 coders in the coder set.", { exact: true })).toBeVisible();
 
-  // Signing in needs email addresses
-  await page.getByLabel("One link: coders sign in with the email address in the coder set").check();
-  await expect(page.getByText(/Signing in needs email addresses/)).toBeVisible();
+  // Signing in needs an email address for every coder with units
+  await page.getByLabel(/One link: coders sign in with their email address/).check();
+  await expect(page.getByText(/these coders have none: anna, bob/)).toBeVisible();
   await page.getByLabel(/A link per coder/).check();
 
-  // Made again in the dialog: three named coders, two per unit
+  // Made again in the dialog: three new coders (added under Manage coders), two per unit
   await page.getByRole("button", { name: "Update coder set…" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Names, each with their own link").check();
-  await dialog.getByLabel(/Names \(one per line\)/).fill("carla\ndave\nemma");
+  // It opens on Select coders, with the coder set's coders checked
+  await expect(dialog.getByRole("tab", { name: "Select coders" })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByLabel("anna", { exact: true })).toBeChecked();
+  await dialog.getByRole("tab", { name: "Manage coders" }).click();
+  await dialog.getByLabel(/Coders, one per line/).fill("carla\ndave, dave@uni.nl\nanna");
+  // What was read, with the problem per line: anna is a coder already
+  await expect(dialog.getByText("3 lines read")).toBeVisible();
+  await expect(dialog.getByText("There is a coder with this id already")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Add coders" })).toBeDisabled();
+  await dialog.getByLabel(/Coders, one per line/).fill("carla\ndave, dave@uni.nl\nemma");
+  await dialog.getByRole("button", { name: "Add 3 coders" }).click();
+  await expect(dialog.getByText("5 expert coders")).toBeVisible();
+  await dialog.getByRole("tab", { name: "Select coders" }).click();
+  await dialog.getByRole("button", { name: "None", exact: true }).click();
+  for (const name of ["carla", "dave", "emma"]) await dialog.getByLabel(name, { exact: true }).check();
   await dialog.getByLabel("Coders per unit").fill("2");
   // The current test units are shown, and kept (not editable without redistributing)
   await expect(dialog.getByLabel("Overlap units")).toHaveValue("1");
@@ -94,7 +113,7 @@ test("the who codes show the coders; a dialog makes or updates the coder set, ke
   await expect(dialog.getByText(/The coder set exists \(2 coders\)/)).toBeVisible();
   await dialog.getByRole("button", { name: "Overwrite" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("3 coders.", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 coders in the coder set.", { exact: true })).toBeVisible();
   // The overlap unit is still the test unit, and in no coder's set
   const groups = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
   const shared = units.find((u) => u.data.text === "Shared text")!.id;
@@ -126,7 +145,13 @@ test("the coder set dialog draws test units anew when redistributing them", asyn
   await page.getByRole("button", { name: /^Who codes/ }).click();
   await page.getByRole("button", { name: "Create coder set…" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Names \(one per line\)/).fill("anna\nbob");
+  // No expert coders yet: it opens on Manage coders
+  await expect(dialog.getByRole("tab", { name: "Manage coders" })).toHaveAttribute("aria-selected", "true");
+  await dialog.getByLabel(/Coders, one per line/).fill("anna\nbob");
+  await dialog.getByRole("button", { name: "Add 2 coders" }).click();
+  // Without a coder set, every coder is selected
+  await dialog.getByRole("tab", { name: "Select coders" }).click();
+  await expect(dialog.getByLabel("bob", { exact: true })).toBeChecked();
   await expect(dialog.getByText("No test units yet: switch this on to draw some.")).toBeVisible();
   await dialog.getByLabel(/Redistribute test units/).check();
   await dialog.getByLabel("Overlap units").fill("2");
@@ -135,7 +160,7 @@ test("the coder set dialog draws test units anew when redistributing them", asyn
   await expect(dialog.getByText(/named answer_<question>/)).toBeVisible();
   await dialog.getByRole("button", { name: "Make the coder set" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText("2 coders.", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 coders in the coder set.", { exact: true })).toBeVisible();
 
   const groups = await api<Groups>(request, "GET", `/study/${study.id}/sets`);
   const tests = groups.find((g) => g.name === "test_set")!.sets;
@@ -289,8 +314,17 @@ test("a loop's part, chosen in the editor from the part set's values", async ({ 
 
 test("uploading units with role columns makes them, shown with their values", async ({ page, request }) => {
   const study = await api<StudyResponse>(request, "POST", "/study", { name: "Set column upload" });
+  await addCoders(request, study.id, ["anna", "bob"]);
   await page.goto(`/research/studies/${study.id}/units`);
   await page.getByRole("button", { name: /Upload CSV/ }).click();
+  // A coder set names the study's expert coders only: a file with another coder isn't uploaded
+  await page.locator("input[type=file]").setInputFiles({
+    name: "unknown.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("id,text,coder_set\nu1,First,anna\nu2,Second,carl\n"),
+  });
+  await expect(page.getByText(/names a coder who isn't an expert coder of this study: carl\./)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Upload 2 units/ })).toBeDisabled();
   await page.locator("input[type=file]").setInputFiles({
     name: "units.csv",
     mimeType: "text/csv",
@@ -387,8 +421,12 @@ test("dividing units again keeps the units coders already coded", async ({ page,
   await page.getByRole("button", { name: /^Who codes/ }).click();
   await page.getByRole("button", { name: "Update coder set…" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Names, each with their own link").check();
-  await dialog.getByLabel(/Names \(one per line\)/).fill("anna\nbob\ncarla");
+  // A third coder joins anna and bob
+  await dialog.getByRole("tab", { name: "Manage coders" }).click();
+  await dialog.getByLabel(/Coders, one per line/).fill("carla");
+  await dialog.getByRole("button", { name: "Add 1 coder" }).click();
+  await dialog.getByRole("tab", { name: "Select coders" }).click();
+  await dialog.getByLabel("carla", { exact: true }).check();
   const keep = dialog.getByLabel(/Keep the units coders already coded/);
   await expect(keep).toBeChecked();
   await expect(dialog.getByText(/1 unit assignments are kept/)).toBeVisible();
@@ -473,7 +511,7 @@ test("the Units page creates special sets: a part set anew (asking first), units
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("3 units have no value and aren't test units.")).toBeVisible();
   await dialog.getByLabel(/Assign units without a value/).check();
-  await expect(dialog.getByLabel(/Names \(one per line\)/)).toHaveCount(0);
+  await expect(dialog.getByText(/Gives the 3 units without a coder to the 2 coders selected/)).toBeVisible();
   await dialog.getByRole("button", { name: "Assign 3 units" }).click();
   await expect(dialog).toBeHidden();
   await expect
@@ -498,4 +536,71 @@ test("the Units page creates special sets: a part set anew (asking first), units
       ["practice", 2, true],
     ]);
   await expect(page.getByRole("cell", { name: "practice#2" })).toBeVisible();
+});
+
+test("the Coders page: adding coders from a list, their units deployed and in the draft, an email address, deleting a coder", async ({
+  page,
+  request,
+}) => {
+  const { study, units } = await studyWithSets(request, "Coders page", ["One", "Two", "Three"], {
+    coder_set: { One: "anna", Two: "bob", Three: "bob" },
+  });
+  const design = await api<{ id: number }>(request, "POST", `/study/${study.id}/design`, {
+    session: { invite: { mode: "coders", link: "per_coder" } },
+    items: [loop()],
+  });
+  await api(request, "PUT", `/study/${study.id}/deployment`, { designVersionId: design.id });
+  // The draft takes a unit from bob
+  await api(request, "PUT", `/study/${study.id}/sets/coder_set`, {
+    sets: [
+      { name: "anna", unitIds: [units[0].id] },
+      { name: "bob", unitIds: [units[1].id] },
+    ],
+  });
+
+  await page.goto(`/research/studies/${study.id}/coders`);
+  const row = (coder: string) =>
+    page.getByRole("row").filter({ has: page.getByRole("cell", { name: coder, exact: true }) });
+  // Most left to do first; bob's draft differs from what is deployed
+  await expect(page.getByRole("columnheader", { name: "Remaining" })).toHaveAttribute("aria-sort", "descending");
+  await expect(page.getByRole("row").nth(1)).toContainText("bob");
+  await row("bob")
+    .getByRole("button", { name: /the draft assigns different units/ })
+    .click();
+  await expect(page.getByText("The draft assigns different units; deploy to apply.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  // A unit without a coder in the draft
+  await expect(page.getByText(/1 unit has no coder in the draft/)).toBeVisible();
+  // Every column sorts
+  await page.getByRole("button", { name: "Coder", exact: true }).click();
+  await expect(page.getByRole("row").nth(1)).toContainText("anna");
+
+  // Adding coders: one per line, with what was read before saving
+  await page.getByRole("button", { name: "Add coders" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(/Coders, one per line/).fill("coder,email\ncarla; carla@uni.nl\nBOB");
+  await expect(dialog.getByText("There is a coder with this id already")).toBeVisible();
+  await dialog.getByLabel("The coder id is the email address").check();
+  await dialog.getByLabel(/Email addresses, one per line/).fill("carla@uni.nl");
+  await dialog.getByRole("button", { name: "Add 1 coder" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row("carla@uni.nl")).toContainText("carla@uni.nl");
+
+  // An email address is set later; the id stays
+  await row("anna").getByRole("button", { name: "Email address of anna" }).click();
+  await dialog.getByLabel("Email address of anna").fill("anna@uni.nl");
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(row("anna")).toContainText("anna@uni.nl");
+
+  // Deleting a coder: gone from the table, and their deployed units have no coder
+  await row("bob").getByRole("button", { name: "Delete bob" }).click();
+  await expect(dialog.getByText(/leaves the coder set, deployed and in the draft/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Delete for good" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(row("bob")).toHaveCount(0);
+  await expect(page.getByText(/2 units have no coder, deployed and in the draft/)).toBeVisible();
+  const coderSet = (await api<Groups>(request, "GET", `/study/${study.id}/sets?live=true`)).find(
+    (g) => g.name === "coder_set",
+  )!;
+  expect(coderSet.sets.map((s) => s.name)).toEqual(["anna"]);
 });

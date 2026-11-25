@@ -23,11 +23,12 @@ On the AnnoTinder server you use:
 | **Answers**             | per unit and question, with times, design version and unit version                                                                  |
 | **Response times**      | per question, measured in the browser; per unit, when the server handed it out. Always recorded: mention it to coders if it matters |
 
-Not stored: coders' names, email addresses (unless they
+Not stored: coders' names, email addresses (unless you enter them for
+your expert coders on **Coders**, or coders
 [sign in](links.md#login) to your study: because it requires it, or
 because they chose **Log in** there. Being logged in on the server for
-something else stores nothing. You see the address only where sign-in is
-required), IP addresses, other device details, or URL parameters the
+something else stores nothing. You see the address a coder signed in
+with only where sign-in is required), IP addresses, other device details, or URL parameters the
 design doesn't declare. The web server or proxy in front may keep access
 logs; ask whoever runs it.
 
@@ -67,7 +68,9 @@ year; even a copy of the database can't take over sessions.
   windows.
 
 Where the invitation requires sign-in, the email address is stored and
-visible to you: say so in your consent text.
+visible to you: say so in your consent text. For expert coders who sign
+in you enter their addresses yourself, on **Coders**, before they ever
+log in: tell them so.
 
 ## What coders' browsers receive
 

@@ -12,7 +12,7 @@ import {
 import type { ResearcherApi } from "../../api/httpResearcherApi";
 import { finishedPerLoop } from "../../design/loops";
 import {
-  useCodersQuery,
+  useSessionsQuery,
   useDeploymentQuery,
   useDesignVersionQuery,
   useStudyQuery,
@@ -116,7 +116,7 @@ export function DesignEditor({
   const deployedItems = useMemo(() => (deployed ? designItems(deployed) : null), [deployed]);
   const deployedValues = useMemo(() => deployedOptionValues(deployedItems), [deployedItems]);
   // The units coders finished per loop: deleting a loop they worked in asks first
-  const coders = useCodersQuery(client, { enabled: deployment !== null && !readOnly, poll: false }).data;
+  const coders = useSessionsQuery(client, { enabled: deployment !== null && !readOnly, poll: false }).data;
   const loopProgress = useMemo(() => finishedPerLoop(coders ?? []), [coders]);
   const draft = useDesignDraft({
     client,

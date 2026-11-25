@@ -67,7 +67,7 @@ describe("example studies", () => {
 
       // Example answers: every coder's answers are in the download
       const coders = CoderProgressSchema.array().parse(
-        ((await (await researcher(`/api/study/${study.id}/coders`)).json()) as { coders: unknown }).coders,
+        ((await (await researcher(`/api/study/${study.id}/sessions`)).json()) as { sessions: unknown }).sessions,
       );
       const page = AnnotationPageSchema.parse(
         await (await researcher(`/api/study/${study.id}/annotations?limit=10000`)).json(),

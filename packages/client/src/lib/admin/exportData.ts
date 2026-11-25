@@ -18,6 +18,7 @@ import {
   type UnitVersion,
   type VariableValue,
 } from "@annotinder/contracts";
+import type { ExportedCoder } from "./rawExport";
 import { answerColumns, answerJson, answerText, cellOf, header, optionsOf, type Labels } from "./exportAnswers";
 
 // The researcher UI's data download (docs/client.md §7, "Results"): one zip
@@ -25,7 +26,8 @@ import { answerColumns, answerJson, answerText, cellOf, header, optionsOf, type 
 // them in R, SPSS or a spreadsheet:
 //
 // - annotations: a row per unit and coder, a column per question;
-// - coders: a row per coder, with their coder-level answers;
+// - sessions: a row per coder session, with its coder-level answers;
+// - coders: a row per coder of the study;
 // - units: the unit versions answers were given on (what coders saw);
 // - variables: per design version, question and option its label;
 // - devices, timings, display changes, deleted coders, and optionally
@@ -77,7 +79,7 @@ export function annotationsTable(
     }
   >();
   const unitTimes = unitTimings(annotations);
-  // Answers outside unit loops (no unit) are in coders.csv.
+  // Answers outside unit loops (no unit) are in sessions.csv.
   for (const a of annotations) {
     if (a.unitId === null) continue;
     const key = `${a.unitId}/${a.sessionId}`;
@@ -442,6 +444,14 @@ export function devicesTable(devices: Device[]): Table {
       d.os ?? "",
       time(d.created),
     ]),
+  };
+}
+
+/** The study's coders, also ones who haven't started: their id, kind, and an expert coder's email address where coders sign in. */
+export function coderListTable(coders: ExportedCoder[]): Table {
+  return {
+    headers: ["coder", "kind", "email", "created"],
+    rows: coders.map((c) => [c.coder, c.kind, c.email ?? "", time(c.created)]),
   };
 }
 

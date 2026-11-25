@@ -28,7 +28,7 @@ describe("end items", () => {
     expect(answers.status).toBe(409);
 
     // Researchers see how the session ended.
-    const coders = (await listOf("coders")) as {
+    const coders = (await listOf("sessions")) as {
       ended: unknown;
     }[];
     expect(coders[0].ended).toMatchObject({ item: "screen_out_young", outcome: "screenout" });

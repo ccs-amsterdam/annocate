@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SetGroupResponse } from "@annotinder/contracts";
-import { coderSummary, columnValues, shareSources, shareSummary } from "./assignment";
+import { columnValues, shareSources, shareSummary } from "./assignment";
 
 const group = (name: SetGroupResponse["name"], sets: string[]): SetGroupResponse => ({
   name,
@@ -12,13 +12,6 @@ describe("who gets which units, in the editor", () => {
   it("a column's values", () => {
     expect(columnValues(groups, "coder_set")).toEqual(["anna", "bob"]);
     expect(columnValues(groups, "part_set")).toEqual([]);
-  });
-
-  it("coders: all emails (one sign-in link), names (a link each), or a mix (an error)", () => {
-    expect(coderSummary(["a@uni.nl", "b@uni.nl"])).toEqual({ kind: "emails", count: 2, notEmails: [] });
-    expect(coderSummary(["anna", "bob"])).toMatchObject({ kind: "names", count: 2 });
-    expect(coderSummary(["anna", "b@uni.nl"])).toEqual({ kind: "mixed", count: 2, notEmails: ["anna"] });
-    expect(coderSummary([])).toMatchObject({ kind: "none", count: 0 });
   });
 });
 

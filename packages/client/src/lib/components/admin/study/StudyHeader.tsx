@@ -11,6 +11,7 @@ import {
   Play,
   Send,
   Settings,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -24,6 +25,7 @@ const PAGES: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "Overview", label: "Overview", icon: LayoutDashboard },
   { id: "Design", label: "Design", icon: PencilRuler },
   { id: "Units", label: "Units", icon: Layers },
+  { id: "Coders", label: "Coders", icon: Users },
   { id: "Deploy", label: "Deploy", icon: Send },
   { id: "Links", label: "Links", icon: Link2 },
   { id: "Results", label: "Results", icon: Download },
@@ -35,6 +37,7 @@ const TAB_HELP: Record<TabId, string> = {
   Overview: "overview",
   Design: "design-editor",
   Units: "uploading-units",
+  Coders: "coders-and-progress",
   Deploy: "previewing-and-publishing",
   Links: "links",
   Results: "results",

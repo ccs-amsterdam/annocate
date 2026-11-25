@@ -101,7 +101,7 @@ test("practice headlines give feedback until right; two wrong gold headlines scr
   expect(goldWrong).toBe(2);
   await expect(page.getByText("This is where the study ends for you.")).toBeVisible();
 
-  // Screened out; the special units they finished are counted (Results › Coders)
+  // Screened out; the special units they finished are counted (Coders, Sessions)
   const mine = (await coders(request, study.id)).filter((c) => !examples.includes(c.id));
   expect(mine).toHaveLength(1);
   expect(mine[0].ended).toMatchObject({ item: "screened_out", outcome: "screenout" });

@@ -1,5 +1,5 @@
 // The column names of the data download (the client's annotations.csv and
-// coders.csv). A question becomes a column named after it, next to the
+// sessions.csv). A question becomes a column named after it, next to the
 // columns below, so design validation refuses question names that would
 // collide with them (`reservedColumnName`). The download's header builders
 // use these lists, so the two can't drift apart.
@@ -22,7 +22,7 @@ export const ANNOTATION_COLUMNS = [
   "unit_ms_server",
 ] as const;
 
-/** coders.csv: the columns before the session values, the loops' and the questions' (a row per coder session). */
+/** sessions.csv: the columns before the session values, the loops' and the questions' (a row per coder session). */
 export const CODER_COLUMNS = [
   "session_id",
   "coder",
@@ -36,10 +36,10 @@ export const CODER_COLUMNS = [
   "display",
 ] as const;
 
-/** coders.csv: the units a coder finished in a loop, by the loop's id (`finished_loop_1`). */
+/** sessions.csv: the units a coder finished in a loop, by the loop's id (`finished_loop_1`). */
 export const finishedColumn = (loopId: string) => `finished_${loopId}`;
 
-/** coders.csv: the test units of a kind (overlap, gold, practice) a coder finished. */
+/** sessions.csv: the test units of a kind (overlap, gold, practice) a coder finished. */
 export const testUnitsColumn = (kind: string) => `${kind}_finished`;
 
 /**

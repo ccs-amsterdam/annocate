@@ -15,6 +15,11 @@ import { UnitFieldSchema, UnitsSpecSchema } from "../unitFields.js";
 import { SetGroupResponseSchema, SetGroupWriteSchema } from "../sets.js";
 import {
   CoderProgressSchema,
+  CoderListSchema,
+  CoderPatchSchema,
+  CoderResponseSchema,
+  CodersCreateSchema,
+  CodersCreatedSchema,
   LinkResponseSchema,
   CoderDeletionSchema,
   DeleteCodersSchema,
@@ -230,11 +235,33 @@ export const researcherEndpoints = {
   },
   deleteSetGroup: { method: "DELETE", path: "/study/:studyId/sets/:group", request: z.void(), response: z.void() },
 
+  /** The study's coders (expert and crowd) with their units; `?kind=expert|crowd` for one kind. */
   listCoders: {
     method: "GET",
     path: "/study/:studyId/coders",
     request: z.void(),
-    response: listResponse("coders", CoderProgressSchema),
+    response: CoderListSchema,
+  },
+  /** Creates expert coders, each with an email address or without (WRITE). */
+  createCoders: {
+    method: "POST",
+    path: "/study/:studyId/coders",
+    request: CodersCreateSchema,
+    response: CodersCreatedSchema,
+  },
+  /** Sets or clears a coder's email address (WRITE); the id never changes. */
+  updateCoder: {
+    method: "PATCH",
+    path: "/study/:studyId/coders/:coder",
+    request: CoderPatchSchema,
+    response: CoderResponseSchema,
+  },
+  /** The coder sessions with their progress. */
+  listSessions: {
+    method: "GET",
+    path: "/study/:studyId/sessions",
+    request: z.void(),
+    response: listResponse("sessions", CoderProgressSchema),
   },
   /** Per coder id: the units they answered, and the ones they were sent but didn't answer (coders.ts). */
   listCoderUnits: {
@@ -243,7 +270,7 @@ export const researcherEndpoints = {
     request: z.void(),
     response: CoderUnitsSchema,
   },
-  /** Deletes coders and all their answers for good (e.g. a coder withdrew), by session id, coder id or email (ADMIN). */
+  /** Deletes sessions and all their answers for good (e.g. a coder withdrew), by session id, coder id or email; by coder id the coder too (ADMIN). */
   deleteCoders: {
     method: "POST",
     path: "/study/:studyId/coders/delete",
@@ -253,7 +280,7 @@ export const researcherEndpoints = {
   /** Deletes later: the coder's request to delete their answers stays, but is no longer brought up (ADMIN). */
   postponeDeletion: {
     method: "POST",
-    path: "/study/:studyId/coders/:id/deletion-request/postpone",
+    path: "/study/:studyId/sessions/:id/deletion-request/postpone",
     request: z.void(),
     response: z.void(),
   },
