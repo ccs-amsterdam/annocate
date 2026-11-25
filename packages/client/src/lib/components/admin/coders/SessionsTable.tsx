@@ -17,7 +17,7 @@ function endedText(ended: CoderProgress["ended"]): string {
 }
 
 /**
- * The coder sessions: the link, when each started and was last active, its
+ * The coder sessions: when each started and was last active, its
  * answers, how it ended, the units finished per loop of the live design
  * version and of the special sets the study has, and per session resetting
  * its answers or deleting its data.
@@ -43,8 +43,7 @@ export function SessionsTable({
           <thead>
             <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
               <th className="p-2 font-medium">Coder</th>
-              <th className="p-2 font-medium">Link</th>
-              <th className="p-2 font-medium">Started</th>
+                <th className="p-2 font-medium">Started</th>
               <th className="p-2 font-medium">Last active</th>
               <th className="p-2 text-right font-medium">Answers</th>
               <th className="p-2 font-medium">Ended</th>
@@ -107,7 +106,6 @@ function CoderSessionRow({
   return (
     <tr className="border-b last:border-0">
       <td className="p-2">{named ? coderName(coder) : <span className="text-muted-foreground">#{coder.id}</span>}</td>
-      <td className="p-2 text-muted-foreground">{coder.linkLabel ?? "–"}</td>
       <td className="p-2 whitespace-nowrap text-muted-foreground">{formatWhen(coder.started)}</td>
       <td className="p-2 whitespace-nowrap">{formatWhen(coder.lastActive)}</td>
       <td className="p-2 text-right tabular-nums">{coder.answers}</td>

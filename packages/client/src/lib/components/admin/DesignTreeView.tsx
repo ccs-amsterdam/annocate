@@ -190,13 +190,11 @@ export function DesignTreeView({
             readOnly ? null : (
               <AddItemMenu
                 label="add item"
+                // Like every other +: right below it, at the start (the first item of an empty design)
                 options={[
-                  ...(top ? [{ position: top, label: "At the start", types: insertableTypesAt(items, top) }] : []),
-                  {
-                    position: end,
-                    label: shown.length ? "At the end" : "The first item",
-                    types: insertableTypesAt(items, end),
-                  },
+                  top
+                    ? { position: top, label: "At the start", types: insertableTypesAt(items, top) }
+                    : { position: end, label: "The first item", types: insertableTypesAt(items, end) },
                 ]}
                 onAdd={state.addAt}
                 onPreview={setPreview}

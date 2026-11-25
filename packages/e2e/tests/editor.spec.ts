@@ -113,13 +113,18 @@ test("branches: a label and a condition, else items; questions and loops at the 
   await expect(page.getByRole("button", { name: /^End/ })).toHaveCount(0);
   await page.getByRole("button", { name: /^Question\b/ }).click();
   await page.getByPlaceholder("e.g. sentiment, age").fill("age");
-  await page.getByRole("button", { name: /add item/i }).click();
-  await page.getByRole("button", { name: "At the end", exact: true }).first().click();
+  // Start's + adds at the start; a row's + adds below it (only one place: straight to the types)
+  const age = page.locator("div.group").filter({ hasText: /^age/ }).first();
+  await age.hover();
+  await age.getByRole("button", { name: "Add an item below" }).click();
   await page.getByRole("button", { name: /^Unit loop/ }).click();
 
-  // A branch after the loop, with a label and a condition (a new branch's is empty until set)
-  await page.getByRole("button", { name: /add item/i }).click();
-  await page.getByRole("button", { name: "At the end", exact: true }).first().click();
+  // A branch after the loop, with a label and a condition (a new branch's is empty until set): the +
+  // of the loop's last item asks where, in the loop or after it
+  const layout = page.locator("div.group").filter({ hasText: /^Unit layout/ }).first();
+  await layout.hover();
+  await layout.getByRole("button", { name: "Add an item below" }).click();
+  await page.getByRole("button", { name: "At the top level", exact: true }).click();
   await page.getByRole("button", { name: /^Branch/ }).click();
   await page.getByPlaceholder("e.g. Screen-out").fill("Adults");
   await page.getByRole("button", { name: "Script", exact: true }).click();
