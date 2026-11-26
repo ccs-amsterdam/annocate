@@ -127,6 +127,18 @@ from then on, so the server allows it only:
 
 Anything else comes back with `loginError=link_failed`.
 
+**Two logins.** The provider is used to log in only. From the ID token the
+server takes who it is, the email address, whether it is verified and
+whether a second factor was used; it asks for `openid email`, keeps no
+access or refresh tokens and doesn't call the provider for a session it has.
+The provider's own session (single sign-on, per browser; on Keycloak until
+**SSO Session Idle** or **SSO Session Max**) is separate: it decides whether
+the next login needs a password, not how long AnnoTinder stays logged in.
+The server goes back to the provider only for a new login, a step-up and
+logout. So a change at the provider (an account blocked or deleted, a new
+address, a second factor set up) counts from the next login; blocking a
+user in AnnoTinder (`users.blocked_at`) refuses their session at once.
+
 **The session.** A random key in an httpOnly, `SameSite=Lax` cookie
 (`Secure` over HTTPS); the database has only its hash. It lasts 14 days from
 its last use: the server extends it at most once an hour, and sends the

@@ -858,14 +858,28 @@ second factor.
   `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`, PKCE S256, and post-logout
   redirect URI `<ANNOTINDER_PUBLIC_URL>/` (with the trailing slash; Keycloak:
   **Valid post logout redirect URIs**). The server asks for `openid email`.
+- **Two logins, with their own lifetimes.** The provider is used to log in
+  only: AnnoTinder keeps no access or refresh tokens and has its own session
+  (14 days from its last use). The provider's session (single sign-on, per
+  browser) is what lets the next login through without a password; on
+  Keycloak it ends after **SSO Session Idle** (default 30 minutes) or
+  **SSO Session Max** (default 10 hours). So AnnoTinder stays logged in
+  after the provider's session has ended, and changes at the provider (a
+  blocked account, a new address, a new second factor) count from the next
+  login: to lock someone out at once, block them in AnnoTinder
+  ([accounts](accounts.md)). Details: [security](security.md) §1, "The
+  session".
 - **Logging out ends the provider's session too** (OpenID Connect
   RP-Initiated Logout), when the provider publishes an
   `end_session_endpoint` (Keycloak does): after AnnoTinder's session ends,
   the browser goes to the provider with the login's ID token and comes back
-  to the home page, so the next login asks again. That also logs the user
-  out of other applications that share the provider's session (single
-  sign-on). Without an `end_session_endpoint` logout is AnnoTinder's only,
-  and the next login can be instant while the provider's session lasts.
+  to the home page, so the next login asks again. Other applications in that
+  browser keep their own sessions, but can't log in through the provider
+  without a password any more; on Keycloak, their (online) refresh tokens
+  belong to that session and stop working, offline tokens don't. Other
+  browsers and devices are not affected. Without an `end_session_endpoint`
+  logout is AnnoTinder's only, and the next login can be instant while the
+  provider's session lasts.
 - The ID token must carry the **verified email address** (`email_verified:
   true`; else the login is refused) and **a second factor signal**
   (`OIDC_MFA_CLAIM`: `amr` containing `mfa` by default, or an `acr` value).
