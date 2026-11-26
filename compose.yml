@@ -20,9 +20,8 @@ x-logging: &logging
 services:
   app:
     # ANNOTINDER_VERSION in .env: a release (e.g. 0.9.0), or for a test server
-    # a commit (e.g. 1a2b3c4d) or a branch (e.g. main). Required, so a server
-    # never runs whatever main is today by accident. The image only changes on
-    # `docker compose pull`.
+    # a branch (e.g. main). Required, so a server never runs whatever main is
+    # today by accident. The image only changes on `docker compose pull`.
     image: ghcr.io/ccs-amsterdam/annotinder:${ANNOTINDER_VERSION:?set ANNOTINDER_VERSION in .env (a release, e.g. 0.9.0)}
     restart: unless-stopped
     logging: *logging

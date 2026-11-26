@@ -4,6 +4,14 @@ What changed for the people who use AnnoTinder: researchers, coders and
 those who run a server. Server, client and contracts are released together
 under one version.
 
+## Unreleased
+
+### For those who run a server
+
+- Images are no longer tagged with each commit, only with releases and
+  branches. Untagged images older than 30 days are deleted weekly; releases
+  are kept.
+
 ## 0.9.0 (2026-11-25)
 
 The first release: the version for the pilot. From this release on the

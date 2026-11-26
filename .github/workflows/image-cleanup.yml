@@ -1,0 +1,26 @@
+# Removes old untagged images from ghcr.io/ccs-amsterdam/annotinder, weekly.
+# Every push to a branch moves the branch tag (image.yml) to the new image and
+# leaves the previous one without a tag. Those are deleted after 30 days.
+# Tagged images (releases, branches) are never deleted, nor the platform
+# images (amd64, arm64) and attestations a tagged image consists of: the action
+# handles multi-arch images, which a plain "delete untagged" would break.
+name: Image cleanup
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          package: annotinder
+          delete-untagged: true
+          older-than: 30 days
+          validate: true

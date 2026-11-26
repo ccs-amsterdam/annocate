@@ -925,8 +925,8 @@ starts it against Postgres (it must answer `/api/ready`), and publishes it as
 `ghcr.io/ccs-amsterdam/annotinder`:
 
 - every push to a branch: tagged with the branch (`main`; a `/` in its name
-  becomes `-`) and the commit (8 characters, e.g. `1a2b3c4d`), so a branch
-  can be tried on a test server before it is merged;
+  becomes `-`), so a branch can be tried on a test server before it is
+  merged;
 - a tag `v<release>` (e.g. `v0.9.0`): also `0.9.0`, `0.9` and `latest`. The
   release is `RELEASE` in `packages/contracts/src/version.ts`; CI refuses a
   tag that doesn't match it.
@@ -936,6 +936,12 @@ server, never a branch, so it doesn't change under you on the next pull. The
 first time CI publishes the image, GitHub makes the package private: make it
 public once (the package's **Package settings**), so servers pull it without
 logging in.
+
+Each push to a branch moves its tag to the new image and leaves the previous
+image untagged. A weekly job (`.github/workflows/image-cleanup.yml`) deletes
+untagged images older than 30 days; releases and branch tags stay. A server
+that already runs a deleted image keeps running it, but can't pull it again:
+another reason to run a release.
 
 ### Building the image yourself
 
