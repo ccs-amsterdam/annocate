@@ -55,10 +55,21 @@ export interface LoginState {
  * A login: who (`iss` + `sub`), their email and whether the provider
  * confirmed it (`emailVerified`: only `email_verified: true` counts), whether
  * it used a second factor (`mfa`, per `OIDC_MFA_CLAIM`), and when they
- * authenticated (`authTime`; null if the provider doesn't say).
+ * authenticated (`authTime`; null if the provider doesn't say). `idToken`:
+ * the raw ID token and `sid` its session id claim (null if absent), kept
+ * with our session to end the provider's at logout (`endSessionUrl`).
  */
 export type LoginResult =
-  | { iss: string; sub: string; email: string; emailVerified: boolean; mfa: boolean; authTime: Date | null }
+  | {
+      iss: string;
+      sub: string;
+      email: string;
+      emailVerified: boolean;
+      mfa: boolean;
+      authTime: Date | null;
+      idToken: string;
+      sid: string | null;
+    }
   | { error: "email_missing" | "login_failed" };
 
 export class Oidc {
@@ -120,6 +131,7 @@ export class Oidc {
   /** Exchanges the code at the provider and checks the ID token. `callbackUrl`: the full URL the provider redirected to. */
   async finish(callbackUrl: URL, login: LoginState): Promise<LoginResult> {
     let claims: client.IDToken | undefined;
+    let idToken: string | undefined;
     try {
       const tokens = await client.authorizationCodeGrant(await this.configuration(), callbackUrl, {
         pkceCodeVerifier: login.verifier,
@@ -128,6 +140,7 @@ export class Oidc {
         idTokenExpected: true,
       });
       claims = tokens.claims();
+      idToken = tokens.id_token;
     } catch (err) {
       console.warn("Login failed:", err instanceof Error ? err.message : err);
       return { error: "login_failed" };
@@ -144,6 +157,23 @@ export class Oidc {
       emailVerified: claims.email_verified === true,
       mfa,
       authTime,
+      idToken: idToken ?? "",
+      sid: typeof claims.sid === "string" ? claims.sid : null,
     };
+  }
+
+  /**
+   * Where the browser goes to end its session at the provider as well
+   * (RP-Initiated Logout): the provider's `end_session_endpoint` with the
+   * login's ID token, our client id and where to come back to. Null when
+   * the provider publishes no such endpoint.
+   */
+  async endSessionUrl(idToken: string, postLogoutRedirectUri: string): Promise<URL | null> {
+    const config = await this.configuration();
+    if (!config.serverMetadata().end_session_endpoint) return null;
+    return client.buildEndSessionUrl(config, {
+      id_token_hint: idToken,
+      post_logout_redirect_uri: postLogoutRedirectUri,
+    });
   }
 }

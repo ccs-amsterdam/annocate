@@ -141,7 +141,12 @@ export const domainPlans = pgTable("domain_plans", {
   planId: integer().references(() => plans.id, { onDelete: "set null" }),
 });
 
-/** Login sessions (a cookie; key_hash: its hash). mfa: logged in with a second factor; issuer: the identity provider. */
+/**
+ * Login sessions (a cookie; key_hash: its hash). mfa: logged in with a
+ * second factor; issuer: the identity provider; id_token, oidc_sid: the
+ * login's ID token (raw JWT) and its `sid` claim, to end the provider's
+ * session at logout (never sent to clients; deleted with the row).
+ */
 export const sessions = pgTable(
   "sessions",
   {
@@ -155,6 +160,8 @@ export const sessions = pgTable(
     expires: timestamptz().notNull(),
     authTime: timestamptz(),
     issuer: text().notNull().default(""),
+    idToken: text(),
+    oidcSid: text(),
   },
   (t) => [index("sessions_user").on(t.userId)],
 );

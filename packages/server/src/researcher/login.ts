@@ -35,6 +35,11 @@ import { CLIENT_HEADER } from "../runtime/session.js";
 // server asks for one first), for a user without an identity at the current
 // provider, and the current provider must authenticate whoever links
 // (`prompt=login`).
+//
+// Logout ends our session and, when the provider publishes an
+// `end_session_endpoint`, tells the client to send the browser there (OIDC
+// RP-Initiated Logout, with the login's ID token), so the provider's session
+// ends too and the next login asks again.
 
 export const SESSION_COOKIE = "annotinder_session";
 const LOGIN_COOKIE = "annotinder_login";
@@ -228,7 +233,7 @@ export function login(server: Server): Hono<Env> {
     const replaced = getCookie(c, SESSION_COOKIE);
     if (replaced) await deleteSession(server.db, replaced);
     await deleteExpiredSessions(server.db);
-    setSessionCookie(c, await createSession(server.db, user.id, login));
+    setSessionCookie(c, await createSession(server.db, user.id, login, { idToken: result.idToken, sid: result.sid }));
     // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
     if (state.stepUp && !isFresh(login, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
       return back(state.returnTo, "step_up_failed");
@@ -237,12 +242,33 @@ export function login(server: Server): Hono<Env> {
     return back(state.returnTo);
   });
 
+  /** The provider a session's login came from: the current one or the previous one (whatever its end date). */
+  const providerOf = (issuer: string) =>
+    [oidc, previous?.oidc].find((provider) => provider && sameIssuer(provider.issuer, issuer)) ?? null;
+
+  /**
+   * Where the browser ends an ended session's login at the provider as well
+   * (RP-Initiated Logout); null without an ID token, a known provider, or
+   * an `end_session_endpoint` there.
+   */
+  async function providerLogoutUrl(ended: { issuer: string; idToken: string | null } | null): Promise<string | null> {
+    const provider = ended?.idToken ? providerOf(ended.issuer) : null;
+    if (!provider || !ended?.idToken) return null;
+    try {
+      return (await provider.endSessionUrl(ended.idToken, `${publicUrl}/`))?.href ?? null;
+    } catch (err) {
+      console.warn("Logout at the login provider skipped:", err instanceof Error ? err.message : err);
+      return null;
+    }
+  }
+
+  // Ends our session; `redirect`: where the browser ends the provider's too (contracts `LogoutResponse`)
   app.post("/auth/logout", async (c) => {
     if (c.req.header(CLIENT_HEADER) !== "1") return c.json({ error: `Missing ${CLIENT_HEADER} header` }, 403);
     const key = getCookie(c, SESSION_COOKIE);
-    if (key) await deleteSession(server.db, key);
+    const ended = key ? await deleteSession(server.db, key) : null;
     deleteCookie(c, SESSION_COOKIE, { path: "/" });
-    return c.body(null, 204);
+    return c.json({ redirect: await providerLogoutUrl(ended) });
   });
 
   return app;

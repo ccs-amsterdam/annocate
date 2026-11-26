@@ -93,7 +93,7 @@ for what they include.
 | Your account | Your email address, an id from your login provider, whether the provider verified your address, whether your last login used a second factor, when you registered and last logged in, and your display and keyboard settings | To give you access and let colleagues add you to a study by email address | `[TO DECIDE, e.g. performing the agreement with you (the terms of use) / legitimate interest / public task]` |
 | Roles and limits | Your role on the server and in studies, your plan and limits, a request to become a researcher if you made one | To decide what you may do | The same |
 | An invitation | If a colleague or an admin gives your email address a role before you ever logged in: that address and the role, waiting for your first login | So that you get the role when you log in | The same |
-| Login sessions and API keys | A random key per session or API key, stored only as a hash; for a session also the provider, when it authenticated you and whether with a second factor; for an API key its label and when it was made and last used | To keep you logged in; for R and Python clients | The same |
+| Login sessions and API keys | A random key per session or API key, stored only as a hash; for a session also the provider, when it authenticated you and whether with a second factor, and the ID token the provider issued at that login (to end your login there too when you log out); for an API key its label and when it was made and last used | To keep you logged in; for R and Python clients | The same |
 | Security log | Your logins: when, with which provider, with a second factor or not; logins you linked; exports of a whole study you made | To detect misuse of accounts | `[TO DECIDE, e.g. legitimate interest in a secure service]` |
 | Admin log | Changes that the server's admins made to accounts and studies, with the admin's email address | Accountability | The same |
 | Your studies | Everything you put in them: see "Study data" in §3 | To provide the service | Processing on your behalf |
@@ -128,7 +128,7 @@ tracking and other non-essential storage, not for this.
 | Name | For | Set when | Kept |
 | --- | --- | --- | --- |
 | `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | A study accepts your link for the first time | 400 days |
-| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after your login was last used (the researcher pages, your list of studies under Code, or logging in to a study); removed at logout |
+| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after your login was last used (the researcher pages, your list of studies under Code, or logging in to a study); removed at logout (which also logs you out at the login provider) |
 | `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | Until you come back from the login provider, at most 10 minutes |
 | `[ANY COOKIES OF THE PROXY, e.g. Cloudflare's "__cf_bm" or "cf_clearance": only if the features that set them are switched on]` | Security of the proxy | | |
 
@@ -173,7 +173,7 @@ it to another AnnoTinder server.
 | --- | --- |
 | Study data | As long as the researcher keeps the study. The researcher decides when to delete it. `[IF A LIMIT APPLIES: "Studies that nobody opened for N months are deleted after a warning to the owner."]` |
 | Researcher accounts | Until you ask us to delete it. `[OPTIONAL: "Accounts not used for N years are deleted after a warning."]` |
-| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times) is removed within an hour |
+| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times, the ID token) is removed within an hour; at logout and a new login at once |
 | Links to continue on another device | 15 minutes |
 | Security and admin logs | `[PERIOD; today they are kept until someone removes them: SEE REVIEWER NOTE 5]` |
 | Invitations nobody used | They stop working after 3 months; `[PERIOD UNTIL REMOVED]` |

@@ -316,8 +316,10 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   in an httpOnly cookie, its hash in `sessions`, 14 days, sliding: a request
   extends the session (at most once an hour), and the server then sends the
   cookie again (coder routes too, §5), so a browser stays logged in until 14 days without use. Requests
-  need `x-annotinder: 1` (CSRF). Provider tokens aren't kept. Logging out
-  (`POST /auth/logout`) ends our session, not the provider's.
+  need `x-annotinder: 1` (CSRF). The session keeps only the login's ID
+  token (for logout). Logging out (`POST /auth/logout`) ends our session
+  and, when the provider has an `end_session_endpoint`, the provider's
+  (`security.md`, "Logout").
 - **A new login ends the one it replaces.** Coming back from the provider
   (`/api/auth/callback`, also for a step-up login), the server deletes the
   session of the login cookie the browser had, so it stops working at once
@@ -341,8 +343,7 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   confidential client. `email_verified` must reflect a real check; social
   logins may only be linked to existing users by email if that source verifies
   addresses; a lost second factor must not be recoverable by email alone.
-- **Not built:** a list of active sessions, logging out everywhere, logout at
-  the provider.
+- **Not built:** a list of active sessions, logging out everywhere.
 
 ## 8. Quitting, and deleting a coder's data
 

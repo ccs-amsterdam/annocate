@@ -25,8 +25,19 @@ export interface SessionLogin {
   issuer: string;
 }
 
+/** The provider's side of a login: its ID token (raw JWT) and `sid` claim, to end the provider's session at logout. */
+export interface ProviderLogin {
+  idToken: string;
+  sid: string | null;
+}
+
 /** A new session for a user; returns the key for the cookie. */
-export async function createSession(db: Db, userId: number, login: SessionLogin): Promise<string> {
+export async function createSession(
+  db: Db,
+  userId: number,
+  login: SessionLogin,
+  provider?: ProviderLogin,
+): Promise<string> {
   const key = randomToken();
   await db.insert(sessions).values({
     userId,
@@ -35,6 +46,8 @@ export async function createSession(db: Db, userId: number, login: SessionLogin)
     mfa: login.mfa,
     authTime: login.authTime,
     issuer: login.issuer,
+    idToken: provider?.idToken || null,
+    oidcSid: provider?.sid ?? null,
   });
   return key;
 }
@@ -70,8 +83,13 @@ export async function userForSession(
   return { ...user, extended };
 }
 
-export async function deleteSession(db: Db, key: string): Promise<void> {
-  await db.delete(sessions).where(eq(sessions.keyHash, sha256Hex(key)));
+/** Ends a session; returns its provider and ID token (null without one), or null if there was no such session. */
+export async function deleteSession(db: Db, key: string): Promise<{ issuer: string; idToken: string | null } | null> {
+  const [ended] = await db
+    .delete(sessions)
+    .where(eq(sessions.keyHash, sha256Hex(key)))
+    .returning({ issuer: sessions.issuer, idToken: sessions.idToken });
+  return ended ?? null;
 }
 
 /** Removes the sessions that have expired: at each login, and every hour (`sweepExpiredSessions`). */

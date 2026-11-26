@@ -711,8 +711,7 @@ the contract schemas), `login.test.ts` login against a mock provider. The
    blanks a value everywhere.
 7. **History.** Unit versions and reset answers are kept; a coder's own edits
    update in place (no history).
-8. **Researcher sessions**: list active sessions, log out everywhere, log out
-   at the provider.
+8. **Researcher sessions**: list active sessions, log out everywhere.
 9. **Multimedia** should not flow through JSON: units reference media by id,
    the server returns short-lived signed URLs to a blob store.
 10. **Semantic validation.** Running conditions on the server to

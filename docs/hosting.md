@@ -90,9 +90,15 @@ flow with PKCE S256) with the redirect URI
 https://annotinder.example.org/api/auth/callback
 ```
 
-exactly: no trailing slash, no wildcard. AnnoTinder asks for the scopes
-`openid email` and logs out locally only (give the provider a post-logout
-redirect URI only if it insists on one). Copy the client ID and secret.
+exactly: no trailing slash, no wildcard, and the post-logout redirect URI
+(Keycloak: **Valid post logout redirect URIs**)
+
+```
+https://annotinder.example.org/
+```
+
+with its trailing slash. AnnoTinder asks for the scopes `openid email`.
+Copy the client ID and secret.
 What the provider must send is in [Login provider](#login-provider): a
 verified email address, a second factor signalled in the ID token, and
 `auth_time` for step-up.
@@ -849,8 +855,17 @@ passwords (AnnoTinder sends none), and someone must help people who lost a
 second factor.
 
 - Register a confidential web client with redirect URI
-  `<ANNOTINDER_PUBLIC_URL>/api/auth/callback` and PKCE S256. The server asks
-  for `openid email` and logs out locally only.
+  `<ANNOTINDER_PUBLIC_URL>/api/auth/callback`, PKCE S256, and post-logout
+  redirect URI `<ANNOTINDER_PUBLIC_URL>/` (with the trailing slash; Keycloak:
+  **Valid post logout redirect URIs**). The server asks for `openid email`.
+- **Logging out ends the provider's session too** (OpenID Connect
+  RP-Initiated Logout), when the provider publishes an
+  `end_session_endpoint` (Keycloak does): after AnnoTinder's session ends,
+  the browser goes to the provider with the login's ID token and comes back
+  to the home page, so the next login asks again. That also logs the user
+  out of other applications that share the provider's session (single
+  sign-on). Without an `end_session_endpoint` logout is AnnoTinder's only,
+  and the next login can be instant while the provider's session lasts.
 - The ID token must carry the **verified email address** (`email_verified:
   true`; else the login is refused) and **a second factor signal**
   (`OIDC_MFA_CLAIM`: `amr` containing `mfa` by default, or an `acr` value).

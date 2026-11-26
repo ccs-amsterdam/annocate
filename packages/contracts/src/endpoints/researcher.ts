@@ -42,6 +42,7 @@ import {
   ApiKeyWriteSchema,
   AuthOptionsSchema,
   ConfirmDeletionSchema,
+  LogoutResponseSchema,
   MeResponseSchema,
   ResearcherRequestWriteSchema,
 } from "../account.js";
@@ -79,7 +80,7 @@ import {
  */
 export const researcherEndpoints = {
   getAuthOptions: { method: "GET", path: "/auth/options", request: z.void(), response: AuthOptionsSchema },
-  logout: { method: "POST", path: "/auth/logout", request: z.void(), response: z.void() },
+  logout: { method: "POST", path: "/auth/logout", request: z.void(), response: LogoutResponseSchema },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
   /** What deleting the user's account would delete, and what keeps it from being deleted. */
   getAccountDeletion: { method: "GET", path: "/me/deletion", request: z.void(), response: AccountDeletionSchema },

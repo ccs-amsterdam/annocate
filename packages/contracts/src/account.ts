@@ -171,6 +171,16 @@ export const AuthOptionsSchema = z.object({
 });
 export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 
+/**
+ * `POST /auth/logout`: AnnoTinder's session has ended. `redirect`: where the
+ * browser goes to end the login provider's session too (its
+ * `end_session_endpoint`, OIDC RP-Initiated Logout), which then sends it
+ * back to the server's home page; null when there is nothing to end there
+ * (no such endpoint, no login with an ID token, no provider).
+ */
+export const LogoutResponseSchema = z.object({ redirect: z.string().nullable() });
+export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
+
 /** Why a login was refused, as `?loginError=` on the page the researcher returns to. */
 export const LoginErrorSchema = z.enum([
   /** The provider didn't confirm the email address (unless `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`). */

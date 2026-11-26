@@ -134,6 +134,18 @@ cookie again when it does. A new login ends the session it replaces (the
 one of the cookie the browser had); every login, and the server every
 hour, removes the sessions that have expired (`coder-identity.md` §7).
 
+**Logout.** `POST /auth/logout` (with `x-annotinder: 1`) deletes the
+session and its cookie. The session keeps its login's ID token (and its
+`sid` claim), never sent to the browser by the API and deleted with the
+session (logout, the hourly sweep, a new login, account deletion). When the
+login's provider publishes an `end_session_endpoint`, the answer names
+where the browser goes next: that endpoint with `id_token_hint` (the ID
+token), `client_id` and `post_logout_redirect_uri` (`ANNOTINDER_PUBLIC_URL`
++ `/`), so the provider's session ends too (OpenID Connect RP-Initiated
+Logout) and the next login asks again. A session of the previous provider
+(`OIDC_PREVIOUS_*`) goes to that provider. Without the endpoint, an ID
+token or a reachable provider, logout ends AnnoTinder's session only.
+
 **The security log** (`security_log`, per user) records:
 
 | Event | When | Details |
