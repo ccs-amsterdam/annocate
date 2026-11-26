@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import type { MfaClaim } from "../oidc.js";
-import { sweepExpiredSessions } from "../shared/sessions.js";
+import { createSession, sweepExpiredSessions } from "../shared/sessions.js";
 import { emptyDb, query } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
@@ -470,13 +470,95 @@ describe("researcher login", () => {
     await b.logIn(verified);
     const session = b.cookies.get("annotinder_session")!;
     expect((await b.request("/api/auth/logout", { method: "POST" })).status).toBe(403); // CSRF header
-    expect((await b.api("/api/auth/logout", { method: "POST" })).status).toBe(204);
+    expect((await b.api("/api/auth/logout", { method: "POST" })).status).toBe(200);
     expect(b.cookies.has("annotinder_session")).toBe(false);
     // The old cookie, replayed: gone on the server too.
     const res = await app.request("/api/me", {
       headers: { cookie: `annotinder_session=${session}`, "x-annotinder": "1" },
     });
     expect(res.status).toBe(401);
+  });
+});
+
+const storedTokens = () =>
+  query<{ id_token: string | null; oidc_sid: string | null }>(db, "SELECT id_token, oidc_sid FROM sessions");
+const logOut = async (b: ReturnType<typeof browser>) =>
+  (await (await b.api("/api/auth/logout", { method: "POST" })).json()) as { redirect: string | null };
+
+describe("logout at the login provider (RP-Initiated Logout)", () => {
+  it("keeps the login's ID token and sid with the session, and never sends them to the client", async () => {
+    const b = browser();
+    await b.logIn({ ...verified, sid: "provider-session-1" });
+    const [stored] = await storedTokens();
+    expect(stored!.oidc_sid).toBe("provider-session-1");
+    const payload = JSON.parse(Buffer.from(stored!.id_token!.split(".")[1]!, "base64url").toString());
+    expect(payload).toMatchObject({ iss: ISSUER, sub: "user-1", sid: "provider-session-1" });
+    expect(await (await b.api("/api/me")).text()).not.toContain(stored!.id_token!);
+    // A provider that sends no sid
+    await query(db, "DELETE FROM sessions");
+    await browser().logIn(verified);
+    expect((await storedTokens())[0]).toMatchObject({ id_token: expect.any(String), oidc_sid: null });
+  });
+
+  it("ends the session here, then sends the browser to the provider's end_session_endpoint", async () => {
+    const b = browser();
+    await b.logIn(verified);
+    const idToken = (await storedTokens())[0]!.id_token!;
+    const { redirect } = await logOut(b);
+    const url = new URL(redirect!);
+    expect(url.origin + url.pathname).toBe(`${ISSUER}/logout`);
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      id_token_hint: idToken,
+      client_id: CLIENT_ID,
+      post_logout_redirect_uri: `${PUBLIC_URL}/`,
+    });
+    expect(await storedTokens()).toEqual([]);
+  });
+
+  it("logs out here only without an end_session_endpoint, an ID token, a session or a provider", async () => {
+    issuer = mockIssuer(ISSUER, { endSession: false });
+    app = newApp();
+    const b = browser();
+    await b.logIn(verified);
+    expect(await logOut(b)).toEqual({ redirect: null });
+    expect(await storedTokens()).toEqual([]);
+
+    issuer = mockIssuer();
+    app = newApp();
+    const [user] = await query<{ id: number }>(db, "SELECT id FROM users");
+    const key = await createSession(db, user!.id, { mfa: true, authTime: new Date(), issuer: ISSUER });
+    const noToken = browser();
+    noToken.cookies.set("annotinder_session", key);
+    expect(await logOut(noToken)).toEqual({ redirect: null });
+    expect(await logOut(browser())).toEqual({ redirect: null });
+    // Development mode, no provider
+    const dev = await createApp(db).request("/api/auth/logout", { method: "POST", headers: { "x-annotinder": "1" } });
+    expect(await dev.json()).toEqual({ redirect: null });
+  });
+
+  it("logs out here only when the provider can't be reached", async () => {
+    const OLD = "https://old-idp.test";
+    const down = (() => Promise.reject(new Error("provider down"))) as typeof fetch;
+    app = createApp(db, {
+      secret: "test-secret",
+      login: {
+        oidc: { issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, fetch: issuer.fetch },
+        publicUrl: PUBLIC_URL,
+        previous: {
+          oidc: { issuer: OLD, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, fetch: down },
+          until: new Date(Date.now() + 86_400_000),
+        },
+      },
+    });
+    const [user] = await query<{ id: number }>(db, "INSERT INTO users (email) VALUES ('jane@uni.nl') RETURNING id");
+    const login = { mfa: true, authTime: new Date(), issuer: OLD };
+    const b = browser();
+    b.cookies.set("annotinder_session", await createSession(db, user!.id, login, { idToken: "t", sid: null }));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await logOut(b)).toEqual({ redirect: null });
+    expect(warn).toHaveBeenCalledWith("Logout at the login provider skipped:", expect.anything());
+    warn.mockRestore();
+    expect(await storedTokens()).toEqual([]);
   });
 });
 
@@ -594,6 +676,15 @@ describe("changing providers (OIDC_PREVIOUS_*)", () => {
       (await b.request(`/api/auth/callback?code=${linked.code}&state=${linked.state}`)).headers.get("location"),
     ).toBe("/account");
     expect(await query(db, "SELECT sub FROM identities WHERE iss = $1", [ISSUER])).toEqual([{ sub: "new-jane" }]);
+  });
+
+  it("logs out at the provider the session's login came from", async () => {
+    const b = browser();
+    await logInAt(b, "provider=previous", old, { ...verified, sub: "old-jane" });
+    const { redirect } = await logOut(b);
+    expect(new URL(redirect!).origin + new URL(redirect!).pathname).toBe(`${OLD}/logout`);
+    await b.logIn(verified);
+    expect(new URL((await logOut(b)).redirect!).origin).toBe(ISSUER);
   });
 
   it("doesn't link a login that is someone else's account, nor without a session", async () => {

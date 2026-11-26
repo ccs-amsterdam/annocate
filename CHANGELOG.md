@@ -4,6 +4,23 @@ What changed for the people who use AnnoTinder: researchers, coders and
 those who run a server. Server, client and contracts are released together
 under one version.
 
+## 0.9.1 (not yet released)
+
+### For those who run a server
+
+- Logging out ends the login provider's session too (OpenID Connect
+  RP-Initiated Logout), when the provider publishes an
+  `end_session_endpoint` (Keycloak does), so the next login asks again.
+  This also logs the user out of other applications that share that
+  provider session. Add `<ANNOTINDER_PUBLIC_URL>/` as the client's
+  post-logout redirect URI (Keycloak: **Valid post logout redirect URIs**)
+  before updating (`docs/hosting.md`, "Login provider").
+- The login session now keeps the login's ID token (deleted with the
+  session; a new database migration). Sessions from before the update log
+  out at AnnoTinder only.
+- `POST /api/auth/logout` answers `200 { redirect: string | null }` instead
+  of 204: where the browser goes to end the provider's session, or null.
+
 ## 0.9.0 (2026-11-25)
 
 The first release: the version for the pilot. From this release on the

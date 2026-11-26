@@ -1,6 +1,7 @@
 import {
   researcherEndpoints,
   type StudyWrite,
+  type LogoutResponse,
   type ExampleSummary,
   type StudyFromExample,
   type RecipeInput,
@@ -109,8 +110,11 @@ export interface ResearcherApi {
 
   /** How researchers can sign in on this server (no authentication needed). */
   getAuthOptions(): Promise<AuthOptions>;
-  /** Ends the login session (session cookie). */
-  logout(): Promise<void>;
+  /**
+   * Ends the login session (session cookie). Returns where the browser goes
+   * to end the login provider's session too, or null (contracts `LogoutResponse`).
+   */
+  logout(): Promise<string | null>;
   /**
    * Where the browser goes to log in; it comes back to `returnTo` (a path on
    * this origin). `stepUp`: a login for a sensitive action, with a fresh
@@ -344,8 +348,9 @@ export class HttpResearcherApi implements ResearcherApi {
     return this.request(researcherEndpoints.getAuthOptions.path);
   }
 
-  async logout(): Promise<void> {
-    await this.request(researcherEndpoints.logout.path, { method: "POST" });
+  async logout(): Promise<string | null> {
+    const { redirect } = await this.request<LogoutResponse>(researcherEndpoints.logout.path, { method: "POST" });
+    return redirect;
   }
 
   loginUrl(returnTo: string, options: LoginUrlOptions = {}): string {

@@ -15,6 +15,13 @@
       "when": 1795616883967,
       "tag": "0001_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795696339915,
+      "tag": "0002_session_id_token",
+      "breakpoints": true
     }
   ]
 }

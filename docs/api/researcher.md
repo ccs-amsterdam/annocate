@@ -151,8 +151,13 @@ is accepted (`previous: { until }`, else null).
 
 ### logout
 
-`POST /auth/logout` (with `x-annotinder: 1`) → 204: ends the login session
-and clears its cookie.
+`POST /auth/logout` (with `x-annotinder: 1`) → `LogoutResponseSchema`,
+`{ redirect: string | null }`: ends the login session and clears its
+cookie. `redirect`: where the browser goes to end the login provider's
+session too (its `end_session_endpoint` with `id_token_hint`, `client_id`
+and `post_logout_redirect_uri`, which brings it back to the home page);
+null when there is none (no such endpoint, a session without an ID token,
+no provider).
 
 Logging in itself is not a JSON endpoint: the browser opens
 `GET /auth/login?returnTo=<path on this origin>`, which redirects to the

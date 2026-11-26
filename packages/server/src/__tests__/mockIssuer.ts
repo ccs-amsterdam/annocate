@@ -2,7 +2,8 @@ import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto"
 import { Hono } from "hono";
 
 // A minimal OpenID Connect provider for tests, reached through `fetch`
-// (no sockets): discovery, JWKS and a token endpoint. The authorization
+// (no sockets): discovery, JWKS and a token endpoint; discovery also names
+// an `end_session_endpoint` unless `endSession` is false. The authorization
 // step is the test's: it reads the login redirect and calls `approve` with
 // the claims the "user" logs in with, getting the code the provider would
 // send back.
@@ -19,7 +20,7 @@ interface Grant {
   redirectUri: string;
 }
 
-export function mockIssuer(ISSUER = DEFAULT_ISSUER) {
+export function mockIssuer(ISSUER = DEFAULT_ISSUER, { endSession = true }: { endSession?: boolean } = {}) {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
   const jwk = { ...publicKey.export({ format: "jwk" }), kid: "k1", alg: "ES256", use: "sig" };
   const grants = new Map<string, Grant>();
@@ -37,6 +38,7 @@ export function mockIssuer(ISSUER = DEFAULT_ISSUER) {
       authorization_endpoint: `${ISSUER}/authorize`,
       token_endpoint: `${ISSUER}/token`,
       jwks_uri: `${ISSUER}/jwks`,
+      ...(endSession ? { end_session_endpoint: `${ISSUER}/logout` } : {}),
       response_types_supported: ["code"],
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["ES256"],

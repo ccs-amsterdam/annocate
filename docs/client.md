@@ -754,7 +754,9 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   in (with the previous provider while the server changes providers, and a
   banner asking to link the new login). `account/AccountMenu.tsx`: email (an
   orange shield when the login had no second factor), API keys, theme,
-  **Delete account**, log out. On a development server, development headers
+  **Delete account**, log out (then on to the login provider to end its
+  session too, when the server answers with where: `afterLogout.ts`). On a
+  development server, development headers
   replace the login.
 - **Deleting an account** (`account/DeleteAccountDialog.tsx`,
   `docs/accounts.md` §5): asks the server what would go

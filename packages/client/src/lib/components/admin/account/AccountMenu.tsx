@@ -9,6 +9,7 @@ import { ExternalLink, KeyRound, LogIn, LogOut, Moon, ShieldAlert, Sun, Trash2, 
 import { useTheme } from "../../../context/theme";
 import { httpsUrl } from "../../../admin/format";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
+import { afterLogout } from "./afterLogout";
 
 /**
  * The user menu of the top bar: who is logged in, their API keys, light or
@@ -37,9 +38,7 @@ export function AccountMenu({
   const noSecondFactor = !!me && !dev && me.twoFactor.enabled && !me.twoFactor.used;
 
   async function logOut() {
-    await client.logout();
-    if (onLoggedOut) onLoggedOut();
-    else window.location.reload();
+    afterLogout(await client.logout(), onLoggedOut);
   }
 
   /** `fresh`: log in at the provider again (its session still holds a login without the second factor set up since). */
