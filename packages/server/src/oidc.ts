@@ -43,7 +43,7 @@ export interface LoginState {
   returnTo: string;
   /** Which provider: the current one, or the previous one during a migration. */
   provider: "current" | "previous";
-  /** A login for a sensitive action: it must come with a fresh second factor (`max_age`). */
+  /** A login for a sensitive action: it must come with a fresh second factor (`max_age=0`, `prompt=login`). */
   stepUp?: boolean;
   /** A step-up login at the previous provider that linking asked for: after it, linking goes on. */
   thenLink?: boolean;
@@ -56,8 +56,8 @@ export interface LoginState {
  * confirmed it (`emailVerified`: only `email_verified: true` counts), whether
  * it used a second factor (`mfa`, per `OIDC_MFA_CLAIM`), and when they
  * authenticated (`authTime`; null if the provider doesn't say). `idToken`:
- * the raw ID token and `sid` its session id claim (null if absent), kept
- * with our session to end the provider's at logout (`endSessionUrl`).
+ * the raw ID token, kept with our session to end the provider's at logout
+ * (`endSessionUrl`).
  */
 export type LoginResult =
   | {
@@ -68,7 +68,6 @@ export type LoginResult =
       mfa: boolean;
       authTime: Date | null;
       idToken: string;
-      sid: string | null;
     }
   | { error: "email_missing" | "login_failed" };
 
@@ -158,7 +157,6 @@ export class Oidc {
       mfa,
       authTime,
       idToken: idToken ?? "",
-      sid: typeof claims.sid === "string" ? claims.sid : null,
     };
   }
 

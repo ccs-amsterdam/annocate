@@ -77,7 +77,7 @@ export function adminUsers(server: Server): Hono<Env> {
     const becomesAdmin = change.role === undefined ? isAdmin : change.role === "admin";
     const changesRole = change.role !== undefined && isAdmin !== becomesAdmin;
     const touchesAdmin = change.role === undefined && isAdmin;
-    if (changesRole || touchesAdmin) checkSensitive(server, c.get("researcher"));
+    if (changesRole || touchesAdmin) await checkSensitive(server, c.get("researcher"), within);
   }
 
   app.get("/admin/users", async (c) => {
@@ -138,7 +138,7 @@ export function adminUsers(server: Server): Hono<Env> {
     }
     if (id === c.get("researcher").userId)
       throw new HttpError(409, "This is your own account: delete it on your account page");
-    checkSensitive(server, c.get("researcher"));
+    await checkSensitive(server, c.get("researcher"));
     const { confirm } = await parseJson(c, ConfirmDeletionSchema);
     const deleted = await deleteAccount(db, id, confirm);
     for (const study of deleted.studies) await forgetDeletedStudy(server, study.id);

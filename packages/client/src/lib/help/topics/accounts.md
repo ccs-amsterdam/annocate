@@ -39,9 +39,15 @@ Set up a second factor (authenticator app, passkey) at your login
 provider. Without one, an orange shield by your account menu links to the
 setup page; log in twice afterwards.
 
-Some actions ask you to log in again (step-up): API keys, deleting
-answers, coders' data, a study or your account, exporting a study, and
-giving or taking admin roles. API keys can't do these.
+Some actions ask you to log in again (step-up) unless you logged in with
+your second factor in the last 15 minutes, or did one of them in the last
+15 minutes (up to an hour after logging in): API keys, deleting answers,
+coders' data, a study or your account, exporting a study, and giving or
+taking admin roles. API keys can't do these.
+
+Your login ends after 30 minutes without activity, and 24 hours after
+logging in (the server's operator can change these). Unsaved design changes
+are kept in your browser: log in again and continue with them.
 
 ## Deleting your account
 

@@ -40,8 +40,10 @@ factor; server admin access needs one (else 403 `mfa_required`;
 (creating or revoking API keys, resetting answers, deleting coders' data, a
 study or one's account, exporting a study, changing a study's ADMINs or who
 is a server admin) need a
-web session whose second factor is at most `AUTH_STEP_UP_MAX_AGE` seconds old
-(403 `step_up_required`: log in again with `/auth/login?stepUp=1`), and never
+web session whose login with a second factor is at most `AUTH_STEP_UP_MAX_AGE`
+seconds old, and at most `AUTH_STEP_UP_IDLE` seconds after that login or the
+last sensitive action (403 `step_up_required`: log in again with
+`/auth/login?stepUp=1`), and never
 work with an API key (403 `not_with_api_key`).
 
 **API keys** do everything else their user can do as a researcher. A key is
@@ -174,8 +176,19 @@ otherwise, and if that login is someone else's; `docs/security.md` §1). The log
 that identity (`iss` + `sub`), or claims an invitation for its verified
 email (`docs/accounts.md` §1).
 
-The session cookie (`annotinder_session`, httpOnly) lasts 14 days from the
-session's last use: the server sends it again when it extends the session.
+The session cookie (`annotinder_session`, httpOnly) is sent once, at login,
+and lasts `AUTH_SESSION_MAX` seconds (default 24 hours). The server ends the
+session sooner after `AUTH_SESSION_IDLE` seconds without activity (default
+30 minutes): requests that change something (not `GET`), and
+`reportActivity`, are activity (`security.md` §1, "The session"). Then
+requests with the cookie answer 401.
+
+### reportActivity
+
+`POST /auth/activity` (session cookie, `x-annotinder: 1`) → 204: the user
+is at work in the client (types, clicks, scrolls) without making requests,
+so their session goes on. 401 when the session has ended. The client sends
+it while the user is active, at most every 5 minutes.
 
 ### getMe
 
@@ -186,7 +199,8 @@ units), an open `researcherRequest`, whether the server takes requests
 second factor), `used` (this login had one), `setupUrl` (the provider's
 account page, `OIDC_ACCOUNT_URL`), `adminOff` (a server admin whose login
 had none: admin access is off) and `freshUntil` (until when sensitive
-actions work without logging in again; null: they need a step-up login
+actions work without logging in again: each one moves it on, up to
+`AUTH_STEP_UP_MAX_AGE` after the login; null: they need a step-up login
 now).
 
 ### requestResearcher

@@ -758,6 +758,15 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
   session too, when the server answers with where: `afterLogout.ts`). On a
   development server, development headers
   replace the login.
+- **The login session** ends without activity (`security.md` §1, "The
+  session"). While logged in, `ResearcherGate` reports the user's typing,
+  clicks and scrolling to the server at most every 5 minutes
+  (`hooks/useReportActivity.ts`, `POST /auth/activity`). When a request
+  with the session cookie is refused (401), `HttpResearcherApi` tells its
+  listeners (`onLoginEnded`), and `ResearcherGate` shows a banner with
+  **Log in again** above the page, which stays as it is: unsaved design
+  edits stay in the editor and in their backup, which the researcher UI
+  offers after the login (below, "Backup, per study").
 - **Deleting an account** (`account/DeleteAccountDialog.tsx`,
   `docs/accounts.md` §5): asks the server what would go
   (`GET /me/deletion`), then either lists what keeps the account (a shared
@@ -937,7 +946,8 @@ email address, which the request carries as `confirm` (`admin/confirmDeletion.ts
       when the draft is deleted. An open editor clears only a backup that is
       its own (one it wrote, or the one it started from, `backupKeeper`): an
       earlier session's backup that is still on offer stays.
-    - After the browser was closed, the researcher UI offers the latest
+    - After the browser was closed, or a new login (the session had ended,
+      or a step-up), the researcher UI offers the latest
       backup in a banner (`BackupBanner.tsx`: the study, and when):
       **Continue editing** opens that study's design with the edits,
       **Discard** throws them away after a confirm.

@@ -5,6 +5,7 @@ import type { Researcher } from "./researcher/auth.js";
 import type { Oidc } from "./oidc.js";
 import type { FileStore } from "./shared/files.js";
 import type { RateLimiter } from "./shared/rateLimit.js";
+import type { LoginLimits } from "./shared/sessions.js";
 
 /** What every endpoint gets (built in app.ts). */
 export interface Server {
@@ -31,8 +32,8 @@ export interface Server {
   files: FileStore;
   /** Emails that are admins on this server (`ANNOTINDER_ADMINS`), lowercased; admins can make more. */
   admins: readonly string[];
-  /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
-  stepUpMaxAge: number;
+  /** How long logins and step-ups last (`AUTH_SESSION_*`, `AUTH_STEP_UP_*`; shared/sessions.ts). */
+  loginLimits: LoginLimits;
   /**
    * Weaker security (the lab's Authentication standard, "Weaker security"):
    * `disable2fa` (`AUTH_INSECURE_DISABLE_2FA`): no second factor needed,

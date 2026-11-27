@@ -209,23 +209,22 @@ describe("coder login", () => {
     expect(await query(db, "SELECT uses FROM links WHERE secret = $1", [secret])).toEqual([{ uses: 2 }]);
   });
 
-  it("sends the login cookie again when a coder's request extended the login session", async () => {
-    await ownedBy("owner@example.org", { crowdSignIn: true });
+  it("reads a coder's login as a researcher's: changes are activity, reading isn't, and it ends without", async () => {
     const user = await ensureUser(db, "e@example.org");
     const cookie = await createSession(db, user.id, CODER_LOGIN);
-    const home = () =>
-      server.request("/api/coder/sessions", {
-        headers: { "x-annotinder": "1", cookie: `${SESSION_COOKIE}=${cookie}` },
-      });
-    const renewed = (res: Response) => res.headers.getSetCookie().some((c) => c.startsWith(`${SESSION_COOKIE}=`));
-    // Just logged in: nothing to extend
-    expect(renewed(await home())).toBe(false);
-    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
-    expect(renewed(await home())).toBe(true);
-    // On a study's routes too, where the login counts
-    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
-    devices.set("tablet", { cookies: new Map([[SESSION_COOKIE, cookie]]), linkSecret: null });
-    expect(renewed(await send("tablet", "/session", {}, { "x-link-secret": "demo-secret", ...SIGN_IN }))).toBe(true);
+    const headers = { "content-type": "application/json", "x-annotinder": "1", cookie: `${SESSION_COOKIE}=${cookie}` };
+    const home = async () => (await server.request("/api/coder/sessions", { headers })).status;
+    const idle = (minutes: number) =>
+      query(db, "UPDATE sessions SET last_active = now() - make_interval(mins => $1)", [minutes]);
+    await idle(20);
+    expect(await home()).toBe(200);
+    // Saving settings is activity: 20 minutes later the login is still there (40 without)
+    const settings = await server.request("/api/coder/settings", { method: "PUT", headers, body: "{}" });
+    expect(settings.status).toBe(200);
+    await query(db, "UPDATE sessions SET last_active = last_active - interval '20 minutes'");
+    expect(await home()).toBe(200);
+    await idle(31);
+    expect(await home()).toBe(401);
   });
 });
 

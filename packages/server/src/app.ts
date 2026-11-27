@@ -44,6 +44,7 @@ import { DiskFileStore, readFileToken, type FileStore } from "./shared/files.js"
 import { HttpError, TooManyRequests, logLines, postgresCode } from "./shared/http.js";
 import { DEFAULT_RATE_LIMITS, RateLimiter, rateLimit, type RateLimits } from "./shared/rateLimit.js";
 import { securityHeaders } from "./shared/securityHeaders.js";
+import { DEFAULT_LOGIN_LIMITS, type LoginLimits } from "./shared/sessions.js";
 import { CLIENT_VERSION } from "./version.js";
 
 export interface AppOptions {
@@ -68,8 +69,8 @@ export interface AppOptions {
   login?: { oidc: OidcOptions; publicUrl: string; accountUrl?: string; previous?: { oidc: OidcOptions; until: Date } };
   /** Emails that are admins (docs/accounts.md). */
   admins?: string[];
-  /** How recent (seconds) a login's second factor must be for sensitive actions (`AUTH_STEP_UP_MAX_AGE`, default 600). */
-  stepUpMaxAge?: number;
+  /** How long logins and step-ups last (`AUTH_SESSION_*`, `AUTH_STEP_UP_*`); what isn't given: the defaults (shared/sessions.ts). */
+  loginLimits?: Partial<LoginLimits>;
   /** Weaker security: `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` (context.ts). */
   insecure?: Partial<Server["insecure"]>;
   /**
@@ -132,7 +133,7 @@ function buildServer(db: Db, options: AppOptions): Server {
     secret,
     files: options.files ?? new DiskFileStore(),
     admins: (options.admins ?? []).map((e) => e.trim().toLowerCase()).filter(Boolean),
-    stepUpMaxAge: options.stepUpMaxAge ?? 600,
+    loginLimits: { ...DEFAULT_LOGIN_LIMITS, ...options.loginLimits },
     insecure: {
       disable2fa: options.insecure?.disable2fa ?? false,
       disableEmailVerification: options.insecure?.disableEmailVerification ?? false,

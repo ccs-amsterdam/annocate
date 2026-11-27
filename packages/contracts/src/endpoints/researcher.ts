@@ -81,6 +81,12 @@ import {
 export const researcherEndpoints = {
   getAuthOptions: { method: "GET", path: "/auth/options", request: z.void(), response: AuthOptionsSchema },
   logout: { method: "POST", path: "/auth/logout", request: z.void(), response: LogoutResponseSchema },
+  /**
+   * The user is at work in the client (types, clicks) without making
+   * requests: their session goes on (docs/security.md "The session"). 204;
+   * 401 when the session has ended. Session cookie only.
+   */
+  reportActivity: { method: "POST", path: "/auth/activity", request: z.void(), response: z.void() },
   getMe: { method: "GET", path: "/me", request: z.void(), response: MeResponseSchema },
   /** What deleting the user's account would delete, and what keeps it from being deleted. */
   getAccountDeletion: { method: "GET", path: "/me/deletion", request: z.void(), response: AccountDeletionSchema },

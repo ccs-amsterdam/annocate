@@ -258,8 +258,8 @@ verified address; the role only works on a login with a second factor
 3. **Check the admin role**: the user menu says "Admin" and the study list
    has a **Server admin** button. If not: [Login troubleshooting](#login-troubleshooting).
 4. **Make an API key** (user menu → **API keys**) and run the smoke test with
-   it. A sensitive action: a second factor older than 10 minutes means one
-   more login.
+   it. A sensitive action: more than 15 minutes after the login (or the last
+   sensitive action) means one more login.
 5. **One full study**: **Create new study** → **Start from an example**,
    **Deploy**, open its link in a private window, code a few units, check the
    results, then archive the study (**Settings**).
@@ -285,7 +285,7 @@ lower it for accounts you don't know ([accounts](accounts.md) §3).
 | "Your login provider did not confirm your email address" | `email_verified` isn't `true`: the user hasn't verified it, or the client lacks the `email` scope. |
 | No admin role, orange shield ("Add a second factor") | The ID token has no second-factor signal (`OIDC_MFA_CLAIM`, default `amr` containing `mfa`): no second factor at the provider, or it was set up during this login (log out and in again), or the provider doesn't send the claim. |
 | No admin role, no shield | The address isn't in `ANNOTINDER_ADMINS` (the startup log lists them) or isn't verified. The role is given at login: log in again after recreating the app. |
-| "That login didn't confirm it's you" after a sensitive action | The step-up login had no second factor from the last `AUTH_STEP_UP_MAX_AGE` seconds. Also check the server's clock. |
+| "That login didn't confirm it's you" after a sensitive action | The step-up login had no second factor, or its `auth_time` wasn't recent: the provider doesn't honour `max_age=0` / `prompt=login`. Also check the server's clock. |
 
 ## Updating
 
@@ -798,7 +798,10 @@ those for `compose.yml`.
 | `OIDC_MFA_CLAIM` | Which ID token claim is a second factor: `amr:mfa` (default) or `acr:<value>` ([security](security.md) §1) |
 | `OIDC_ACCOUNT_URL` | The provider's account page for setting up a second factor; required unless `AUTH_INSECURE_DISABLE_2FA` |
 | `OIDC_PREVIOUS_HOST`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_MFA_CLAIM`, `OIDC_PREVIOUS_UNTIL` | The previous provider while changing providers, until a date ([accounts](accounts.md), "Changing providers") |
-| `AUTH_STEP_UP_MAX_AGE` | Seconds a second factor stays fresh for sensitive actions (default 600) |
+| `AUTH_SESSION_IDLE` | Seconds a login session lasts without activity (default 1800; at least 600) |
+| `AUTH_SESSION_MAX` | Seconds a login session lasts in total (default 86400) |
+| `AUTH_STEP_UP_MAX_AGE` | Seconds after a login with a second factor that sensitive actions work (default 3600) |
+| `AUTH_STEP_UP_IDLE` | Seconds after that login or the last sensitive action that the next one works (default 900) |
 | `AUTH_INSECURE_DISABLE_2FA`, `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: weaker security, for teaching and servers without sensitive data ([security](security.md) §1) |
 | `ANNOTINDER_ADMINS` | Comma-separated addresses that get the admin role at login |
 | `ANNOTINDER_TRUST_PROXY` | What is in front of the server, which says where the client's address (for rate limits) comes from. `none`: the connection. `proxy`: the last entry of `X-Forwarded-For`; only when the server is reachable only through one proxy (`compose.yml` sets it as its default). `cloudflare`: `CF-Connecting-IP` for requests that reached your proxy from Cloudflare ([The visitor's real address](#4-the-visitors-real-address)). Any other value: the server doesn't start. Outside compose the default is `none` |
@@ -860,11 +863,14 @@ second factor.
   **Valid post logout redirect URIs**). The server asks for `openid email`.
 - **Two logins, with their own lifetimes.** The provider is used to log in
   only: AnnoTinder keeps no access or refresh tokens and has its own session
-  (14 days from its last use). The provider's session (single sign-on, per
-  browser) is what lets the next login through without a password; on
-  Keycloak it ends after **SSO Session Idle** (default 30 minutes) or
-  **SSO Session Max** (default 10 hours). So AnnoTinder stays logged in
-  after the provider's session has ended, and changes at the provider (a
+  (it ends after 30 minutes without activity, `AUTH_SESSION_IDLE`, and 24
+  hours after the login, `AUTH_SESSION_MAX`). The provider's session
+  (single sign-on, per browser) is what lets the next login through without
+  a password; on Keycloak it ends after **SSO Session Idle** (default 30
+  minutes) or **SSO Session Max** (default 10 hours). The provider doesn't
+  tell AnnoTinder when its session ends (no back-channel logout). So
+  AnnoTinder can stay logged in after the provider's session has ended,
+  and the other way round, and changes at the provider (a
   blocked account, a new address, a new second factor) count from the next
   login: to lock someone out at once, block them in AnnoTinder
   ([accounts](accounts.md)). Details: [security](security.md) §1, "The
@@ -883,7 +889,7 @@ second factor.
 - The ID token must carry the **verified email address** (`email_verified:
   true`; else the login is refused) and **a second factor signal**
   (`OIDC_MFA_CLAIM`: `amr` containing `mfa` by default, or an `acr` value).
-  The provider must honour **step-up** (`max_age`) and return `auth_time`,
+  The provider must honour **step-up** (`max_age=0`, `prompt=login`) and return `auth_time`,
   and have an account page where users set up a second factor
   (`OIDC_ACCOUNT_URL`; OpenID Connect has no standard way to find it).
   Details: [security](security.md) §1.

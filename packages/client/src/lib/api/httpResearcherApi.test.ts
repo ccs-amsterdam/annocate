@@ -97,3 +97,34 @@ describe("a study the researcher has no role in", () => {
     expect(await new HttpResearcherApi({ baseUrl: "/api" }).getStudy(7)).toBeNull();
   });
 });
+
+describe("the login session", () => {
+  const refused = () => new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+
+  it("is reported ended when the server refuses a request with the session cookie, from any study's client", async () => {
+    vi.stubGlobal("fetch", async (url: string) =>
+      url === "/api/auth/activity" ? new Response(null, { status: 204 }) : refused(),
+    );
+    const api = new HttpResearcherApi({ baseUrl: "/api" });
+    const ended = vi.fn();
+    const stop = api.onLoginEnded(ended);
+    await api.reportActivity();
+    expect(ended).not.toHaveBeenCalled();
+    await expect(api.forStudy(7).listLinks()).rejects.toMatchObject({ status: 401 });
+    expect(ended).toHaveBeenCalledTimes(1);
+    stop();
+    await expect(api.listStudies()).rejects.toMatchObject({ status: 401 });
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
+  it("isn't there with an API key or development headers: their 401 is no ended login", async () => {
+    vi.stubGlobal("fetch", async () => refused());
+    for (const config of [{ apiKey: "k" }, { devRole: "ADMIN" as const }]) {
+      const api = new HttpResearcherApi({ baseUrl: "/api", ...config });
+      const ended = vi.fn();
+      api.onLoginEnded(ended);
+      await expect(api.listStudies()).rejects.toMatchObject({ status: 401 });
+      expect(ended).not.toHaveBeenCalled();
+    }
+  });
+});

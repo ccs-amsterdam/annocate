@@ -19,8 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1795696339915,
-      "tag": "0002_session_id_token",
+      "when": 1795792208806,
+      "tag": "0002_session_login_details",
       "breakpoints": true
     }
   ]

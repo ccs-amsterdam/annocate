@@ -143,9 +143,12 @@ export const domainPlans = pgTable("domain_plans", {
 
 /**
  * Login sessions (a cookie; key_hash: its hash). mfa: logged in with a
- * second factor; issuer: the identity provider; id_token, oidc_sid: the
- * login's ID token (raw JWT) and its `sid` claim, to end the provider's
- * session at logout (never sent to clients; deleted with the row).
+ * second factor; auth_time: when the provider authenticated the user;
+ * issuer: the identity provider; last_active: the user's last activity
+ * (a session ends after `AUTH_SESSION_IDLE` without, or `AUTH_SESSION_MAX`
+ * after created); step_up_at: the last sensitive action (step-up);
+ * id_token: the login's ID token (raw JWT), to end the provider's session
+ * at logout (never sent to clients; deleted with the row).
  */
 export const sessions = pgTable(
   "sessions",
@@ -157,11 +160,11 @@ export const sessions = pgTable(
     keyHash: text().notNull().unique("sessions_key_hash_key"),
     mfa: boolean().notNull().default(false),
     created: timestamptz().notNull().defaultNow(),
-    expires: timestamptz().notNull(),
+    lastActive: timestamptz().notNull().defaultNow(),
     authTime: timestamptz(),
+    stepUpAt: timestamptz(),
     issuer: text().notNull().default(""),
     idToken: text(),
-    oidcSid: text(),
   },
   (t) => [index("sessions_user").on(t.userId)],
 );

@@ -212,8 +212,10 @@ Coders' data is deleted per study (`coder-identity.md` §8), not here.
 
 Researchers work without it; server admin access needs it, and `GET /me`
 says how things stand (`twoFactor`). The session records it (`sessions.mfa`,
-`sessions.auth_time`). Sensitive actions need it recent and never work with an
-API key (`security.md` §1).
+`sessions.auth_time`), and the last sensitive action (`sessions.step_up_at`).
+Sensitive actions need it recent (an hour, and 15 minutes after the login or
+the last sensitive action, by default) and never work with an API key
+(`security.md` §1).
 
 ## 7. Open points
 

@@ -71,7 +71,8 @@ export const MeResponseSchema = z.object({
    * - `adminOff`: a server admin whose login had none: admin access is off
    *   until they log in with one;
    * - `freshUntil`: until when sensitive actions work without logging in
-   *   again (step-up); null: they need a new login now.
+   *   again (step-up); each one moves it on, up to an hour (by default)
+   *   after the login; null: they need a new login now.
    */
   twoFactor: z.object({
     enabled: z.boolean(),

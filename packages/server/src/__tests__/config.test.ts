@@ -21,7 +21,7 @@ describe("the server's settings", () => {
       devMode: false,
       secret: undefined,
       login: undefined,
-      stepUpMaxAge: 600,
+      loginLimits: { sessionIdle: 1800, sessionMax: 86400, stepUpMaxAge: 3600, stepUpIdle: 900 },
       insecure: { disable2fa: false, disableEmailVerification: false },
       frameAncestors: [],
       https: false,
@@ -38,7 +38,7 @@ describe("the server's settings", () => {
       ANNOTINDER_ADMINS: "a@vu.nl,b@vu.nl",
       ANNOTINDER_FRAME_ANCESTORS: "https://amcat.example.org, https://other.example.org",
       ANNOTINDER_TRUST_PROXY: "cloudflare",
-      AUTH_STEP_UP_MAX_AGE: "300",
+      AUTH_STEP_UP_MAX_AGE: "7200",
     });
     expect(config.port).toBe(9000);
     expect(config.login).toEqual({
@@ -55,7 +55,7 @@ describe("the server's settings", () => {
     expect(config.admins).toEqual(["a@vu.nl", "b@vu.nl"]);
     expect(config.frameAncestors).toEqual(["https://amcat.example.org", "https://other.example.org"]);
     expect(config.trustProxy).toBe("cloudflare");
-    expect(config.stepUpMaxAge).toBe(300);
+    expect(config.loginLimits.stepUpMaxAge).toBe(7200);
   });
 
   it("an empty value counts as unset", () => {
@@ -106,11 +106,33 @@ describe("the server's settings", () => {
     expect(weaker.login).not.toHaveProperty("accountUrl");
   });
 
-  it("refuses values it can't read", () => {
-    expect(() => readConfig({ AUTH_STEP_UP_MAX_AGE: "ten minutes" })).toThrow(
-      "AUTH_STEP_UP_MAX_AGE must be a number of seconds",
+  it("login and step-up limits: seconds, idle times within the maximum, a session idle time of 10 minutes or more", () => {
+    expect(
+      readConfig({
+        AUTH_SESSION_IDLE: "3600",
+        AUTH_SESSION_MAX: "28800",
+        AUTH_STEP_UP_MAX_AGE: "1800",
+        AUTH_STEP_UP_IDLE: "300",
+      }).loginLimits,
+    ).toEqual({ sessionIdle: 3600, sessionMax: 28800, stepUpMaxAge: 1800, stepUpIdle: 300 });
+    expect(readConfig({ AUTH_SESSION_IDLE: "", AUTH_STEP_UP_IDLE: " " }).loginLimits).toEqual(
+      readConfig({}).loginLimits,
     );
-    expect(() => readConfig({ AUTH_STEP_UP_MAX_AGE: "0" })).toThrow("AUTH_STEP_UP_MAX_AGE");
+    for (const name of ["AUTH_SESSION_IDLE", "AUTH_SESSION_MAX", "AUTH_STEP_UP_MAX_AGE", "AUTH_STEP_UP_IDLE"]) {
+      expect(() => readConfig({ [name]: "ten minutes" })).toThrow(`${name} must be a number of seconds`);
+      expect(() => readConfig({ [name]: "0" })).toThrow(name);
+      expect(() => readConfig({ [name]: "600.5" })).toThrow(name);
+    }
+    expect(() => readConfig({ AUTH_SESSION_IDLE: "300" })).toThrow("AUTH_SESSION_IDLE must be at least 600 seconds");
+    expect(() => readConfig({ AUTH_SESSION_IDLE: "7200", AUTH_SESSION_MAX: "3600" })).toThrow(
+      "AUTH_SESSION_IDLE can't be longer than AUTH_SESSION_MAX",
+    );
+    expect(() => readConfig({ AUTH_STEP_UP_MAX_AGE: "600" })).toThrow(
+      "AUTH_STEP_UP_IDLE can't be longer than AUTH_STEP_UP_MAX_AGE",
+    );
+  });
+
+  it("refuses values it can't read", () => {
     expect(() => readConfig({ AUTH_INSECURE_DISABLE_2FA: "1" })).toThrow(
       'AUTH_INSECURE_DISABLE_2FA must be true or false, not "1"',
     );

@@ -3,6 +3,7 @@ import type { AppOptions } from "./app.js";
 import { parseMfaClaim, type OidcOptions } from "./oidc.js";
 import { TRUST_PROXY, TRUST_PROXY_SOURCE, type TrustProxy } from "./shared/clientAddress.js";
 import type { RateLimits } from "./shared/rateLimit.js";
+import { DEFAULT_LOGIN_LIMITS, type LoginLimits } from "./shared/sessions.js";
 
 // The server's settings, from environment variables (docs/hosting.md
 // "Settings" has the full list). An empty value counts as unset.
@@ -19,8 +20,12 @@ import type { RateLimits } from "./shared/rateLimit.js";
 // OIDC_HOST (the provider's issuer), OIDC_CLIENT_ID, OIDC_CLIENT_SECRET,
 // OIDC_MFA_CLAIM (amr:mfa, default, or acr:<value>), OIDC_ACCOUNT_URL (the
 // provider's account page, where users set up a second factor: required
-// unless AUTH_INSECURE_DISABLE_2FA), AUTH_STEP_UP_MAX_AGE
-// (seconds, default 600), and during a move to another provider
+// unless AUTH_INSECURE_DISABLE_2FA), AUTH_SESSION_IDLE and AUTH_SESSION_MAX
+// (how long a login lasts without activity and in total: seconds, default
+// 1800 and 86400), AUTH_STEP_UP_MAX_AGE and AUTH_STEP_UP_IDLE (how old the
+// login with a second factor may be for a sensitive action, and how long
+// after it or the last sensitive action: seconds, default 3600 and 900),
+// and during a move to another provider
 // OIDC_PREVIOUS_HOST, OIDC_PREVIOUS_CLIENT_ID, OIDC_PREVIOUS_CLIENT_SECRET,
 // OIDC_PREVIOUS_MFA_CLAIM, OIDC_PREVIOUS_UNTIL; AUTH_DEV_MODE=1 (development
 // headers instead of a login: refused unless the server listens on localhost
@@ -57,7 +62,7 @@ export interface Config {
   secret: string | undefined;
   login: Login | undefined;
   admins: string[];
-  stepUpMaxAge: number;
+  loginLimits: LoginLimits;
   insecure: { disable2fa: boolean; disableEmailVerification: boolean };
   clientDir: string | undefined;
   frameAncestors: string[];
@@ -97,7 +102,7 @@ export function readConfig(env: Environment): Config {
     secret: env.ANNOTINDER_SECRET || undefined,
     login: readLogin(env, port, insecure),
     admins: (env.ANNOTINDER_ADMINS ?? "").split(","),
-    stepUpMaxAge: readStepUpMaxAge(env),
+    loginLimits: readLoginLimits(env),
     insecure,
     clientDir: env.ANNOTINDER_CLIENT_DIR || undefined,
     frameAncestors: (env.ANNOTINDER_FRAME_ANCESTORS ?? "").split(/[\s,]+/).filter(Boolean),
@@ -145,11 +150,35 @@ function insecureFlag(env: Environment, name: string): boolean {
   throw new Error(`${name} must be true or false, not "${env[name]}"`);
 }
 
-function readStepUpMaxAge(env: Environment): number {
-  const stepUpMaxAge = Number(env.AUTH_STEP_UP_MAX_AGE ?? 600);
-  if (!Number.isInteger(stepUpMaxAge) || stepUpMaxAge <= 0)
-    throw new Error("AUTH_STEP_UP_MAX_AGE must be a number of seconds");
-  return stepUpMaxAge;
+/** A number of seconds, or `fallback` when unset. */
+function readSeconds(env: Environment, name: string, fallback: number): number {
+  const value = env[name]?.trim();
+  if (!value) return fallback;
+  if (!/^[1-9][0-9]*$/.test(value)) throw new Error(`${name} must be a number of seconds, not "${value}"`);
+  return Number(value);
+}
+
+/**
+ * The client reports a user's activity at most every 5 minutes
+ * (useReportActivity.ts): a shorter idle time would log out users at work.
+ */
+const MIN_SESSION_IDLE = 10 * 60;
+
+/** How long logins and step-ups last (docs/security.md "The session", "Step-up"). */
+function readLoginLimits(env: Environment): LoginLimits {
+  const limits: LoginLimits = {
+    sessionIdle: readSeconds(env, "AUTH_SESSION_IDLE", DEFAULT_LOGIN_LIMITS.sessionIdle),
+    sessionMax: readSeconds(env, "AUTH_SESSION_MAX", DEFAULT_LOGIN_LIMITS.sessionMax),
+    stepUpMaxAge: readSeconds(env, "AUTH_STEP_UP_MAX_AGE", DEFAULT_LOGIN_LIMITS.stepUpMaxAge),
+    stepUpIdle: readSeconds(env, "AUTH_STEP_UP_IDLE", DEFAULT_LOGIN_LIMITS.stepUpIdle),
+  };
+  if (limits.sessionIdle < MIN_SESSION_IDLE)
+    throw new Error(`AUTH_SESSION_IDLE must be at least ${MIN_SESSION_IDLE} seconds, not ${limits.sessionIdle}`);
+  if (limits.sessionIdle > limits.sessionMax)
+    throw new Error("AUTH_SESSION_IDLE can't be longer than AUTH_SESSION_MAX");
+  if (limits.stepUpIdle > limits.stepUpMaxAge)
+    throw new Error("AUTH_STEP_UP_IDLE can't be longer than AUTH_STEP_UP_MAX_AGE");
+  return limits;
 }
 
 /** The login provider, if one is configured. */

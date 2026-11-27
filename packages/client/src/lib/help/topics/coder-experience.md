@@ -115,8 +115,8 @@ session** (see [Coder ids](links.md#coder-ids)).
   the study's link without that choice doesn't use the account. The
   session a device started before its coder logged in is removed if
   nothing was answered in it, so it doesn't count as a coder of the link.
-- A login lasts until 14 days without use (opening **Code**, or logging
-  in to a study). Coding doesn't need it: the device continues its session.
+- A login ends after 30 minutes without use, and 24 hours after logging in.
+  Coding doesn't need it: the device continues its session.
 
 ## Keyboard shortcuts
 

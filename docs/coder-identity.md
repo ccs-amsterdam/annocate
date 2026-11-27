@@ -285,9 +285,13 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
   (`maxCoders`); with answers it stays, for the researcher
   (`removeIfUnused`, `runtime/startSession.ts`). A crowd's coder whose only
   session that was is removed with it (`forgetCrowdCoders`).
-- **The login cookie** is sent again when a coder's request extended the
-  login session (§7; `loginReader`, `runtime/requestCoder.ts`): on the
-  coder home, and on a study's routes where the login is read.
+- **When the login ends** (§7: after 30 minutes without activity, 24 hours
+  after the login), the coder goes on coding on the device: the session has
+  its email, and the device key is the session. Logging in again is needed
+  only for what reads the login: another device, the coder home's studies
+  on other devices, and their own settings. Where the login is read
+  (`loginReader`, `runtime/requestCoder.ts`), a request that changes
+  something is activity for it, as for researchers.
 - **Accounts**: logging in creates a user with account role `user`
   (`accounts.md`).
 
@@ -313,20 +317,23 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   Connect provider, by issuer URL. The server runs the authorization code flow
   with PKCE itself (`/auth/login`, `/api/auth/callback`), so tokens never reach
   the browser; it checks the ID token and starts its own session: a random key
-  in an httpOnly cookie, its hash in `sessions`, 14 days, sliding: a request
-  extends the session (at most once an hour), and the server then sends the
-  cookie again (coder routes too, §5), so a browser stays logged in until 14 days without use. Requests
-  need `x-annotinder: 1` (CSRF). The session keeps only the login's ID
+  in an httpOnly cookie, its hash in `sessions`. It ends after
+  `AUTH_SESSION_IDLE` without activity (default 30 minutes) and
+  `AUTH_SESSION_MAX` after the login (default 24 hours): activity is a
+  request that changes something, or the client reporting that the user is
+  at work (`POST /auth/activity`), written at most once a minute. The cookie
+  is sent once, at login, for `AUTH_SESSION_MAX` (`security.md` §1, "The
+  session"). Requests need `x-annotinder: 1` (CSRF). The session keeps only the login's ID
   token (for logout). Logging out (`POST /auth/logout`) ends our session
   and, when the provider has an `end_session_endpoint`, the provider's
   (`security.md`, "Logout").
 - **A new login ends the one it replaces.** Coming back from the provider
   (`/api/auth/callback`, also for a step-up login), the server deletes the
-  session of the login cookie the browser had, so it stops working at once
-  instead of after 14 days. At every login it also deletes all sessions
-  that have expired (`deleteExpiredSessions`, `shared/sessions.ts`), and
-  the server does so every hour (`sweepExpiredSessions`, started in
-  `index.ts`), so an expired session's row stays an hour at most.
+  session of the login cookie the browser had, so it stops working at once.
+  At every login it also deletes all sessions that have ended
+  (`deleteExpiredSessions`, `shared/sessions.ts`), and the server does so
+  every hour (`sweepExpiredSessions`, started in `index.ts`), so an ended
+  session's row stays an hour at most.
 - **Identity is the login, not the email** (`accounts.md` §1). A login
   without `email_verified: true` is refused. The user is `iss` + `sub`; the
   email is updated at each login. Roles given to an address before its owner
@@ -335,7 +342,8 @@ client `components/admin/account/`. Endpoints: `docs/api/researcher.md`.
   previous owner's account, and the safeguards keep them from old
   invitations.
 - **Second factor**: required for managing the server and for sensitive
-  actions (recent: step-up); researchers and coders work without
+  actions (recent, and renewed by each sensitive action: step-up);
+  researchers and coders work without
   (`security.md` §1).
 - **Account roles** and limits: `accounts.md`.
 - **Setting up a provider** (e.g. Authentik): redirect URI

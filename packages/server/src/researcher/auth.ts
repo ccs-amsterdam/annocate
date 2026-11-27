@@ -3,14 +3,14 @@ import { accountRoleAtLeast, type AccountRole, type Role } from "@annotinder/con
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { roles, studies } from "../db/schema/index.js";
 import { studyRole } from "../db/sql.js";
-import { row as dbRow } from "../db/index.js";
+import { row as dbRow, type Db } from "../db/index.js";
 import { HttpError } from "../shared/http.js";
 import type { Env, Server } from "../context.js";
 import { getCookie } from "hono/cookie";
 import { ensureUser, userForKey } from "../shared/accounts.js";
-import { userForSession } from "../shared/sessions.js";
+import { isActivity, recordStepUp, userForSession } from "../shared/sessions.js";
 import { CLIENT_HEADER } from "../runtime/session.js";
-import { isFresh, SESSION_COOKIE, setSessionCookie } from "./login.js";
+import { SESSION_COOKIE, stepUpUntil } from "./login.js";
 import { idParam } from "../shared/request.js";
 
 // Researcher authentication (docs/api/researcher.md).
@@ -28,7 +28,8 @@ import { idParam } from "../shared/request.js";
 // factor and no expiry: a key acts as a researcher at most, also an admin's
 // (the admin API needs a web session), and never does sensitive actions
 // (`requireSensitive`): those need a web session with a recent login
-// (step-up).
+// (step-up: `AUTH_STEP_UP_MAX_AGE`, and `AUTH_STEP_UP_IDLE` since that
+// login or the last sensitive action; each one allowed renews it).
 // - Development only (`devMode`, AUTH_DEV_MODE=1): plain
 //   `x-dev-role` / `x-dev-email` headers (a registered user with that email),
 //   checked against nothing but the study's roles, and `x-dev-account-role`
@@ -57,8 +58,11 @@ export interface Researcher {
   via: "session" | "key" | "dev";
   /** The login used a second factor (API keys: counted as yes; they are never admins, see above). */
   mfa: boolean;
-  /** Sessions: when the provider authenticated the user (step-up). */
+  /** Sessions: when the provider authenticated the user, and the last sensitive action (step-up). */
   authTime: Date | null;
+  stepUpAt: Date | null;
+  /** Sessions: which one. */
+  sessionId?: number;
   /** Development headers only: the role the request claims. */
   devRole?: Role;
   /** A server admin whose login had no second factor: they work as a researcher until they log in with one. */
@@ -72,14 +76,12 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
     if (!user) return null;
     // A key is no admin: an admin's key works as a researcher's
     const accountRole = user.role === "admin" ? "researcher" : user.role;
-    return { email: user.email, userId: user.id, accountRole, via: "key", mfa: true, authTime: null };
+    return { email: user.email, userId: user.id, accountRole, via: "key", mfa: true, authTime: null, stepUpAt: null };
   }
   const session = getCookie(c, SESSION_COOKIE);
   if (session && c.req.header(CLIENT_HEADER) === "1") {
-    const user = await userForSession(server.db, session);
+    const user = await userForSession(server.db, session, server.loginLimits, { active: isActivity(c.req.method) });
     if (user) {
-      // The session lasts longer from now: so does its cookie
-      if (user.extended) setSessionCookie(c, session);
       // Server admin access needs a login with a second factor (unless AUTH_INSECURE_DISABLE_2FA)
       const adminOff = user.role === "admin" && !user.mfa && !server.insecure.disable2fa;
       return {
@@ -89,6 +91,8 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
         via: "session",
         mfa: user.mfa,
         authTime: user.authTime,
+        stepUpAt: user.stepUpAt,
+        sessionId: user.sessionId,
         ...(adminOff ? { adminOff } : {}),
       };
     }
@@ -97,7 +101,16 @@ async function authenticate(c: Context, server: Server): Promise<Researcher | nu
   if (server.devMode && devRole && devRole in ROLE_RANK) {
     const accountRole = (c.req.header("x-dev-account-role") as AccountRole | undefined) ?? "admin";
     const user = await ensureUser(server.db, c.req.header("x-dev-email") ?? "dev@localhost");
-    return { email: user.email, userId: user.id, devRole, accountRole, via: "dev", mfa: true, authTime: null };
+    return {
+      email: user.email,
+      userId: user.id,
+      devRole,
+      accountRole,
+      via: "dev",
+      mfa: true,
+      authTime: null,
+      stepUpAt: null,
+    };
   }
   return null;
 }
@@ -132,13 +145,9 @@ async function roleIn(server: Server, researcher: Researcher, studyId: number): 
 
 /** Until when a researcher may do sensitive actions without logging in again; null: not now (docs/security.md "Step-up"). */
 export function freshUntil(server: Server, researcher: Researcher): Date | null {
-  if (researcher.via === "dev") return new Date(Date.now() + server.stepUpMaxAge * 1000);
-  if (
-    researcher.via !== "session" ||
-    !isFresh(researcher, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa })
-  )
-    return null;
-  return new Date(researcher.authTime!.getTime() + server.stepUpMaxAge * 1000);
+  if (researcher.via === "dev") return new Date(Date.now() + server.loginLimits.stepUpIdle * 1000);
+  if (researcher.via !== "session") return null;
+  return stepUpUntil(researcher, server.loginLimits, { requireMfa: !server.insecure.disable2fa });
 }
 
 /**
@@ -146,22 +155,25 @@ export function freshUntil(server: Server, researcher: Researcher): Date | null 
  * answers or coders' data, deleting a study, changing who is an admin):
  * never with an API key (403 `not_with_api_key`), and only with a recent
  * login, with a second factor unless `AUTH_INSECURE_DISABLE_2FA` (403
- * `step_up_required`: the client logs in again with
- * `?stepUp=1`). Development headers pass. Call after authentication.
+ * `step_up_required`: the client logs in again with `?stepUp=1`). An
+ * allowed one renews the step-up's idle time (`within`: the transaction the
+ * action is done in, if any). Development headers pass. Call after
+ * authentication.
  */
-export function checkSensitive(server: Server, researcher: Researcher): void {
+export async function checkSensitive(server: Server, researcher: Researcher, within: Db = server.db): Promise<void> {
   if (researcher.via === "key")
     throw new HttpError(403, "This can't be done with an API key: use the web client", "not_with_api_key");
   if (!freshUntil(server, researcher)) {
     const how = server.insecure.disable2fa ? "log in again" : "log in again with your second factor";
     throw new HttpError(403, `Confirm it's you: ${how} to do this`, "step_up_required");
   }
+  if (researcher.sessionId !== undefined) await recordStepUp(within, researcher.sessionId);
 }
 
 /** Middleware: `checkSensitive` for every request of the route (after an authentication middleware). */
 export function requireSensitive(server: Server) {
   return async (c: Context<Env>, next: Next) => {
-    checkSensitive(server, c.get("researcher"));
+    await checkSensitive(server, c.get("researcher"));
     await next();
   };
 }

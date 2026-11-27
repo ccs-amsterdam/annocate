@@ -2,13 +2,13 @@ import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
 import { own, type SignIn } from "@annotinder/contracts";
 import type { Server } from "../context.js";
-import { SESSION_COOKIE, setSessionCookie } from "../researcher/login.js";
+import { SESSION_COOKIE } from "../researcher/login.js";
 import { deviceDetails } from "../shared/devices.js";
 import type { User } from "../shared/accounts.js";
 import { HttpError } from "../shared/http.js";
 import { crowdSignInAllowed } from "../shared/limits.js";
 import { linkInfo } from "../shared/links.js";
-import { userForSession } from "../shared/sessions.js";
+import { isActivity, userForSession } from "../shared/sessions.js";
 import { isPreviewId, type Proof } from "./registry.js";
 import type { DeploymentRuntime } from "./runtime.js";
 import { coderKey, newDeviceId, possibleCoderKeys, readDevice, writeDevice } from "./session.js";
@@ -61,18 +61,15 @@ function loginOf(server: Server, c: Context): (() => Promise<{ email: string } |
 }
 
 /**
- * Reads the login of a coder's request, if it has a login cookie. Reading
- * extends the login session; the cookie is then sent again, so someone who
- * only codes stays logged in as long as a researcher (researcher/auth.ts).
+ * Reads the login of a coder's request, if it has a login cookie: the
+ * request is activity, as a researcher's (shared/sessions.ts). Coding
+ * doesn't need the login once the session is linked to its email: the
+ * device's session goes on when the login ends.
  */
 export function loginReader(server: Server, c: Context): (() => Promise<User | null>) | undefined {
   const cookie = getCookie(c, SESSION_COOKIE);
   if (!cookie) return undefined;
-  return async () => {
-    const user = await userForSession(server.db, cookie);
-    if (user?.extended) setSessionCookie(c, cookie);
-    return user;
-  };
+  return () => userForSession(server.db, cookie, server.loginLimits, { active: isActivity(c.req.method) });
 }
 
 /**

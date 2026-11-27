@@ -18,6 +18,21 @@ under one version.
 - The login session now keeps the login's ID token (deleted with the
   session; a new database migration). Sessions from before the update log
   out at AnnoTinder only.
+- Login sessions follow the lab's Authentication standard: a session ends
+  after 30 minutes without activity and 24 hours after the login, instead
+  of 14 days after its last use (`AUTH_SESSION_IDLE`, `AUTH_SESSION_MAX`,
+  in seconds). Users log in again much more often. Typing, clicking and
+  changes count as activity; pages the client refreshes on its own don't.
+  When a session ends during work, the page stays and offers to log in
+  again; unsaved design edits are kept. Coders who logged in keep coding
+  when their login ends. The session cookie is sent once, at login.
+- Sensitive actions (API keys, deleting data, admin changes) work for an
+  hour after a login with a second factor (`AUTH_STEP_UP_MAX_AGE`, was 600
+  seconds), as long as at most 15 minutes passed since that login or the
+  last sensitive action (`AUTH_STEP_UP_IDLE`). A step-up login now always
+  asks the provider for a new login (`max_age=0`, `prompt=login`).
+- New endpoint `POST /api/auth/activity`: the client reports that the user
+  is at work (`docs/api/researcher.md`).
 - `POST /api/auth/logout` answers `200 { redirect: string | null }` instead
   of 204: where the browser goes to end the provider's session, or null.
 - Images are no longer tagged with each commit, only with releases and

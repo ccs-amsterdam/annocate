@@ -257,14 +257,32 @@ export interface HttpResearcherApiConfig {
 
 /** Talks to a real server implementing the `@annotinder/contracts` admin endpoints over HTTP. */
 export class HttpResearcherApi implements ResearcherApi {
-  constructor(private config: HttpResearcherApiConfig) {}
+  constructor(
+    private config: HttpResearcherApiConfig,
+    /** Told when the login session ended: shared with the clients made from this one (`forStudy`). */
+    private loginEndedListeners = new Set<() => void>(),
+  ) {}
 
   get studyId(): number | undefined {
     return this.config.studyId;
   }
 
   forStudy(studyId: number): ResearcherApi {
-    return new HttpResearcherApi({ ...this.config, studyId });
+    return new HttpResearcherApi({ ...this.config, studyId }, this.loginEndedListeners);
+  }
+
+  /**
+   * Calls `listener` whenever the server refuses a request with the session
+   * cookie (401): the login session ended. Returns how to stop.
+   */
+  onLoginEnded(listener: () => void): () => void {
+    this.loginEndedListeners.add(listener);
+    return () => this.loginEndedListeners.delete(listener);
+  }
+
+  /** The user is at work in the client: their login session goes on (docs/security.md "The session"). */
+  async reportActivity(): Promise<void> {
+    await this.request(researcherEndpoints.reportActivity.path, { method: "POST" });
   }
 
   private requireStudyId(): number {
@@ -327,6 +345,8 @@ export class HttpResearcherApi implements ResearcherApi {
         parsed = undefined;
       }
       const error = new ResearcherApiError(res.status, `Request to ${path} failed (${res.status}): ${body}`, parsed);
+      if (res.status === 401 && !this.config.apiKey && !this.config.devRole)
+        for (const listener of this.loginEndedListeners) listener();
       // A sensitive action needs a recent login (with a second factor, unless the server turned that off): log in again, back to this page (then do it again)
       if (error.code === "step_up_required" && typeof window !== "undefined" && !this.config.devRole) {
         if (

@@ -1,5 +1,5 @@
 {
-  "id": "02d4b351-220a-46fa-ae74-5a139d858be9",
+  "id": "19179f88-64f4-4463-ae2e-ceb52f3623b2",
   "prevId": "5229d76f-2387-4b5c-af34-023149f91145",
   "version": "7",
   "dialect": "postgresql",
@@ -676,14 +676,21 @@
           "notNull": true,
           "default": "now()"
         },
-        "expires": {
-          "name": "expires",
+        "last_active": {
+          "name": "last_active",
           "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "now()"
         },
         "auth_time": {
           "name": "auth_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "step_up_at": {
+          "name": "step_up_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
@@ -697,12 +704,6 @@
         },
         "id_token": {
           "name": "id_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "oidc_sid": {
-          "name": "oidc_sid",
           "type": "text",
           "primaryKey": false,
           "notNull": false

@@ -128,7 +128,7 @@ tracking and other non-essential storage, not for this.
 | Name | For | Set when | Kept |
 | --- | --- | --- | --- |
 | `annotinder_device` | A random id that lets you continue a study on the same device without an account. Scripts on the page can't read it | A study accepts your link for the first time | 400 days |
-| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 14 days after your login was last used (the researcher pages, your list of studies under Code, or logging in to a study); removed at logout (which also logs you out at the login provider) |
+| `annotinder_session` | Keeps a researcher (or a coder who logged in) logged in. Scripts on the page can't read it | You log in | 24 hours; the login itself ends sooner, after 30 minutes in which you didn't use the researcher pages (or your list of studies under Code). Removed at logout (which also logs you out at the login provider) |
 | `annotinder_login` | Carries a login from this site to the login provider and back | You start a login | Until you come back from the login provider, at most 10 minutes |
 | `[ANY COOKIES OF THE PROXY, e.g. Cloudflare's "__cf_bm" or "cf_clearance": only if the features that set them are switched on]` | Security of the proxy | | |
 
@@ -173,7 +173,7 @@ it to another AnnoTinder server.
 | --- | --- |
 | Study data | As long as the researcher keeps the study. The researcher decides when to delete it. `[IF A LIMIT APPLIES: "Studies that nobody opened for N months are deleted after a warning to the owner."]` |
 | Researcher accounts | Until you ask us to delete it. `[OPTIONAL: "Accounts not used for N years are deleted after a warning."]` |
-| Login sessions | They stop working 14 days after their last use, at logout, and when you log in again in the same browser. The record of an expired session (a hash, the provider, times, the ID token) is removed within an hour; at logout and a new login at once |
+| Login sessions | They stop working after 30 minutes without use, 24 hours after the login, at logout, and when you log in again in the same browser. The record of an ended session (a hash, the provider, times, the ID token) is removed within an hour; at logout and a new login at once |
 | Links to continue on another device | 15 minutes |
 | Security and admin logs | `[PERIOD; today they are kept until someone removes them: SEE REVIEWER NOTE 5]` |
 | Invitations nobody used | They stop working after 3 months; `[PERIOD UNTIL REMOVED]` |
@@ -243,7 +243,7 @@ email.
    (`server/src/db/schema/`, `docs/coder-identity.md`, `docs/accounts.md`)
    and what the client keeps in the browser. Cookies: `annotinder_device`
    (`runtime/session.ts`: path `/api/d`, 400 days), `annotinder_session`
-   (`researcher/login.ts`: 14 days) and `annotinder_login` (10 minutes,
+   (`researcher/login.ts`: `AUTH_SESSION_MAX`, default 24 hours) and `annotinder_login` (10 minutes,
    path `/api/auth`). Local storage keys: `annotinder:theme`,
    `annotinder:show-shortcuts`, `annotinder:key-mapping`,
    `annotinder:answer-keys`, `annotinder:docked-pane-height`,
@@ -254,11 +254,11 @@ email.
    cookies set by scripts, and the pages load nothing from other sites
    except what a researcher puts in a study. Check them again at each
    release: several items of the release plan change them (notes 5 and 8).
-   The session cookie lasts 14 days from its last use: a request that
-   reads the login extends the session (at most once an hour) and sends
-   the cookie again when it does, for researchers (`researcher/auth.ts`)
-   and for coders (`runtime/requestCoder.ts`: the coder home, and a
-   study's requests where the login counts).
+   The session cookie is sent once, at login, and lasts
+   `AUTH_SESSION_MAX` (default 24 hours); the server ends the session after
+   `AUTH_SESSION_IDLE` without activity (default 30 minutes:
+   `shared/sessions.ts`). If the operator changes these settings, change the
+   periods above.
 2. **No cookie banner: the reasoning.** The ePrivacy Directive (article
    5(3); in the Netherlands article 11.7a of the Telecommunicatiewet)
    requires consent for storing or reading information on a device,

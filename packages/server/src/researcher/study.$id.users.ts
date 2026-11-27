@@ -86,7 +86,7 @@ export function studyUsers(server: Server): Hono<Env> {
       const adminSet = (ids: number[]) => ids.sort((a, b) => a - b).join(",");
       const adminsBefore = adminSet(before.filter((r) => r.role === "ADMIN").map((r) => r.userId));
       const adminsAfter = adminSet([...wanted].filter(([, role]) => role === "ADMIN").map(([id]) => id));
-      if (adminsBefore !== adminsAfter) checkSensitive(server, researcher);
+      if (adminsBefore !== adminsAfter) await checkSensitive(server, researcher, tx);
 
       await tx.delete(roles).where(and(userRolesOf(studyId), notInArray(roles.userId, [...wanted.keys()])));
       // A role given again or changed counts from now (granted_at); an unchanged one keeps its date

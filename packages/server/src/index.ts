@@ -25,7 +25,7 @@ const server = serve({ fetch: app.fetch, port, ...(host ? { hostname: host } : {
   for (const warning of warnings) console.warn(`  WARNING: ${warning}`);
 });
 
-const stopSweeping = sweepExpiredSessions(db);
+const stopSweeping = sweepExpiredSessions(db, config.loginLimits);
 
 const shutdown = () => {
   stopSweeping();

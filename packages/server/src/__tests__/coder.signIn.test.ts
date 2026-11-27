@@ -7,6 +7,7 @@ import { query } from "./testDb.js";
 import {
   CODER_LOGIN,
   addCoders,
+  coder,
   codersInvite,
   createSet,
   crowd,
@@ -17,6 +18,7 @@ import {
   restart,
   restartWithLogin,
   send,
+  sentiment,
   useServer,
 } from "./coderHarness.js";
 
@@ -216,5 +218,25 @@ describe("expert coders", () => {
     await redeploy({}, [codersInvite("per_coder")]);
     useServer(restart());
     expect(await onLink("laptop", await annaLink())).toMatchObject({ canLogIn: false, signIn: "none" });
+  });
+});
+
+describe("a coder whose login ends while coding", () => {
+  beforeEach(async () => {
+    await addCoders([{ coder: "anna", email: "anna@uni.nl" }]);
+    await createSet("anna", ["unit-1"], "coder_set");
+  });
+
+  it("goes on coding on the device: its session is linked to the email, and no longer needs the login", async () => {
+    await redeploy({}, [codersInvite("login")]);
+    await logIn("laptop", "anna@uni.nl");
+    const laptop = coder("laptop", LINK);
+    const started = await laptop.session();
+    expect(started.login).toBe("anna@uni.nl");
+    // Past AUTH_SESSION_IDLE and AUTH_SESSION_MAX
+    await query(db, "UPDATE sessions SET last_active = now() - interval '2 days', created = now() - interval '2 days'");
+    expect(await laptop.session()).toMatchObject({ sessionId: started.sessionId, login: "anna@uni.nl" });
+    const unit = await laptop.next();
+    expect((await laptop.submit(unit!.id, sentiment("positive"))).status).toBe(200);
   });
 });

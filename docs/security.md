@@ -20,7 +20,7 @@ an httpOnly cookie. It checks each requirement itself:
 | --- | --- |
 | **Verified email** | `"email_verified": true` in the ID token, else the login is refused (unless `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION`) |
 | **A signalled second factor** | a claim saying 2FA was used: `OIDC_MFA_CLAIM`, `amr:mfa` (default) or `acr:<value>` (e.g. SURFconext's `acr:http://test.surfconext.nl/assurance/loa2`). Can be turned off (`AUTH_INSECURE_DISABLE_2FA`) |
-| **Step-up** | honours `max_age` and returns `auth_time`. Can't be turned off |
+| **Step-up** | honours `max_age=0` and `prompt=login`, and returns `auth_time`. Can't be turned off |
 
 **Who needs the second factor:**
 
@@ -38,7 +38,10 @@ provider's job.
 
 **Step-up for sensitive actions.** These need a web session whose login (with
 the second factor) is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default
-600):
+3600, an hour), and at most `AUTH_STEP_UP_IDLE` seconds (default 900, 15
+minutes) after that login or the last sensitive action: each sensitive action
+renews the 15 minutes, as GitHub's sudo mode does. `GET /me` says until when
+they work (`twoFactor.freshUntil`). The sensitive actions:
 
 - creating or revoking API keys;
 - resetting answers, deleting coders' data, exporting a study;
@@ -52,14 +55,13 @@ the second factor) is at most `AUTH_STEP_UP_MAX_AGE` seconds old (default
 - linking a new login to an account while changing providers (below).
 
 Otherwise: 403 `step_up_required`, and the client sends the researcher to log
-in again with `?stepUp=1`. The server asks the provider for `max_age` and
-checks the new token's 2FA claim and `auth_time` (`loginError=step_up_failed`
-if they don't hold). With `AUTH_INSECURE_DISABLE_2FA` only `auth_time` is
-checked. When the current login has no second factor, the step-up also asks
-for `prompt=login`: the provider's own session still holds that login, also
-after the user set up a second factor, and would hand it back unasked. The
-account menu's "log in again" after setting one up does the same
-(`?fresh=1`).
+in again with `?stepUp=1`. The server asks the provider for a new login
+(`max_age=0`, `prompt=login`: the provider's own session would otherwise hand
+back the login it has, also one without a second factor) and checks the new
+token's 2FA claim and `auth_time` (`loginError=step_up_failed` if they don't
+hold). With `AUTH_INSECURE_DISABLE_2FA` only `auth_time` is checked. The
+account menu's "log in again" after setting up a second factor asks for
+`prompt=login` too (`?fresh=1`).
 
 **Weaker security** (teaching, low-sensitivity servers). Two requirements can
 be turned off; never on a server with sensitive research data. Both are
@@ -133,22 +135,36 @@ whether a second factor was used; it asks for `openid email`, keeps no
 access or refresh tokens and doesn't call the provider for a session it has.
 The provider's own session (single sign-on, per browser; on Keycloak until
 **SSO Session Idle** or **SSO Session Max**) is separate: it decides whether
-the next login needs a password, not how long AnnoTinder stays logged in.
+the next login needs a password, not how long AnnoTinder stays logged in
+(that is AnnoTinder's own session, below). The provider doesn't tell
+AnnoTinder when its session ends (no back-channel logout).
 The server goes back to the provider only for a new login, a step-up and
 logout. So a change at the provider (an account blocked or deleted, a new
 address, a second factor set up) counts from the next login; blocking a
 user in AnnoTinder (`users.blocked_at`) refuses their session at once.
 
 **The session.** A random key in an httpOnly, `SameSite=Lax` cookie
-(`Secure` over HTTPS); the database has only its hash. It lasts 14 days from
-its last use: the server extends it at most once an hour, and sends the
-cookie again when it does. A new login ends the session it replaces (the
-one of the cookie the browser had); every login, and the server every
-hour, removes the sessions that have expired (`coder-identity.md` §7).
+(`Secure` over HTTPS); the database has only its hash. It ends after
+`AUTH_SESSION_IDLE` seconds without activity (default 1800, 30 minutes), and
+`AUTH_SESSION_MAX` seconds after the login (default 86400, 24 hours); then
+the user logs in again. Activity is a request that changes something, or the
+client reporting that the user types, clicks or scrolls (`POST
+/auth/activity`, at most every 5 minutes while they do): reading, such as the
+pages the client refreshes on its own every few seconds, doesn't keep a
+session. The server writes the time of the last activity at most once a
+minute. The cookie is sent once, at login, and lasts `AUTH_SESSION_MAX`; the
+server ends the session sooner without activity. When a session ends while
+the researcher is at work, the client keeps the page as it is and asks them
+to log in again; unsaved design edits are kept in the browser and offered
+after the login (`client.md` §7). A new login ends the session it replaces
+(the one of the cookie the browser had); every login, and the server every
+hour, removes the sessions that have ended (`coder-identity.md` §7). Coders
+code without a session: a coder who logged in keeps coding on the device
+when the login ends (`coder-identity.md` §5).
 
 **Logout.** `POST /auth/logout` (with `x-annotinder: 1`) deletes the
-session and its cookie. The session keeps its login's ID token (and its
-`sid` claim), never sent to the browser by the API and deleted with the
+session and its cookie. The session keeps its login's ID token, never
+sent to the browser by the API and deleted with the
 session (logout, the hourly sweep, a new login, account deletion). When the
 login's provider publishes an `end_session_endpoint`, the answer names
 where the browser goes next: that endpoint with `id_token_hint` (the ID
@@ -308,7 +324,10 @@ coders' answers; who can get them, and when they are removed:
 | `OIDC_MFA_CLAIM` | the second-factor claim: `amr:mfa` (default) or `acr:<value>` (§1) |
 | `OIDC_ACCOUNT_URL` | where users set up a second factor; required unless `AUTH_INSECURE_DISABLE_2FA` (§1) |
 | `OIDC_PREVIOUS_*`, `OIDC_PREVIOUS_UNTIL` | the previous provider while changing (`accounts.md`) |
-| `AUTH_STEP_UP_MAX_AGE` | seconds a login stays fresh for sensitive actions (default 600) |
+| `AUTH_SESSION_IDLE` | seconds a session lasts without activity (default 1800; at least 600) |
+| `AUTH_SESSION_MAX` | seconds a session lasts after the login (default 86400) |
+| `AUTH_STEP_UP_MAX_AGE` | seconds after a login with a second factor that sensitive actions work (default 3600) |
+| `AUTH_STEP_UP_IDLE` | seconds after that login or the last sensitive action that the next one works (default 900) |
 | `AUTH_INSECURE_DISABLE_2FA` | `true`: no second factor required (§1) |
 | `AUTH_INSECURE_DISABLE_EMAIL_VERIFICATION` | `true`: unverified addresses can log in (§1) |
 | `AUTH_DEV_MODE` | `1`: development headers, localhost only |

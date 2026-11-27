@@ -1,7 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { LogoSmoke } from "@/components/Logo";
 import type { AuthOptions, LoginError, MeResponse } from "@annotinder/contracts";
-import { ResearcherApiError, type LoginUrlOptions, type ResearcherApi } from "../../../api/httpResearcherApi";
+import {
+  ResearcherApiError,
+  type HttpResearcherApi,
+  type LoginUrlOptions,
+  type ResearcherApi,
+} from "../../../api/httpResearcherApi";
+import { useReportActivity } from "../../../hooks/useReportActivity";
 import { Button } from "@/components/ui/button";
 import { LogIn, ShieldCheck } from "lucide-react";
 
@@ -53,32 +59,66 @@ function LinkBanner({ client }: { client: ResearcherApi }) {
   );
 }
 
+/**
+ * The login session ended while the researcher was at work (the server
+ * refused a request). The page stays as it is, unsaved edits too, until
+ * they log in again: unsaved design edits are kept in the browser
+ * (localBackup.ts) and offered after the login.
+ */
+function SessionEndedBanner({ client }: { client: ResearcherApi }) {
+  return (
+    <div
+      role="alert"
+      className="mx-auto mb-3 flex max-w-6xl flex-wrap items-center gap-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm"
+    >
+      <span className="flex-1">
+        Your login has ended, so changes can't be saved. Log in again to go on: unsaved design changes are kept in this
+        browser, and offered to continue with after logging in.
+      </span>
+      <Button size="sm" onClick={() => window.location.assign(client.loginUrl(thisPage()))}>
+        <LogIn className="mr-2 h-4 w-4" /> Log in again
+      </Button>
+    </div>
+  );
+}
+
 type State =
   | { status: "loading" }
-  | { status: "in"; me: MeResponse }
+  | { status: "in"; me: MeResponse; ended: boolean }
   | { status: "out"; options: AuthOptions | null }
   | { status: "error"; message: string };
 
 /**
  * Shows `children` to a logged-in researcher, and a login screen otherwise
  * (docs/api/researcher.md). Logging in leaves the page for the login
- * provider and comes back to it.
+ * provider and comes back to it. While logged in, the user's activity keeps
+ * the session (`useReportActivity`); once it has ended, a banner asks them
+ * to log in again.
  */
 export function ResearcherGate({
   client,
   children,
 }: {
-  client: ResearcherApi;
+  client: HttpResearcherApi;
   children: (me: MeResponse) => ReactNode;
 }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [loginError] = useState(loginErrorFromUrl);
+  const loggedIn = state.status === "in" && !state.ended;
+  useReportActivity(
+    useCallback(() => client.reportActivity(), [client]),
+    loggedIn,
+  );
+  useEffect(
+    () => client.onLoginEnded(() => setState((s) => (s.status === "in" ? { ...s, ended: true } : s))),
+    [client],
+  );
 
   useEffect(() => {
     let cancelled = false;
     client
       .getMe()
-      .then((me) => !cancelled && setState({ status: "in", me }))
+      .then((me) => !cancelled && setState({ status: "in", me, ended: false }))
       .catch(async (err: unknown) => {
         if (cancelled) return;
         if (err instanceof ResearcherApiError && err.status === 401) {
@@ -96,6 +136,7 @@ export function ResearcherGate({
   if (state.status === "in")
     return (
       <>
+        {state.ended && <SessionEndedBanner client={client} />}
         {state.me.linkNeeded && <LinkBanner client={client} />}
         {children(state.me)}
       </>

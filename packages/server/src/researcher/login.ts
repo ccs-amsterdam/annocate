@@ -10,8 +10,8 @@ import {
   createSession,
   deleteExpiredSessions,
   deleteSession,
-  SESSION_TTL_MS,
   userForSession,
+  type LoginLimits,
 } from "../shared/sessions.js";
 import { isSecure } from "../shared/cookies.js";
 import { securityLog } from "../shared/securityLog.js";
@@ -22,9 +22,11 @@ import { CLIENT_HEADER } from "../runtime/session.js";
 // httpOnly cookie for the whole origin. The client is served from this
 // server's origin (in development, Vite proxies to it). `?stepUp=1`: a login
 // for a sensitive action: the provider must authenticate the user again
-// unless it did so within `AUTH_STEP_UP_MAX_AGE` (`max_age`), and the server
-// checks the ID token's `auth_time` and second factor itself, because
-// providers don't always do what was asked.
+// (`max_age=0`, `prompt=login`), and the server checks the ID token's
+// `auth_time` and second factor itself, because providers don't always do
+// what was asked. While the user works in the client without making
+// requests, it reports their activity (`/api/auth/activity`), so the
+// session doesn't end while they are at work (shared/sessions.ts).
 //
 // Moving to another provider (docs/accounts.md "Changing providers"): with
 // `OIDC_PREVIOUS_*` set, `?provider=previous` logs in with the old one until
@@ -68,34 +70,35 @@ function parseLoginState(raw: string | false | undefined): LoginState | null {
 }
 
 /**
- * Gives the browser the session's key, for as long as the session lasts: at
- * login, and again whenever the server extends the session.
+ * Gives the browser the session's key at login, for as long as the session
+ * can last (`AUTH_SESSION_MAX`); the server ends it sooner without
+ * activity, so the cookie never needs to be sent again.
  */
-export function setSessionCookie(c: Context, key: string): void {
-  setCookie(c, SESSION_COOKIE, key, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "Lax",
-    secure: isSecure(c),
-    maxAge: SESSION_TTL_MS / 1000,
-  });
+function setSessionCookie(c: Context, key: string, maxAge: number): void {
+  setCookie(c, SESSION_COOKIE, key, { path: "/", httpOnly: true, sameSite: "Lax", secure: isSecure(c), maxAge });
 }
 
 /** Clock difference with the provider we allow when checking `auth_time`. */
 const CLOCK_SKEW_MS = 60_000;
 
 /**
- * Whether a login is recent enough for sensitive actions (step-up), with a
- * second factor unless `requireMfa` is false (`AUTH_INSECURE_DISABLE_2FA`:
- * then only `auth_time` counts).
+ * Until when a login allows sensitive actions (step-up, docs/security.md):
+ * while its authentication is at most `stepUpMaxAge` old, and at most
+ * `stepUpIdle` has passed since then or since the last sensitive action
+ * (`stepUpAt`). It needs a second factor unless `requireMfa` is false
+ * (`AUTH_INSECURE_DISABLE_2FA`: then only `auth_time` counts). Null: not now.
  */
-export function isFresh(
-  login: { mfa: boolean; authTime: Date | null },
-  maxAgeSeconds: number,
+export function stepUpUntil(
+  login: { mfa: boolean; authTime: Date | null; stepUpAt: Date | null },
+  { stepUpMaxAge, stepUpIdle }: Pick<LoginLimits, "stepUpMaxAge" | "stepUpIdle">,
   { requireMfa = true, now = Date.now() }: { requireMfa?: boolean; now?: number } = {},
-): boolean {
-  if (requireMfa && !login.mfa) return false;
-  return login.authTime !== null && now - login.authTime.getTime() <= maxAgeSeconds * 1000 + CLOCK_SKEW_MS;
+): Date | null {
+  if ((requireMfa && !login.mfa) || !login.authTime) return null;
+  // auth_time is the provider's clock; the last sensitive action ours
+  const authenticated = login.authTime.getTime() + CLOCK_SKEW_MS;
+  const lastAction = Math.max(authenticated, login.stepUpAt?.getTime() ?? 0);
+  const until = Math.min(authenticated + stepUpMaxAge * 1000, lastAction + stepUpIdle * 1000);
+  return now <= until ? new Date(until) : null;
 }
 
 export function login(server: Server): Hono<Env> {
@@ -104,6 +107,8 @@ export function login(server: Server): Hono<Env> {
   /** The previous provider, while it is still accepted. */
   const previousOidc = () => (previous && Date.now() < previous.until.getTime() ? previous.oidc : null);
   const redirectUri = publicUrl ? `${publicUrl}/api/auth/callback` : "";
+  /** Whether step-up needs a second factor (not with `AUTH_INSECURE_DISABLE_2FA`). */
+  const requireMfa = { requireMfa: !server.insecure.disable2fa };
 
   app.get("/auth/options", (c) =>
     c.json({
@@ -135,20 +140,12 @@ export function login(server: Server): Hono<Env> {
   async function linkingUser(c: Context): Promise<{ id: number; fresh: boolean } | null> {
     const old = previousOidc();
     const key = getCookie(c, SESSION_COOKIE);
-    const user = key ? await userForSession(server.db, key) : null;
+    const user = key ? await userForSession(server.db, key, server.loginLimits, { active: false }) : null;
     // Only while moving providers, and only for someone who logged in with the previous one
     if (!oidc || !old || !user || !sameIssuer(user.issuer, old.issuer)) return null;
     // One identity per provider: a second one would be someone else's login
     if (await hasIdentityAt(user.id, oidc.issuer)) return null;
-    return { id: user.id, fresh: isFresh(user, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }) };
-  }
-
-  /** Whether the browser's current login lacks a second factor that this server asks for. */
-  async function loginWithoutMfa(c: Context): Promise<boolean> {
-    if (server.insecure.disable2fa) return false;
-    const key = getCookie(c, SESSION_COOKIE);
-    const user = key ? await userForSession(server.db, key) : null;
-    return user !== null && !user.mfa;
+    return { id: user.id, fresh: stepUpUntil(user, server.loginLimits, requireMfa) !== null };
   }
 
   app.get("/auth/login", async (c) => {
@@ -163,7 +160,7 @@ export function login(server: Server): Hono<Env> {
     const provider = usePrevious ? previousOidc() : oidc;
     if (!provider) return c.json({ error: "The previous login provider is no longer accepted" }, 404);
     const linkNow = linking && !stepUpToLink;
-    const freshLogin = linkNow || c.req.query("fresh") === "1" || (stepUp && (await loginWithoutMfa(c)));
+    const freshLogin = linkNow || stepUp || c.req.query("fresh") === "1";
     const { url, state } = await provider.start(
       redirectUri,
       {
@@ -173,9 +170,10 @@ export function login(server: Server): Hono<Env> {
         ...(stepUpToLink ? { thenLink: true } : {}),
         ...(linkNow ? { linkUserId: linking.id } : {}),
       },
-      // A login at the provider now, whatever session the browser has there: whoever links, and
-      // after setting up a second factor (the provider's session still holds the login without one)
-      { ...(stepUp ? { maxAge: server.stepUpMaxAge } : {}), ...(freshLogin ? { promptLogin: true } : {}) },
+      // A login at the provider now, whatever session the browser has there: for a sensitive action,
+      // whoever links, and after setting up a second factor (the provider's session still holds the
+      // login without one)
+      freshLogin ? { ...(stepUp ? { maxAge: 0 } : {}), promptLogin: true } : {},
     );
     await setSignedCookie(c, LOGIN_COOKIE, JSON.stringify(state), server.secret, {
       path: "/api/auth",
@@ -232,10 +230,11 @@ export function login(server: Server): Hono<Env> {
     // The session this login replaces ends now, not when it expires
     const replaced = getCookie(c, SESSION_COOKIE);
     if (replaced) await deleteSession(server.db, replaced);
-    await deleteExpiredSessions(server.db);
-    setSessionCookie(c, await createSession(server.db, user.id, login, { idToken: result.idToken, sid: result.sid }));
+    await deleteExpiredSessions(server.db, server.loginLimits);
+    const key = await createSession(server.db, user.id, login, result.idToken);
+    setSessionCookie(c, key, server.loginLimits.sessionMax);
     // A step-up login must bring a recent second factor (checked here, whatever the provider did with max_age)
-    if (state.stepUp && !isFresh(login, server.stepUpMaxAge, { requireMfa: !server.insecure.disable2fa }))
+    if (state.stepUp && !stepUpUntil({ ...login, stepUpAt: null }, server.loginLimits, requireMfa))
       return back(state.returnTo, "step_up_failed");
     // The step-up was for linking: on to the current provider
     if (state.thenLink) return c.redirect(`/api/auth/login?link=1&returnTo=${encodeURIComponent(state.returnTo)}`);
@@ -261,6 +260,16 @@ export function login(server: Server): Hono<Env> {
       return null;
     }
   }
+
+  // The user works in the client (types, clicks) without making requests: their session goes on.
+  // 401 when it has ended.
+  app.post("/auth/activity", async (c) => {
+    if (c.req.header(CLIENT_HEADER) !== "1") return c.json({ error: `Missing ${CLIENT_HEADER} header` }, 403);
+    const key = getCookie(c, SESSION_COOKIE);
+    const user = key ? await userForSession(server.db, key, server.loginLimits, { active: true }) : null;
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+    return c.body(null, 204);
+  });
 
   // Ends our session; `redirect`: where the browser ends the provider's too (contracts `LogoutResponse`)
   app.post("/auth/logout", async (c) => {

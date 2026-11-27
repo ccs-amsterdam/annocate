@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "../db/index.js";
 import { createApp } from "../app.js";
 import type { MfaClaim } from "../oidc.js";
-import { createSession, sweepExpiredSessions } from "../shared/sessions.js";
+import { createSession, DEFAULT_LOGIN_LIMITS, sweepExpiredSessions, type LoginLimits } from "../shared/sessions.js";
 import { emptyDb, query } from "./testDb.js";
 import { CLIENT_ID, CLIENT_SECRET, ISSUER, mockIssuer } from "./mockIssuer.js";
 
@@ -19,9 +19,11 @@ function newApp(
   admins: string[] = [],
   mfaClaim?: MfaClaim,
   insecure?: { disable2fa?: boolean; disableEmailVerification?: boolean },
+  loginLimits?: Partial<LoginLimits>,
 ) {
   return createApp(db, {
     ...(insecure ? { insecure } : {}),
+    ...(loginLimits ? { loginLimits } : {}),
     secret: "test-secret",
     login: {
       oidc: {
@@ -83,6 +85,9 @@ function browser() {
 /** A login with a verified email and a second factor, just now (the provider's `auth_time`). */
 const verified = { email: "Jane@Uni.nl", email_verified: true, amr: ["pwd", "mfa"] };
 const secondsAgo = (s: number) => Math.floor(Date.now() / 1000) - s;
+/** Sets a time of every session to this many minutes ago. */
+const ago = (column: "created" | "last_active" | "auth_time" | "step_up_at", minutes: number) =>
+  query(db, `UPDATE sessions SET ${column} = now() - make_interval(mins => $1)`, [minutes]);
 
 describe("researcher login", () => {
   it("tells the client login is available", async () => {
@@ -259,10 +264,10 @@ describe("researcher login", () => {
     expect(await (await c.api("/api/me")).json()).toMatchObject({ role: "admin" });
   });
 
-  it("asks for a recent second factor for sensitive actions (step-up with max_age, auth_time checked here)", async () => {
+  it("asks for a new login with a second factor for sensitive actions (step-up, auth_time checked here)", async () => {
     app = newApp(["jane@uni.nl"]);
     const b = browser();
-    // Logged in with a second factor, but 20 minutes ago: normal work goes on, an API key needs a new login
+    // Logged in with a second factor, but 20 minutes ago (AUTH_STEP_UP_IDLE: 15): normal work goes on, an API key needs a new login
     await b.logIn({ ...verified, auth_time: secondsAgo(20 * 60) });
     expect(await (await b.api("/api/me")).json()).toMatchObject({ twoFactor: { used: true, freshUntil: null } });
     expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
@@ -270,9 +275,9 @@ describe("researcher login", () => {
     expect(key.status).toBe(403);
     expect(await key.json()).toMatchObject({ code: "step_up_required" });
 
-    // The step-up login asks the provider for a login of at most AUTH_STEP_UP_MAX_AGE seconds
-    const start = await b.request("/api/auth/login?returnTo=/x&stepUp=1");
-    expect(new URL(start.headers.get("location")!).searchParams.get("max_age")).toBe("600");
+    // The step-up login asks the provider for a new login, whatever session the browser has there
+    const start = new URL((await b.request("/api/auth/login?returnTo=/x&stepUp=1")).headers.get("location")!);
+    expect([start.searchParams.get("max_age"), start.searchParams.get("prompt")]).toEqual(["0", "login"]);
     // A provider that ignores max_age (an old auth_time) or a login without the second factor: refused here
     expect(await b.logIn({ ...verified, auth_time: secondsAgo(30 * 60) }, "/x", true)).toBe(
       "/x?loginError=step_up_failed",
@@ -283,7 +288,7 @@ describe("researcher login", () => {
     expect(await b.logIn({ ...verified, auth_time: secondsAgo(5) }, "/x", true)).toBe("/x");
     expect((await b.api("/api/me")).ok).toBe(true);
     const me = (await (await b.api("/api/me")).json()) as { twoFactor: { freshUntil: string } };
-    expect(new Date(me.twoFactor.freshUntil).getTime()).toBeGreaterThan(Date.now() + 9 * 60_000);
+    expect(new Date(me.twoFactor.freshUntil).getTime()).toBeGreaterThan(Date.now() + 14 * 60_000);
     expect((await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) })).status).toBe(201);
   });
 
@@ -294,14 +299,10 @@ describe("researcher login", () => {
       new URL((await b.request(`/api/auth/login?returnTo=/x${query}`)).headers.get("location")!).searchParams.get(
         "prompt",
       );
-    // Logged in without a second factor: "log in again" (fresh=1) and a step-up both need a new login there
+    // Logged in without a second factor: "log in again" (fresh=1) needs a new login there
     await b.logIn({ ...verified, amr: ["pwd"], auth_time: secondsAgo(5) });
     expect(await prompt("&fresh=1")).toBe("login");
-    expect(await prompt("&stepUp=1")).toBe("login");
     expect(await prompt("")).toBeNull();
-    // With a second factor, a step-up only asks for a recent login (max_age), not always a new one
-    await b.logIn({ ...verified, auth_time: secondsAgo(20 * 60) });
-    expect(await prompt("&stepUp=1")).toBeNull();
   });
 
   it("API keys never do sensitive actions: no new keys, no deleting answers or studies, no admin roles", async () => {
@@ -414,32 +415,116 @@ describe("researcher login", () => {
     ).toBe("/?loginError=link_failed");
   });
 
-  it("renews the cookie when it extends the session: a researcher who keeps working stays logged in", async () => {
+  it("gives the cookie as long as a session can last, once: the server ends the session sooner", async () => {
+    const b = browser();
+    const start = await b.request("/api/auth/login?returnTo=/");
+    const { code, state } = issuer.approve(start.headers.get("location")!, verified);
+    const done = await b.request(`/api/auth/callback?code=${code}&state=${state}`);
+    const cookie = done.headers.getSetCookie().find((c) => c.startsWith("annotinder_session="));
+    expect(cookie).toContain(`Max-Age=${DEFAULT_LOGIN_LIMITS.sessionMax}`);
+    expect(cookie).toContain("HttpOnly");
+    await ago("last_active", 10);
+    for (const res of [await b.api("/api/me"), await b.api("/api/auth/activity", { method: "POST" })])
+      expect(res.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("ends a session after AUTH_SESSION_IDLE without activity, and AUTH_SESSION_MAX after the login", async () => {
     const b = browser();
     await b.logIn(verified);
-    const sessionCookie = (res: Response) =>
-      res.headers.getSetCookie().find((c) => c.startsWith("annotinder_session="));
-    // Just logged in: nothing to extend
-    expect(sessionCookie(await b.api("/api/me"))).toBeUndefined();
-    // Ten days on, the session and its cookie have four days left
-    await query(db, "UPDATE sessions SET expires = now() + interval '4 days'");
-    const renewed = sessionCookie(await b.api("/api/me"));
-    expect(renewed).toContain(`annotinder_session=${b.cookies.get("annotinder_session")}`);
-    expect(renewed).toContain("Max-Age=1209600");
-    expect(renewed).toContain("HttpOnly");
-    const [session] = await query<{ days: number }>(
-      db,
-      "SELECT round(extract(epoch FROM expires - now()) / 86400)::int AS days FROM sessions",
-    );
-    expect(session!.days).toBe(14);
-    expect(sessionCookie(await b.api("/api/me"))).toBeUndefined();
+    await ago("last_active", 29);
+    expect((await b.api("/api/me")).status).toBe(200);
+    await ago("last_active", 31);
+    expect((await b.api("/api/me")).status).toBe(401);
+    // However active, a day after the login
+    await b.logIn(verified);
+    await ago("created", 23 * 60);
+    expect((await b.api("/api/me")).status).toBe(200);
+    await ago("created", 24 * 60 + 1);
+    expect((await b.api("/api/me")).status).toBe(401);
+    // Other limits
+    app = newApp([], undefined, undefined, { sessionIdle: 3600, sessionMax: 7200 });
+    await ago("created", 60);
+    await ago("last_active", 59);
+    expect((await b.api("/api/me")).status).toBe(200);
+    await ago("created", 121);
+    expect((await b.api("/api/me")).status).toBe(401);
+  });
+
+  it("counts changes and reported activity as activity, not reading (the client refreshes pages), written once a minute", async () => {
+    app = newApp(["jane@uni.nl"]);
+    const b = browser();
+    await b.logIn(verified);
+    const lastActive = async () =>
+      (
+        await query<{ minutes: number }>(
+          db,
+          "SELECT round(extract(epoch FROM now() - last_active) / 60)::int AS minutes FROM sessions",
+        )
+      )[0]!.minutes;
+    await ago("last_active", 20);
+    expect((await b.api("/api/me")).status).toBe(200);
+    expect(await lastActive()).toBe(20);
+    expect((await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "x" }) })).status).toBe(201);
+    expect(await lastActive()).toBe(0);
+    // Not written again within the minute
+    await query(db, "UPDATE sessions SET last_active = now() - interval '30 seconds'");
+    const written = await query(db, "SELECT last_active FROM sessions");
+    await b.api("/api/study", { method: "POST", body: JSON.stringify({ name: "y" }) });
+    expect(await query(db, "SELECT last_active FROM sessions")).toEqual(written);
+    // The client reports activity: the user types or clicks without making requests
+    await ago("last_active", 20);
+    expect((await b.api("/api/auth/activity", { method: "POST" })).status).toBe(204);
+    expect(await lastActive()).toBe(0);
+  });
+
+  it("takes reported activity only from a live session, with the client header", async () => {
+    const b = browser();
+    expect((await b.api("/api/auth/activity", { method: "POST" })).status).toBe(401);
+    await b.logIn(verified);
+    expect((await b.request("/api/auth/activity", { method: "POST" })).status).toBe(403);
+    await ago("last_active", 31);
+    expect((await b.api("/api/auth/activity", { method: "POST" })).status).toBe(401);
+  });
+
+  it("allows sensitive actions for AUTH_STEP_UP_IDLE after the login or the last one, up to AUTH_STEP_UP_MAX_AGE after the login", async () => {
+    app = newApp(["jane@uni.nl"]);
+    const b = browser();
+    await b.logIn({ ...verified, auth_time: secondsAgo(5) });
+    const newKey = async () =>
+      (await b.api("/api/me/keys", { method: "POST", body: JSON.stringify({ label: "R" }) })).status;
+    const freshUntil = async () =>
+      ((await (await b.api("/api/me")).json()) as { twoFactor: { freshUntil: string | null } }).twoFactor.freshUntil;
+    const minutesLeft = async () => Math.round((new Date((await freshUntil())!).getTime() - Date.now()) / 60_000);
+    // 10 minutes after the login: allowed, and the next one may come 15 minutes from now
+    await ago("auth_time", 10);
+    expect(await newKey()).toBe(201);
+    expect(await minutesLeft()).toBe(15);
+    // 50 minutes after the login, 10 after the last sensitive action: allowed, renewed
+    await ago("auth_time", 50);
+    await ago("step_up_at", 10);
+    expect(await newKey()).toBe(201);
+    expect(await minutesLeft()).toBe(11); // the login's hour ends first (plus a minute for the provider's clock)
+    // 16 minutes after the last one: a new login
+    await ago("step_up_at", 16);
+    expect(await freshUntil()).toBeNull();
+    expect(await newKey()).toBe(403);
+    // Over an hour after the login, however recent the last one
+    await ago("auth_time", 62);
+    await ago("step_up_at", 1);
+    expect(await newKey()).toBe(403);
+    // A step-up login starts over
+    expect(await b.logIn({ ...verified, auth_time: secondsAgo(5) }, "/x", true)).toBe("/x");
+    expect(await newKey()).toBe(201);
   });
 
   it("a new login ends the session it replaces, and removes expired sessions", async () => {
     const b = browser();
     await b.logIn(verified);
     const first = b.cookies.get("annotinder_session")!;
-    await query(db, "INSERT INTO sessions (user_id, key_hash, expires) VALUES (1, 'old', now() - interval '1 minute')");
+    await query(
+      db,
+      "INSERT INTO sessions (user_id, key_hash, last_active) VALUES (1, 'old', now() - interval '1 hour')",
+    );
     await b.logIn(verified);
     expect(b.cookies.get("annotinder_session")).not.toBe(first);
     expect((await b.api("/api/me")).status).toBe(200);
@@ -452,10 +537,10 @@ describe("researcher login", () => {
     const b = browser();
     await b.logIn(verified);
     const expire = () =>
-      query(db, "INSERT INTO sessions (user_id, key_hash, expires) VALUES (1, 'old', now() - interval '1 minute')");
+      query(db, "INSERT INTO sessions (user_id, key_hash, created) VALUES (1, 'old', now() - interval '2 days')");
     const left = async () => (await query<{ n: number }>(db, "SELECT count(*)::int AS n FROM sessions"))[0]!.n;
     await expire();
-    const stop = sweepExpiredSessions(db, 10);
+    const stop = sweepExpiredSessions(db, DEFAULT_LOGIN_LIMITS, 10);
     await vi.waitFor(async () => expect(await left()).toBe(1));
     stop();
     // A sweep that started before stop() may still be running: let it finish first
@@ -480,24 +565,18 @@ describe("researcher login", () => {
   });
 });
 
-const storedTokens = () =>
-  query<{ id_token: string | null; oidc_sid: string | null }>(db, "SELECT id_token, oidc_sid FROM sessions");
+const storedTokens = () => query<{ id_token: string | null }>(db, "SELECT id_token FROM sessions");
 const logOut = async (b: ReturnType<typeof browser>) =>
   (await (await b.api("/api/auth/logout", { method: "POST" })).json()) as { redirect: string | null };
 
 describe("logout at the login provider (RP-Initiated Logout)", () => {
-  it("keeps the login's ID token and sid with the session, and never sends them to the client", async () => {
+  it("keeps the login's ID token with the session, and never sends it to the client", async () => {
     const b = browser();
-    await b.logIn({ ...verified, sid: "provider-session-1" });
+    await b.logIn(verified);
     const [stored] = await storedTokens();
-    expect(stored!.oidc_sid).toBe("provider-session-1");
     const payload = JSON.parse(Buffer.from(stored!.id_token!.split(".")[1]!, "base64url").toString());
-    expect(payload).toMatchObject({ iss: ISSUER, sub: "user-1", sid: "provider-session-1" });
+    expect(payload).toMatchObject({ iss: ISSUER, sub: "user-1" });
     expect(await (await b.api("/api/me")).text()).not.toContain(stored!.id_token!);
-    // A provider that sends no sid
-    await query(db, "DELETE FROM sessions");
-    await browser().logIn(verified);
-    expect((await storedTokens())[0]).toMatchObject({ id_token: expect.any(String), oidc_sid: null });
   });
 
   it("ends the session here, then sends the browser to the provider's end_session_endpoint", async () => {
@@ -553,7 +632,7 @@ describe("logout at the login provider (RP-Initiated Logout)", () => {
     const [user] = await query<{ id: number }>(db, "INSERT INTO users (email) VALUES ('jane@uni.nl') RETURNING id");
     const login = { mfa: true, authTime: new Date(), issuer: OLD };
     const b = browser();
-    b.cookies.set("annotinder_session", await createSession(db, user!.id, login, { idToken: "t", sid: null }));
+    b.cookies.set("annotinder_session", await createSession(db, user!.id, login, "t"));
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await logOut(b)).toEqual({ redirect: null });
     expect(warn).toHaveBeenCalledWith("Logout at the login provider skipped:", expect.anything());
@@ -655,7 +734,7 @@ describe("changing providers (OIDC_PREVIOUS_*)", () => {
     const start = await b.request("/api/auth/login?returnTo=/account&link=1");
     const stepUp = new URL(start.headers.get("location")!);
     expect(stepUp.origin).toBe(OLD);
-    expect(stepUp.searchParams.get("max_age")).toBe("600");
+    expect(stepUp.searchParams.get("max_age")).toBe("0");
     // A provider that didn't ask again: no linking
     const stale = old.approve(stepUp.href, { ...verified, sub: "old-jane", auth_time: secondsAgo(20 * 60) });
     expect(
