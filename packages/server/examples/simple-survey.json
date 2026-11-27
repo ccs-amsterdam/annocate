@@ -5,7 +5,7 @@
   "tryThis": [
     "Open the link in a private window, and fill in the survey once as someone under 18.",
     "Look at the branches and the end item in the design (Design page): each branch has a label that says what it is for, such as \"Screen-out: under 18\".",
-    "Download the results: survey answers are in coders.csv."
+    "Download the results: survey answers are in sessions.csv."
   ],
   "name": "A simple survey",
   "deploy": true,

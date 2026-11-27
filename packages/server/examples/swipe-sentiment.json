@@ -1,11 +1,11 @@
 {
   "category": "Simple annotation",
   "title": "Sentiment by swiping",
-  "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 coders (Anna, Bob and Carla, a link each), plus 5 overlap units every coder gets, to compare their answers. With example answers from the 3 coders, who disagree on some overlap units.",
+  "description": "Coders swipe news headlines left (negative), right (positive) or up (neutral). The 20 units are divided over 3 expert coders (Anna, Bob and Carla, a link each), plus 5 overlap units every coder gets, to compare their answers. The example answers are from 3 example coders (Example coder 1 to 3), who disagree on some overlap units, so Anna's, Bob's and Carla's links are still free to try.",
   "tryThis": [
     "Download the results (Results page) to see what the example coders' answers look like: the coder column says who coded what.",
     "Open a coder's link (Links page) in a private window: you get that coder's 5 units, with the 5 overlap units spread in between.",
-    "See who codes what: the columns coder_set and test_set (overlap) on the Units page, and 'Specific coders' with a link per coder in the Study entry (Design page)."
+    "See who codes what: the columns coder_set and test_set (overlap) on the Units page, the coders on the Coders page, and 'Expert coders' with a link per coder under Who codes (Start, on the Design page)."
   ],
   "name": "Sentiment by swiping",
   "deploy": true,

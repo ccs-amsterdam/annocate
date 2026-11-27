@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { StudyResponse } from "@annotinder/contracts";
+import type { ExampleSummary, StudyResponse } from "@annotinder/contracts";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResearcherApiError, type ResearcherApi } from "../../api/httpResearcherApi";
@@ -7,7 +8,8 @@ import { useCreateStudyFromExampleMutation, useExamplesQuery } from "../../admin
 
 /**
  * "New study from an example" (docs/examples.md): the examples by
- * category; the chosen one becomes an ordinary study, deployed, with a
+ * category, one line each (the chosen one shows its description); the
+ * chosen one becomes an ordinary study, deployed, with a
  * link and sometimes example answers.
  */
 export function ExamplesDialog({
@@ -42,30 +44,24 @@ export function ExamplesDialog({
           An example makes a ready study: units, a deployed design and a link, sometimes with example answers. It is
           yours to try, change and delete.
         </p>
-        <div className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
+        <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
           {examplesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading examples...</p>}
           {categories.map((category) => (
             <section key={category}>
-              <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{category}</h3>
-              <div className="grid gap-2">
+              <h3 className="mb-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">{category}</h3>
+              <div className="grid gap-1">
                 {examples
                   .filter((e) => e.category === category)
                   .map((e) => (
-                    <button
+                    <ExampleRow
                       key={e.id}
-                      type="button"
-                      aria-pressed={chosen === e.id}
-                      onClick={() => {
+                      example={e}
+                      chosen={chosen === e.id}
+                      onChoose={() => {
                         setChosen(e.id);
                         setName(e.title);
                       }}
-                      className={`rounded-lg border p-3 text-left transition-colors ${
-                        chosen === e.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                      }`}
-                    >
-                      <span className="block text-sm font-medium text-foreground">{e.title}</span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">{e.description}</span>
-                    </button>
+                    />
                   ))}
               </div>
             </section>
@@ -105,5 +101,28 @@ export function ExamplesDialog({
         </form>
       </div>
     </div>
+  );
+}
+
+/** An example on one line; chosen, it also shows what it is. */
+function ExampleRow({ example, chosen, onChoose }: { example: ExampleSummary; chosen: boolean; onChoose: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={chosen}
+      aria-expanded={chosen}
+      onClick={onChoose}
+      className={`rounded-md border px-3 py-1.5 text-left transition-colors ${
+        chosen ? "border-primary bg-primary/5" : "border-transparent hover:border-border hover:bg-muted/50"
+      }`}
+    >
+      <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+        <ChevronRight
+          className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${chosen ? "rotate-90" : ""}`}
+        />
+        {example.title}
+      </span>
+      {chosen && <span className="mt-1 block pl-5 text-xs text-muted-foreground">{example.description}</span>}
+    </button>
   );
 }

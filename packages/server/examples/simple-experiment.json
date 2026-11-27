@@ -5,7 +5,7 @@
   "tryThis": [
     "Open the link in a private window a few times: you get either version at random.",
     "Look at the experiment item and the article text in the design (Design page): the text shows a different paragraph per condition.",
-    "Download the results: the condition is a column in coders.csv, next to the answers."
+    "Download the results: the condition is a column in sessions.csv, next to the answers."
   ],
   "name": "A simple experiment",
   "deploy": true,

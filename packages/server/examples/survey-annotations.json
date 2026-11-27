@@ -4,7 +4,7 @@
   "description": "Coders first answer a few questions about themselves, then code eight headlines: the topic, and how relevant the news is to them. Survey answers and unit answers end up in the same download, linked by coder. With example answers from 2 coders.",
   "tryThis": [
     "Open the link in a private window: survey questions first, then the headlines.",
-    "Download the results: the headlines' answers are in annotations.csv, the survey answers in coders.csv; join them on session_id."
+    "Download the results: the headlines' answers are in annotations.csv, the survey answers in sessions.csv; join them on session_id."
   ],
   "name": "Survey with annotations",
   "deploy": true,
