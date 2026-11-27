@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { codeLinkUrl, logInWithAccount, redeemTransfer } from "./coderSession";
+import {
+  codeLinkUrl,
+  continueAfterLogout,
+  logInWithAccount,
+  logInWithAnotherAccount,
+  redeemTransfer,
+} from "./coderSession";
 
 describe("redeemTransfer", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -68,5 +74,44 @@ describe("a coder link", () => {
     expect(codeLinkUrl("k3v9x2m4q7ta", "s e/cret")).toBe(
       "https://annotinder.example.org/code/k3v9x2m4q7ta?link=s%20e%2Fcret",
     );
+  });
+});
+
+describe("logInWithAnotherAccount", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stub(redirect: string | null) {
+    const assign = vi.fn();
+    const replace = vi.fn();
+    const store = new Map<string, string>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ redirect }), { status: 200 })),
+    );
+    vi.stubGlobal("window", { location: { pathname: "/code/abc", search: "?link=s1", assign, replace } });
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+      removeItem: (k: string) => store.delete(k),
+    });
+    return { assign, replace };
+  }
+
+  it("ends the provider's session, then the start page goes on to the login and back to the study, once", async () => {
+    const { assign, replace } = stub("https://idp.example/logout?id_token_hint=t");
+    await logInWithAnotherAccount();
+    expect(assign).toHaveBeenCalledWith("https://idp.example/logout?id_token_hint=t");
+
+    continueAfterLogout();
+    const [url] = replace.mock.calls[0] as [string];
+    expect(new URL(url, "http://x").searchParams.get("returnTo")).toBe("/code/abc?link=s1");
+    continueAfterLogout();
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs in at once when the provider has no logout", async () => {
+    const { assign } = stub(null);
+    await logInWithAnotherAccount();
+    expect((assign.mock.calls[0] as [string])[0].startsWith("/api/auth/login?returnTo=")).toBe(true);
   });
 });

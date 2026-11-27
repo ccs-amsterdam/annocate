@@ -103,9 +103,50 @@ export async function loginAvailable(): Promise<boolean> {
   }
 }
 
-/** Logs out (to log in with another account). */
-export async function logOut(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST", headers: CLIENT_HEADERS, credentials: "same-origin" });
+/** Where the browser goes on once the login provider's logout brings it back to the start page. */
+const AFTER_LOGOUT_KEY = "annotinder_after_logout";
+
+/**
+ * Logs out, also at the login provider (so it doesn't sign the same account
+ * in again), then logs in again and comes back to this page. The provider
+ * sends the browser back to the start page, which goes on to the login
+ * (`continueAfterLogout`).
+ */
+export async function logInWithAnotherAccount(): Promise<void> {
+  const res = await fetch("/api/auth/logout", { method: "POST", headers: CLIENT_HEADERS, credentials: "same-origin" });
+  const { redirect } = res.ok ? ((await res.json()) as { redirect: string | null }) : { redirect: null };
+  const login = coderLoginUrl();
+  if (redirect && remember(login)) window.location.assign(redirect);
+  else window.location.assign(login);
+}
+
+function remember(login: string): boolean {
+  try {
+    sessionStorage.setItem(AFTER_LOGOUT_KEY, login);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * On the start page: if the provider's logout brought the browser back here
+ * on its way to a login (`logInWithAnotherAccount`), goes on to it. Only a
+ * login of this server, once.
+ */
+export function continueAfterLogout(): void {
+  const login = takeRemembered();
+  if (login?.startsWith("/api/auth/login?")) window.location.replace(login);
+}
+
+function takeRemembered(): string | null {
+  try {
+    const login = sessionStorage.getItem(AFTER_LOGOUT_KEY);
+    sessionStorage.removeItem(AFTER_LOGOUT_KEY);
+    return login;
+  } catch {
+    return null;
+  }
 }
 
 /**

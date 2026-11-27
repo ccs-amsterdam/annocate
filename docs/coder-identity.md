@@ -228,7 +228,12 @@ out doesn't affect coding. Code: `runtime/requestCoder.ts`,
 - **Expert coders who sign in** are the coder whose email address
   (`coders.email`) the login has, ignoring case; `$session.coder` is that
   coder's id, never the address. The coder must be in the deployed coder
-  set; any other login gets 403 `email_not_allowed`. They have one session
+  set; any other login gets 403 `email_not_allowed`, and the coding screen
+  offers **Sign in with another account**: it logs out, also at the login
+  provider (so the provider doesn't sign the same account in again), and
+  logs in again. The provider's logout comes back to the start page, which
+  goes on to that login and so back to the study (the way is kept in the
+  tab's `sessionStorage`). They have one session
   each, found by the coder (not by the address): after the researchers
   change a coder's address, the new address continues that coder's session
   and the old one has no access. Deploying checks that every coder with

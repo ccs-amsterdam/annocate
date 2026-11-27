@@ -23,6 +23,7 @@ import { useTheme } from "./lib/context/theme";
 import { AboutLink, AboutPage } from "./pages/AboutPage";
 import { WelcomePage } from "./pages/WelcomePage";
 import { CodeHomePage } from "./pages/CodeHomePage";
+import { continueAfterLogout } from "./lib/session/coderSession";
 import { CodePage } from "./pages/CodePage";
 import { Logo, LogoSmoke } from "./components/Logo";
 import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
@@ -299,6 +300,7 @@ const researcherPagesRoute = createRoute({
 const welcomeRoute = createRoute({
   getParentRoute: () => researcherPagesRoute,
   path: "/",
+  beforeLoad: continueAfterLogout,
   component: () => (
     <WithHeader>
       <WelcomePage />

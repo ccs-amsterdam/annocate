@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { coderLoginUrl, logOut } from "../../session/coderSession";
+import { coderLoginUrl, logInWithAnotherAccount } from "../../session/coderSession";
 import { CoderElsewhere } from "./CoderElsewhere";
 import { useLoginAvailable } from "./hooks";
 import { PickName } from "./PickName";
@@ -112,12 +112,7 @@ function EmailNotAllowedNotice() {
         one of them.
       </p>
       <p>If you were given it with another email address, sign in with that account.</p>
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-2"
-        onClick={() => void logOut().then(() => window.location.assign(coderLoginUrl()))}
-      >
+      <Button type="button" variant="outline" className="mt-2" onClick={() => void logInWithAnotherAccount()}>
         Sign in with another account
       </Button>
     </SessionNotice>

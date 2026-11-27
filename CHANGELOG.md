@@ -6,6 +6,12 @@ under one version.
 
 ## Unreleased
 
+### For coders
+
+- **Sign in with another account** (when the signed-in account has no
+  access to the study) now also logs out at the login provider, so it
+  doesn't sign the same account in again, and comes back to the study.
+
 ### For those who run a server
 
 - Logging out ends the login provider's session too (OpenID Connect
