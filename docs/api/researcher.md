@@ -67,7 +67,8 @@ also has `requestId`):
 |---|---|---|---|---|
 | **Account** | | | | |
 | [getAuthOptions](#getauthoptions) | `GET /auth/options` | none | – | `AuthOptionsSchema` |
-| [logout](#logout) | `POST /auth/logout` | none | – | – |
+| [logout](#logout) | `POST /auth/logout` | none | – | `LogoutResponseSchema` |
+| [reportActivity](#reportactivity) | `POST /auth/activity` | any | – | – |
 | [getMe](#getme) | `GET /me` | any | – | `MeResponseSchema` |
 | [requestResearcher](#requestresearcher) | `POST /me/researcher-request` | any | `ResearcherRequestWriteSchema` | `MeResponseSchema` |
 | [getAccountDeletion](#getaccountdeletion) | `GET /me/deletion` | any | – | `AccountDeletionSchema` |
