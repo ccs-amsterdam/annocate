@@ -59,6 +59,18 @@ function LinkBanner({ client }: { client: ResearcherApi }) {
   );
 }
 
+/** A login refused while the researcher stays logged in (a step-up or a link that didn't work). */
+function LoginErrorBanner({ error }: { error: LoginError }) {
+  return (
+    <p
+      role="alert"
+      className="mx-auto mb-3 max-w-6xl rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+    >
+      {LOGIN_ERRORS[error]}
+    </p>
+  );
+}
+
 /**
  * The login session ended while the researcher was at work (the server
  * refused a request). The page stays as it is, unsaved edits too, until
@@ -137,6 +149,7 @@ export function ResearcherGate({
     return (
       <>
         {state.ended && <SessionEndedBanner client={client} />}
+        {loginError && <LoginErrorBanner error={loginError} />}
         {state.me.linkNeeded && <LinkBanner client={client} />}
         {children(state.me)}
       </>

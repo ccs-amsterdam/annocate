@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { ApiKeyCreated, ApiKeyResponse, MeResponse } from "@annotinder/contracts";
 import type { ResearcherApi } from "../../../api/httpResearcherApi";
 import { Button } from "@/components/ui/button";
@@ -119,7 +119,13 @@ export function AccountMenu({
           )}
         </PopoverContent>
       </Popover>
-      {keysOpen && <ApiKeysDialog client={client} onClose={() => setKeysOpen(false)} />}
+      {keysOpen && me && (
+        <ApiKeysDialog
+          client={client}
+          secondFactorNote={noSecondFactor ? <TwoFactorNote me={me} onLogIn={() => logIn({ fresh: true })} /> : null}
+          onClose={() => setKeysOpen(false)}
+        />
+      )}
       {deleting && (
         <DeleteAccountDialog
           whose="own"
@@ -168,8 +174,20 @@ function TwoFactorNote({ me, onLogIn }: { me: MeResponse; onLogIn: () => void })
   );
 }
 
-/** Lists, creates and revokes the researcher's API keys (for R, Python and other scripts). */
-function ApiKeysDialog({ client, onClose }: { client: ResearcherApi; onClose: () => void }) {
+/**
+ * Lists, creates and revokes the researcher's API keys (for R, Python and
+ * other scripts). `secondFactorNote`: the login has no second factor, which
+ * creating and revoking need, so these are off and the note says how to get one.
+ */
+function ApiKeysDialog({
+  client,
+  secondFactorNote,
+  onClose,
+}: {
+  client: ResearcherApi;
+  secondFactorNote: ReactNode;
+  onClose: () => void;
+}) {
   const [keys, setKeys] = useState<ApiKeyResponse[] | null>(null);
   const [label, setLabel] = useState("");
   const [created, setCreated] = useState<ApiKeyCreated | null>(null);
@@ -219,13 +237,22 @@ function ApiKeysDialog({ client, onClose }: { client: ResearcherApi; onClose: ()
             <code className="text-xs break-all">{created.key}</code>
           </div>
         )}
+        {secondFactorNote && (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm">Creating and revoking API keys needs a login with a second factor.</p>
+            {secondFactorNote}
+          </div>
+        )}
         <div className="flex gap-2">
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="What is it for? e.g. laptop R scripts"
+            disabled={!!secondFactorNote}
           />
-          <Button onClick={create}>Create</Button>
+          <Button onClick={create} disabled={!!secondFactorNote}>
+            Create
+          </Button>
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <ul className="flex flex-col divide-y divide-border text-xs">
@@ -241,7 +268,7 @@ function ApiKeysDialog({ client, onClose }: { client: ResearcherApi; onClose: ()
                 </span>
               </span>
               {!key.revokedAt && (
-                <Button variant="ghost" size="sm" onClick={() => revoke(key.id)}>
+                <Button variant="ghost" size="sm" onClick={() => revoke(key.id)} disabled={!!secondFactorNote}>
                   Revoke
                 </Button>
               )}

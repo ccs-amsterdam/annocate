@@ -33,4 +33,17 @@ describe("ResearcherGate", () => {
     expect(screen.getByRole("button", { name: /Log in again/ })).toBeTruthy();
     expect(screen.getByDisplayValue("unsaved edits")).toBeTruthy();
   });
+
+  it("says why a step-up login didn't work while staying logged in (no endless loop back to the provider)", async () => {
+    window.history.replaceState(null, "", "/research?loginError=step_up_failed");
+    vi.stubGlobal("fetch", async (url: string) =>
+      url === "/api/auth/activity"
+        ? new Response(null, { status: 204 })
+        : new Response(JSON.stringify({ email: "jane@uni.nl", linkNeeded: false }), { status: 200 }),
+    );
+    render(<ResearcherGate client={new HttpResearcherApi({ baseUrl: "/api" })}>{() => <p>studies</p>}</ResearcherGate>);
+    expect(await screen.findByText("studies")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("with a second factor");
+    window.history.replaceState(null, "", "/");
+  });
 });

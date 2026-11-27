@@ -6,6 +6,13 @@ under one version.
 
 ## Unreleased
 
+### For researchers
+
+- **API keys** without a second factor: the dialog now says that creating
+  and revoking keys needs a login with a second factor, and where to set
+  one up, instead of sending you back to the login provider again and
+  again. A step-up login that didn't work now says why.
+
 ### For coders
 
 - **Sign in with another account** (when the signed-in account has no
